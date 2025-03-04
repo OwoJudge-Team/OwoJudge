@@ -1,15 +1,15 @@
 import crypto, { scryptSync, randomBytes } from 'crypto'
 import FileSystem from 'fs'
 
-export const randomString = (size) => {
+export const randomString = (size: number): string => {
     return randomBytes(size).toString('hex')
 }
 
-var salt = undefined
+let salt: string | undefined = undefined
 
-const readSalt = () => {
+const readSalt = (): void => {
     try {
-        const SALT = JSON.parse(FileSystem.readFileSync('./salt.json')).salt
+        const SALT: string = JSON.parse(FileSystem.readFileSync('./salt.json', 'utf-8')).salt
         salt = SALT
         console.log(SALT)
     }
@@ -19,13 +19,13 @@ const readSalt = () => {
     }
 }
 
-export const hashString = (str) => {
+export const hashString = (str: string): string => {
     if (!salt) {
         readSalt()
     }
-    return scryptSync(str, salt, 32).toString('hex')
+    return scryptSync(str, salt as string, 32).toString('hex')
 }
 
-export const stringMatch = (str, hashedStr) => {
+export const stringMatch = (str: string, hashedStr: string): boolean => {
     return hashString(str) === hashedStr
 }

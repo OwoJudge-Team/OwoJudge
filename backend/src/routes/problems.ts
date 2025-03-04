@@ -1,14 +1,14 @@
-import { Router } from 'express'
-import { query, validationResult, matchedData, checkSchema, check } from 'express-validator'
-import { Problem } from '../mongoose/schemas/problems.mjs'
-import { createProblemValidation } from '../validations/create-problem-validation.mjs'
-import { updateProblemValidation } from '../validations/update-problem-validation.mjs'
+import { Router, Request, Response } from 'express'
+import { query, validationResult, matchedData, checkSchema } from 'express-validator'
+import { Problem, IProblem } from '../mongoose/schemas/problems'
+import { createProblemValidation } from '../validations/create-problem-validation'
+import { updateProblemValidation } from '../validations/update-problem-validation'
 
 const problemsRouter = Router()
 
-problemsRouter.get('/api/problems', async (request, response) => {
+problemsRouter.get('/api/problems', async (request: Request, response: Response) => {
     try {
-        const problems = await Problem
+        const problems: IProblem[] = await Problem
             .find()
             .select('id displayID title createdTime')
             .sort({ createdTime: -1 })
@@ -21,14 +21,13 @@ problemsRouter.get('/api/problems', async (request, response) => {
     }
 })
 
-problemsRouter.get('/api/problems/:displayID', async (request, response) => {
+problemsRouter.get('/api/problems/:displayID', async (request: Request, response: Response) => {
     if (!request.user) {
         return response.status(401).send('Please login first')
     }
     const { displayID } = request.params
     try {
-        const problem = await Problem
-            .findOne({ displayID: displayID })
+        const problem: IProblem | null = await Problem.findOne({ displayID: displayID })
         if (!problem) {
             return response.sendStatus(404)
         }
@@ -42,7 +41,7 @@ problemsRouter.get('/api/problems/:displayID', async (request, response) => {
 
 problemsRouter.post('/api/problems', 
     checkSchema(createProblemValidation), 
-    async (request, response) => {
+    async (request: Request, response: Response) => {
         if (!request.user || !request.user.isAdmin) {
             return response.status(401).send('Please login as an admin first')
         }
@@ -53,8 +52,8 @@ problemsRouter.post('/api/problems',
         const data = matchedData(request)
         const newProblem = new Problem(data)
         try {
-            newProblem.createdTime = Date.now()
-            const savedProblem = await newProblem.save()
+            newProblem.createdTime = new Date()
+            const savedProblem: IProblem = await newProblem.save()
             return response.status(201).send(savedProblem)
         }
         catch (error) {
@@ -64,14 +63,13 @@ problemsRouter.post('/api/problems',
     }
 )
 
-problemsRouter.delete('/api/problems/:displayID', async (request, response) => {
+problemsRouter.delete('/api/problems/:displayID', async (request: Request, response: Response) => {
     if (!request.user || !request.user.isAdmin) {
         return response.status(401).send('Please login as an admin first')
     }
     const { displayID } = request.params
     try {
-        const problem = await Problem
-            .findOneAndDelete({ displayID: displayID })
+        const problem: IProblem | null = await Problem.findOneAndDelete({ displayID: displayID })
         if (!problem) {
             return response.sendStatus(404)
         }
@@ -86,7 +84,7 @@ problemsRouter.delete('/api/problems/:displayID', async (request, response) => {
 problemsRouter.patch(
     '/api/problems/:displayID',
     checkSchema(updateProblemValidation), 
-    async (request, response) => {
+    async (request: Request, response: Response) => {
         if (!request.user) {
             return response.status(401).send('Please login first')
         }
@@ -100,11 +98,11 @@ problemsRouter.patch(
                     error: validationResult(request).array(),
                 }
             }
-            let problem = await Problem.findOneAndUpdate({ displayID: displayID }, data)
+            let problem: IProblem | null = await Problem.findOneAndUpdate({ displayID: displayID }, data)
             if (!problem) {
                 return response.sendStatus(404);
             }
-            problem = await Problem.findOne({ displayID: displayID }).select()
+            problem = await Problem.findOne({ displayID: displayID }).select('id displayID title createdTime')
             return response.status(201).send(problem)
         }
         catch (error) {

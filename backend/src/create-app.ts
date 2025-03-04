@@ -1,22 +1,22 @@
-import express from 'express'
+import express, { Application } from 'express'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
 import passport from 'passport'
 import MongoStore from 'connect-mongo'
 import mongoose from 'mongoose'
-import usersRouter from './routes/users.mjs'
-import problemsRouter from './routes/problems.mjs'
-import submissionRouter from './routes/submission.mjs'
-import authRouter from './routes/auth.mjs'
+import usersRouter from './routes/users.js'
+import problemsRouter from './routes/problems.js'
+import submissionRouter from './routes/submission.js'
+import authRouter from './routes/auth.js'
 
-export const createApp = () => {
+export const createApp = (): Application => {
     mongoose.connect('mongodb://localhost/judge')
         .then(() => console.log('Connected to mongo'))
-        .catch((error) => console.log(`Error: ${error}`))
+        .catch((error: Error) => console.log(`Error: ${error.message}`))
 
-    const app = express()
-    const oneMinute = 60000
-    const oneHour = oneMinute * 60
+    const app: Application = express()
+    const oneMinute: number = 60000
+    const oneHour: number = oneMinute * 60
 
     app.use(express.json())
     app.use(cookieParser('cj6u.4t/6'))

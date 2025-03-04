@@ -1,22 +1,42 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
-const problemSchema = new mongoose.Schema({
+interface ITestcase {
+    input: string;
+    output: string;
+    point: number;
+    subtask: string;
+}
+
+export interface IProblem extends Document {
+    displayID: string;
+    createdTime: Date;
+    title: string;
+    description: string;
+    inputFormat?: string;
+    outputFormat?: string;
+    timeLimit: number;
+    memoryLimit: number;
+    scorePolicy: string;
+    testcase: ITestcase[];
+}
+
+const problemSchema: Schema = new mongoose.Schema({
     displayID: {
         type: mongoose.Schema.Types.String,
-        require: true,
+        required: true,
         unique: true,
     },
     createdTime: {
         type: mongoose.Schema.Types.Date,
-        require: true,
+        required: true,
     },
     title: {
         type: mongoose.Schema.Types.String,
-        require: true,
+        required: true,
     },
     description: {
         type: mongoose.Schema.Types.String,
-        require: true,
+        required: true,
     },
     inputFormat: {
         type: mongoose.Schema.Types.String,
@@ -26,15 +46,15 @@ const problemSchema = new mongoose.Schema({
     },
     timeLimit: {
         type: mongoose.Schema.Types.Number,
-        require: true,
+        required: true,
     },
     memoryLimit: {
         type: mongoose.Schema.Types.Number,
-        require: true,
+        required: true,
     },
     scorePolicy: {
         type: mongoose.Schema.Types.String,
-        require: true,
+        required: true,
     },
     testcase: [
         {
@@ -44,6 +64,7 @@ const problemSchema = new mongoose.Schema({
             subtask: mongoose.Schema.Types.String,
         },
     ]
-})
+});
 
-export const Problem = mongoose.model('Problem', problemSchema)
+export const Problem = mongoose.model<IProblem>('Problem', problemSchema);
+export { ITestcase };

@@ -1,6 +1,17 @@
-import mongoose from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 
-const userSchema = new mongoose.Schema({
+interface IUser {
+    username: string;
+    displayName: string;
+    password: string;
+    isAdmin: boolean;
+    solvedProblem: number;
+    solvedProblems: any;
+    rating: number;
+    id: ObjectId;
+}
+
+const userSchema = new mongoose.Schema<IUser>({
     username: {
         type: mongoose.Schema.Types.String,
         require: true,
@@ -30,9 +41,7 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.Number,
         required: true,
     },
-    googleID: {
-        type: mongoose.Schema.Types.String,
-    },
 })
 
 export const User = mongoose.model('User', userSchema)
+export { IUser }
