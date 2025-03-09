@@ -11,7 +11,7 @@ const navItems = [
 
 const Header: React.FC = () => {
   return (
-    <header className='bg-indigo-700 p-4 shadow-lg'>
+    <header className='bg-primary p-4 shadow-lg'>
       <div className='max-w-7xl mx-auto flex justify-between items-center'>
         {/* Logo */}
         <Link href='/' className='text-white text-3xl font-bold hover:text-gray-200 transition'>
@@ -30,7 +30,7 @@ const Header: React.FC = () => {
         {/* Login Button */}
         <Link
           href='/login'
-          className='bg-white text-indigo-600 px-5 py-2 rounded-full font-semibold shadow hover:bg-gray-200 transition'
+          className='bg-white text-primary-dark px-5 py-2 rounded-full font-semibold shadow hover:bg-gray-200 transition'
         >
           Login
         </Link>

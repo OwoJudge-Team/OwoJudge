@@ -13,19 +13,19 @@ const Home: React.FC = () => {
         <div className='grid gap-4'>
           <button
             onClick={() => setContest('Beginner Contest')}
-            className='w-full bg-indigo-500 text-white p-3 rounded-md hover:bg-indigo-600 transition'
+            className='w-full bg-primary text-white p-3 rounded-md hover:bg-primary-dark transition'
           >
             Beginner Contest
           </button>
           <button
             onClick={() => setContest('Intermediate Contest')}
-            className='w-full bg-indigo-500 text-white p-3 rounded-md hover:bg-indigo-600 transition'
+            className='w-full bg-primary text-white p-3 rounded-md hover:bg-primary-dark transition'
           >
             Intermediate Contest
           </button>
           <button
             onClick={() => setContest('Advanced Contest')}
-            className='w-full bg-indigo-500 text-white p-3 rounded-md hover:bg-indigo-600 transition'
+            className='w-full bg-primary text-white p-3 rounded-md hover:bg-primary-dark transition'
           >
             Advanced Contest
           </button>
