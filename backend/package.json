@@ -24,17 +24,17 @@
     "express": "^5.0.1",
     "express-session": "^1.18.0",
     "express-validator": "^7.2.1",
-    "mongoose": "^8.5.3",
+    "mongoose": "^8.12.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^22.13.9",
+    "@types/node": "^22.13.10",
     "@types/passport": "^1.0.17",
     "nodemon": "^3.1.9",
     "tsx": "^4.19.3",
-    "vitest": "^3.0.7"
+    "vitest": "^3.0.8"
   }
 }
