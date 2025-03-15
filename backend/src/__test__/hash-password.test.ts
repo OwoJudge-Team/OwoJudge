@@ -14,6 +14,6 @@ describe('hash-password', () => {
     const regularString: string = 'any string';
     const anotherString: string = 'another string';
     expect(stringMatch(regularString, hashedString)).toBe(true);
-    expect(!stringMatch(anotherString, hashedString)).toBe(true);
+    expect(stringMatch(anotherString, hashedString)).toBe(false);
   });
 });
