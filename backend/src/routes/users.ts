@@ -5,13 +5,12 @@ import { createUserValidation } from '../validations/create-user-validation';
 import { hashString } from '../utils/hash-password';
 import { getUsersValidation } from '../validations/get-user-validation';
 import { updateUserValidation } from '../validations/update-user-validation';
+import IValidationError from '../validations/validation-error';
 
 const usersRouter = Router();
 
 const getAllUsers = async (request: Request, response: Response) => {
-  const {
-    query: { filter, value }
-  }: { query: { filter?: string; value?: string } } = request;
+  const { filter, value } = request.query ?? ({} as { filter?: string; value?: string });
   const result = validationResult(request);
   if (!filter && !value) {
     const users: IUser[] = await User.find().select('id username displayName').sort({ id: -1 });
@@ -29,7 +28,7 @@ const getAllUsers = async (request: Request, response: Response) => {
       return;
     }
     const users: IUser[] = await User.find()
-      .where(filter)
+      .where(filter as string)
       .equals({ $regex: `.*${value}.*`, $options: 'i' })
       .select('username displayName rating');
     response.status(200).send(users);
@@ -37,7 +36,6 @@ const getAllUsers = async (request: Request, response: Response) => {
   } catch (error) {
     console.log(error);
     response.status(400).send(error);
-    return;
   }
 };
 
@@ -48,7 +46,7 @@ const getUserByUsername = async (request: Request, response: Response) => {
     return;
   }
   if (!request.user) {
-    response.status(401).send('Please login first');
+    response.status(403).send('Please login first');
     return;
   }
   try {
@@ -74,7 +72,12 @@ const createUser = async (request: Request, response: Response) => {
     response.status(400).send(result.array());
     return;
   }
-  const data = matchedData(request) as Partial<IUser>;
+  const { username, password, displayName, isAdmin } = request.body as IUser;
+  const data = { username, password, displayName, isAdmin } as IUser;
+  if (data.isAdmin !== true && data.isAdmin !== false) {
+    response.status(400).send('isAdmin must be a boolean');
+    return;
+  }
   const user = request.user as IUser;
   if (data.isAdmin && !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
@@ -123,25 +126,56 @@ const updateUser = async (request: Request, response: Response) => {
     response.status(401).send('Please login first');
     return;
   }
-  const username: string | undefined = request.params?.username;
-  const data = matchedData(request) as Partial<IUser>;
+  const oldUsername: string | undefined = request.params?.username;
+  const { username, password, displayName, isAdmin } = request.body as IUser;
+  const data = {} as IUser;
+  if (username) {
+    data.username = username;
+  }
+  if (password) {
+    data.password = password;
+  }
+  if (displayName) {
+    data.displayName = displayName;
+  }
+  const user = request.user as IUser;
+  if ((isAdmin == true || isAdmin == false) && user.isAdmin) {
+    data.isAdmin = isAdmin;
+  } else if (isAdmin === true || isAdmin === false) {
+    response.status(401).send('Please login as an admin first');
+    return;
+  }
+  if (!oldUsername) {
+    response.status(400).send('Username is required');
+    return;
+  }
+  if (oldUsername !== user.username && !user.isAdmin) {
+    response.status(401).send('Please login as an admin first');
+    return;
+  }
   try {
-    if (Object.keys(data).length === 1) {
-      throw {
-        message: 'No matched patch data',
-        error: validationResult(request).array()
-      };
+    const errorArray = validationResult(request).array();
+    for (const key in data) {
+      for (let i = 0; i < errorArray.length; i++) {
+        const error = errorArray[i] as unknown as IValidationError;
+        console.log(error);
+        if (error.path === key) {
+          throw {
+            message: 'Invalid patch data',
+            error
+          };
+        }
+      }
     }
     if (data.password) {
       data.password = hashString(data.password);
     }
-    let user: IUser | null = await User.findOneAndUpdate({ username }, data);
+    const user: IUser | null = await User.findOneAndUpdate({ username: oldUsername }, data);
     if (!user) {
-      response.sendStatus(404);
+      response.status(404).send('User not found');
       return;
     }
-    user = await User.findOne({ username }).select('-password');
-    response.status(201).send(user);
+    response.status(201).send(`${oldUsername} updated`);
   } catch (error) {
     console.log(error);
     response.status(400).send(error);
