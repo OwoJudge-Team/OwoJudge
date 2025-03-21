@@ -1,6 +1,6 @@
 'use client';
 
-import { rankings } from './data';
+import { rankings } from '@/constants/rankings';
 
 const RankingPage: React.FC = () => {
   return (

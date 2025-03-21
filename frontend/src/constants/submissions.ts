@@ -1,4 +1,14 @@
-export const submissions = [
+interface Submission {
+  id: number;
+  user: string;
+  problem: string;
+  language: string;
+  status: 'AC' | 'WA' | 'TLE' | 'MLE';
+  time: string;
+  memory: string;
+}
+
+export const submissions: Submission[] = [
   { id: 1, user: 'alice', problem: 'Binary Search', language: 'Python', status: 'AC', time: '0.45s', memory: '12MB' },
   { id: 2, user: 'bob', problem: 'Merge Sort', language: 'C++', status: 'WA', time: '0.70s', memory: '8MB' },
   { id: 3, user: 'alice', problem: 'Two Sum', language: 'JavaScript', status: 'AC', time: '0.30s', memory: '5MB' },

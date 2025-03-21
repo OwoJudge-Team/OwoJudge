@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { problems } from './data';
+import { problems } from '@/constants/problems';
 
 const ProblemPage: React.FC = () => {
   return (

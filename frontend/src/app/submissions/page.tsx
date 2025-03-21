@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { submissions } from './data';
+import { submissions } from '@/constants/submissions';
 
 const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<'global' | 'user'>('global'); // Switch between global/user submissions
