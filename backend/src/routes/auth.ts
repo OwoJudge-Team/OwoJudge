@@ -1,32 +1,38 @@
 import { Router, Request, Response } from 'express';
-import passport from 'passport'
-import '../strategies/local-strategies.js'
+import passport from 'passport';
+import '../strategies/local-strategies.js';
+import { IRequest } from '../utils/request-interface.js';
 
-const authRouter: Router = Router()
+const authRouter: Router = Router();
 
-authRouter.post('/api/auth', 
-    passport.authenticate('local'), 
-    (request: Request, response: Response) => {
-        response.sendStatus(201)
-    }
-)
+const authenticateUser = (request: IRequest, response: Response) => {
+  response.sendStatus(201);
+};
 
-authRouter.get('/api/auth/status', (request: Request, response: Response) => {
-    return request.user
-        ? response.status(200).send(request.user)
-        : response.sendStatus(401)
-})
+const getStatus = (request: IRequest, response: Response) => {
+  if (request.user) {
+    response.status(200).send(request.user);
+  } else {
+    response.sendStatus(401);
+  }
+};
 
-authRouter.post('/api/auth/logout', (request: Request, response: Response) => {
-    if (!request.user) {
-        return response.sendStatus(401)
-    }
+const logoutUser = (request: IRequest, response: Response) => {
+  if (!request.user) {
+    response.sendStatus(401);
+  } else {
     request.logout((error: Error) => {
-        if (error) {
-            return response.sendStatus(400)
-        }
-        response.sendStatus(200)
-    })
-})
+      if (error) {
+        response.sendStatus(400);
+      } else {
+        response.sendStatus(200);
+      }
+    });
+  }
+};
 
-export default authRouter
+authRouter.post('/api/auth', passport.authenticate('local'), authenticateUser);
+authRouter.get('/api/auth/status', getStatus);
+authRouter.post('/api/auth/logout', logoutUser);
+
+export default authRouter;

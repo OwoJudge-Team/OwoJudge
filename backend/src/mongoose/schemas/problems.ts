@@ -1,70 +1,145 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema } from 'mongoose';
 
-interface ITestcase {
-    input: string;
-    output: string;
-    point: number;
-    subtask: string;
+enum ScorePolicy {
+  Sum = 'sum',
+  Max = 'max'
 }
 
-export interface IProblem extends Document {
-    displayID: string;
-    createdTime: Date;
-    title: string;
-    description: string;
-    inputFormat?: string;
-    outputFormat?: string;
-    timeLimit: number;
-    memoryLimit: number;
-    scorePolicy: string;
-    testcase: ITestcase[];
+interface ITestcase {
+  filename: string;
+  point: number;
+  subtask: string;
+}
+
+interface IProblem extends Document {
+  displayID: string;
+  createdTime: Date;
+  title: string;
+  description: string;
+  inputFormat: string;
+  outputFormat: string;
+  timeLimit: number;
+  memoryLimit: number;
+  scorePolicy: ScorePolicy;
+  testcase: ITestcase[];
+  tags?: string[];
+  problemRelatedTags?: string[];
+  submissionDetail: {
+    accepted: number;
+    submitted: number;
+    timeLimitExceeded: number;
+    memoryLimitExceeded: number;
+    wrongAnswer: number;
+    runtimeError: number;
+    compilationError: number;
+    processLimitExceeded: number;
+  };
+  userDetail: {
+    solved: number;
+    attempted: number;
+  };
 }
 
 const problemSchema: Schema = new mongoose.Schema({
-    displayID: {
-        type: mongoose.Schema.Types.String,
-        required: true,
-        unique: true,
+  displayID: {
+    type: mongoose.Schema.Types.String,
+    required: true,
+    unique: true
+  },
+  createdTime: {
+    type: mongoose.Schema.Types.Date,
+    required: true
+  },
+  title: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+  description: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+  inputFormat: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+  outputFormat: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+  timeLimit: {
+    type: mongoose.Schema.Types.Number,
+    required: true
+  },
+  memoryLimit: {
+    type: mongoose.Schema.Types.Number,
+    required: true
+  },
+  scorePolicy: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+  testcase: [
+    {
+      filename: mongoose.Schema.Types.String,
+      point: mongoose.Schema.Types.Number,
+      subtask: mongoose.Schema.Types.String
+    }
+  ],
+  tags: [
+    {
+      type: mongoose.Schema.Types.String
+    }
+  ],
+  problemRelatedTags: [
+    {
+      type: mongoose.Schema.Types.String
+    }
+  ],
+  submissionDetail: {
+    accepted: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    createdTime: {
-        type: mongoose.Schema.Types.Date,
-        required: true,
+    submitted: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    title: {
-        type: mongoose.Schema.Types.String,
-        required: true,
+    timeLimitExceeded: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    description: {
-        type: mongoose.Schema.Types.String,
-        required: true,
+    memoryLimitExceeded: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    inputFormat: {
-        type: mongoose.Schema.Types.String,
+    wrongAnswer: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    outputFormat: {
-        type: mongoose.Schema.Types.String,
+    runtimeError: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    timeLimit: {
-        type: mongoose.Schema.Types.Number,
-        required: true,
+    compilationError: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    memoryLimit: {
-        type: mongoose.Schema.Types.Number,
-        required: true,
+    processLimitExceeded: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
+    }
+  },
+  userDetail: {
+    solved: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
     },
-    scorePolicy: {
-        type: mongoose.Schema.Types.String,
-        required: true,
-    },
-    testcase: [
-        {
-            input: mongoose.Schema.Types.String,
-            output: mongoose.Schema.Types.String,
-            point: mongoose.Schema.Types.Number,
-            subtask: mongoose.Schema.Types.String,
-        },
-    ]
+    attempted: {
+      type: mongoose.Schema.Types.Number,
+      default: 0
+    }
+  }
 });
 
 export const Problem = mongoose.model<IProblem>('Problem', problemSchema);
-export { ITestcase };
+export { ScorePolicy, ITestcase, IProblem };
