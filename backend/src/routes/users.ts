@@ -6,10 +6,11 @@ import { hashString } from '../utils/hash-password';
 import { getUsersValidation } from '../validations/get-user-validation';
 import { updateUserValidation } from '../validations/update-user-validation';
 import IValidationError from '../validations/validation-error';
+import { IRequest } from '../utils/request-interface';
 
 const usersRouter = Router();
 
-const getAllUsers = async (request: Request, response: Response) => {
+const getAllUsers = async (request: IRequest, response: Response) => {
   const { filter, value } = request.query ?? ({} as { filter?: string; value?: string });
   const result = validationResult(request);
   if (!filter && !value) {
@@ -39,7 +40,7 @@ const getAllUsers = async (request: Request, response: Response) => {
   }
 };
 
-const getUserByUsername = async (request: Request, response: Response) => {
+const getUserByUsername = async (request: IRequest, response: Response) => {
   const username: string | undefined = request.params?.username;
   if (!username) {
     response.status(400).send('Username is required');
@@ -62,7 +63,7 @@ const getUserByUsername = async (request: Request, response: Response) => {
   }
 };
 
-const createUser = async (request: Request, response: Response) => {
+const createUser = async (request: IRequest, response: Response) => {
   if (!request.user) {
     response.status(401).send('Please login first');
     return;
@@ -97,7 +98,7 @@ const createUser = async (request: Request, response: Response) => {
   }
 };
 
-const deleteUser = async (request: Request, response: Response) => {
+const deleteUser = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
   if (!request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
@@ -121,7 +122,7 @@ const deleteUser = async (request: Request, response: Response) => {
   }
 };
 
-const updateUser = async (request: Request, response: Response) => {
+const updateUser = async (request: IRequest, response: Response) => {
   if (!request.user) {
     response.status(401).send('Please login first');
     return;

@@ -4,10 +4,12 @@ import { Problem, IProblem } from '../mongoose/schemas/problems';
 import { createProblemValidation } from '../validations/create-problem-validation';
 import { updateProblemValidation } from '../validations/update-problem-validation';
 import { IUser, User } from '../mongoose/schemas/users';
+import { IRequest } from '../utils/request-interface';
+import multer from 'multer';
 
 const problemsRouter = Router();
 
-const getProblems = async (request: Request, response: Response) => {
+const getProblems = async (request: IRequest, response: Response) => {
   try {
     const problems: IProblem[] = await Problem.find()
       .select('id displayID title createdTime')
@@ -20,7 +22,7 @@ const getProblems = async (request: Request, response: Response) => {
   }
 };
 
-const getProblemById = async (request: Request, response: Response) => {
+const getProblemById = async (request: IRequest, response: Response) => {
   if (!request.user) {
     response.status(401).send('Please login first');
   }
@@ -37,7 +39,7 @@ const getProblemById = async (request: Request, response: Response) => {
   }
 };
 
-const createProblem = async (request: Request, response: Response) => {
+const createProblem = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
   if (!request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
@@ -58,7 +60,7 @@ const createProblem = async (request: Request, response: Response) => {
   }
 };
 
-const deleteProblem = async (request: Request, response: Response) => {
+const deleteProblem = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
   if (!request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
@@ -76,7 +78,7 @@ const deleteProblem = async (request: Request, response: Response) => {
   }
 };
 
-const updateProblem = async (request: Request, response: Response) => {
+const updateProblem = async (request: IRequest, response: Response) => {
   if (!request.user) {
     response.status(401).send('Please login first');
   }

@@ -1,14 +1,15 @@
 import { Router, Request, Response } from 'express';
 import passport from 'passport';
 import '../strategies/local-strategies.js';
+import { IRequest } from '../utils/request-interface.js';
 
 const authRouter: Router = Router();
 
-const authenticateUser = (request: Request, response: Response) => {
+const authenticateUser = (request: IRequest, response: Response) => {
   response.sendStatus(201);
 };
 
-const getStatus = (request: Request, response: Response) => {
+const getStatus = (request: IRequest, response: Response) => {
   if (request.user) {
     response.status(200).send(request.user);
   } else {
@@ -16,7 +17,7 @@ const getStatus = (request: Request, response: Response) => {
   }
 };
 
-const logoutUser = (request: Request, response: Response) => {
+const logoutUser = (request: IRequest, response: Response) => {
   if (!request.user) {
     response.sendStatus(401);
   } else {

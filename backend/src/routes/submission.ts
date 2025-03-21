@@ -2,10 +2,11 @@ import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
+import { IRequest } from '../utils/request-interface';
 
 const submissionRouter: Router = Router();
 
-const getSubmissions = async (request: Request, response: Response): Promise<void> => {
+const getSubmissions = async (request: IRequest, response: Response): Promise<void> => {
   if (!request.user) {
     response.status(401).send('Please login first');
     return;
@@ -22,7 +23,7 @@ const getSubmissions = async (request: Request, response: Response): Promise<voi
   }
 };
 
-const createSubmission = async (request: Request, response: Response): Promise<void> => {
+const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
   if (!request.user) {
     response.status(401).send('Please login first');
     return;
@@ -52,7 +53,6 @@ const createSubmission = async (request: Request, response: Response): Promise<v
 };
 
 submissionRouter.get('/api/submissions', getSubmissions);
-
 submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;
