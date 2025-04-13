@@ -8,6 +8,7 @@ import { IRequest } from '../utils/request-interface';
 import multer from 'multer';
 import { readFileSync } from 'fs';
 import * as tar from 'tar';
+import { spawn, spawnSync } from 'child_process';
 
 const problemsRouter = Router();
 
@@ -63,7 +64,23 @@ const getProblemById = async (request: IRequest, response: Response) => {
   }
 };
 
-// Modified to avoid returning Response objects
+/// The problem structure is as follows
+/// problems
+/// ├── problem1
+/// │   ├── metadata.json
+/// │   ├── testcases
+/// │   │   ├── test1.in
+/// │   │   ├── test1.out
+/// │   │   └── ...
+/// │   └── ...
+/// ├── problem2
+/// │   ├── metadata.json
+/// │   ├── testcases
+/// │   │   ├── test1.in
+/// │   │   ├── test1.out
+/// │   │   └── ...
+/// │   └── ...
+/// └── ...
 const createProblem = async (request: IRequest, response: Response): Promise<void> => {
   // const user = request.user as IUser;
   // if (!request.user || !user.isAdmin) {
@@ -91,10 +108,62 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
   }
 
   try {
+    const fileName = (filePath as string).split('/').reverse()[0];
+    const targetPath = 'problems/' + fileName;
+    
+    // Check if a problem with this filename already exists
+    const problem = await Problem.findOne({ fileName });
+    if (problem) {
+      response.status(403).send('Problem with this filename already exists');
+      return;
+    }
+    
+    console.log(targetPath);
+    
+    spawnSync('mv', [filePath as string, targetPath]);
     await tar.x({
-      file: filePath as string,
-      cwd: 'uploads/'
+      file: targetPath,
+      cwd: 'problems/'
     });
+
+    const problemDir = 'problems/' + fileName.replace('.tar.gz', '');
+    const metadataPath = `${problemDir}/metadata.json`;
+    try {
+      const metadataContent = readFileSync(metadataPath, 'utf8');
+      const metadata = JSON.parse(metadataContent);
+      
+      const newProblem = new Problem({
+        displayID: metadata.displayID,
+        createdTime: metadata.createdTime || new Date(),
+        title: metadata.title,
+        fileName: fileName,
+        timeLimit: metadata.timeLimit,
+        memoryLimit: metadata.memoryLimit,
+        tags: metadata.tags || [],
+        problemRelatedTags: metadata.problemRelatedTags || [],
+        submissionDetail: {
+          accepted: metadata.submissionDetail?.accepted || 0,
+          submitted: metadata.submissionDetail?.submitted || 0,
+          timeLimitExceeded: metadata.submissionDetail?.timeLimitExceeded || 0,
+          memoryLimitExceeded: metadata.submissionDetail?.memoryLimitExceeded || 0,
+          wrongAnswer: metadata.submissionDetail?.wrongAnswer || 0,
+          runtimeError: metadata.submissionDetail?.runtimeError || 0,
+          compilationError: metadata.submissionDetail?.compilationError || 0,
+          processLimitExceeded: metadata.submissionDetail?.processLimitExceeded || 0
+        },
+        userDetail: {
+          solved: metadata.userDetail?.solved || 0,
+          attempted: metadata.userDetail?.attempted || 0
+        }
+      });
+
+      await newProblem.save();
+      console.log(`Problem ${metadata.displayID} saved to database`);
+    } catch (error) {
+      console.error('Error reading or parsing metadata.json:', error);
+      throw error;
+    }
+
     response.status(200).send('File uploaded and extracted successfully');
     return;
   } catch (error) {
