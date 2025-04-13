@@ -1,31 +1,30 @@
 import { Request } from 'express';
 import multer, { FileFilterCallback } from 'multer';
+import { fileTypeFromBuffer } from 'file-type';
+import fs from 'fs';
 
 type DestinationCallback = (error: Error | null, destination: string) => void;
 type FileNameCallback = (error: Error | null, filename: string) => void;
 
-const multerConfig = multer.diskStorage({
-  destination: (request: Request, file: Express.Multer.File, cb: DestinationCallback) => {
-    cb(null, 'uploads/');
+const storage = multer.diskStorage({
+  destination: (request: Request, file: Express.Multer.File, next: DestinationCallback) => {
+    next(null, 'uploads/');
   },
-  filename: (request: Request, file: Express.Multer.File, cb: FileNameCallback) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+  filename: (request: Request, file: Express.Multer.File, next: FileNameCallback) => {
+    next(null, `${file.originalname}`);
   }
 });
 
-const fileFilter = (request: Request, file: Express.Multer.File, callback: FileFilterCallback): void => {
-  if (file.mimetype === 'image/png' || file.mimetype === 'image/jpg' || file.mimetype === 'image/jpeg') {
-    callback(null, true);
-  } else {
-    callback(null, false);
+const uploadProblem = multer({
+  storage: storage,
+  limits: { fileSize: 512 * 1024 * 1024 },
+  fileFilter: (req, file, next: any) => {
+    if (file.mimetype === 'application/gzip' || file.originalname.endsWith('.tar.gz')) {
+      next(null, true);
+    } else {
+      next(new Error('Only .tar.gz files are allowed'), false);
+    }
   }
-};
+}).single('problem');
 
-const upload = multer({
-  storage: multerConfig,
-  limits: { fileSize: 512 * 1000000 } // 512MB file size limit
-}).single('myFile');
-
-export default multerConfig;
-export { fileFilter };
-export { upload };
+export { uploadProblem };
