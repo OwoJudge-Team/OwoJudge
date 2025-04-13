@@ -132,3 +132,6 @@ dist
 # problems
 problems
 uploads
+
+# salt
+salt.json
