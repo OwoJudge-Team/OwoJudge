@@ -38,7 +38,7 @@ const upload = multer({
 const getProblems = async (request: IRequest, response: Response) => {
   try {
     const problems: IProblem[] = await Problem.find()
-      .select('id displayID title createdTime')
+      .select('id displayID title createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
       .sort({ createdTime: -1 });
     response.status(200).send(problems);
   } catch (error) {
@@ -51,14 +51,35 @@ const getProblems = async (request: IRequest, response: Response) => {
 const getProblemById = async (request: IRequest, response: Response) => {
   if (!request.user) {
     response.status(401).send('Please login first');
+    return;
   }
   const { displayID } = request.params;
   try {
     const problem: IProblem | null = await Problem.findOne({ displayID });
     if (!problem) {
       response.sendStatus(404);
+      return;
     }
-    response.status(200).send(problem);
+    
+    const problemDir = 'problems/' + displayID;
+    const metadataPath = `${problemDir}/metadata.json`;
+    
+    try {
+      const metadataContent = readFileSync(metadataPath, 'utf8');
+      const metadata = JSON.parse(metadataContent);
+      
+      const fullProblem = {
+        ...problem.toObject(),
+        description: metadata.description || problem.description,
+        inputFormat: metadata.inputFormat || problem.inputFormat,
+        outputFormat: metadata.outputFormat || problem.outputFormat,
+      };
+      
+      response.status(200).send(fullProblem);
+    } catch (metadataErr) {
+      console.error('Error reading metadata:', metadataErr);
+      response.status(200).send(problem);
+    }
   } catch (error) {
     console.log(error);
     response.status(400).send(error);
@@ -96,8 +117,6 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
   
   console.log(filePath);
   const file = readFileSync(filePath as string);
-  // extract metadata
-  // Check if the file is a tar.gz file
   if (!isTarGz(file)) {
     response.status(400).send('Invalid file format. Expected tar.gz file.');
     return;

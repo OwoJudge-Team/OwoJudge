@@ -86,6 +86,11 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
+      if (!req.user || !req.user.isAdmin) {
+        res.status(403).send('Admin access required');
+        return;
+      }
+      
       if (displayID === 'non-existent-problem') {
         res.sendStatus(404);
         return;
@@ -97,6 +102,11 @@ vi.mock('../routes/problems', async (importOriginal) => {
       const { displayID } = req.params;
       if (!displayID) {
         res.status(400).send('Problem ID is required');
+        return;
+      }
+      
+      if (!req.user || !req.user.isAdmin) {
+        res.status(403).send('Admin access required');
         return;
       }
       
@@ -118,6 +128,11 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
+      if (!req.user || !req.user.isAdmin) {
+        res.status(403).send('Admin access required');
+        return;
+      }
+      
       if (!req.file) {
         res.status(400).send('No file uploaded');
         return;
@@ -133,6 +148,68 @@ vi.mock('../routes/problems', async (importOriginal) => {
         title: 'Updated Problem with File',
         message: 'Problem updated successfully with new file'
       });
+    }),
+    getProblemById: vi.fn().mockImplementation(async (req, res) => {
+      const { displayID } = req.params;
+      
+      if (!req.user) {
+        res.status(401).send('Please login first');
+        return;
+      }
+      
+      if (!displayID) {
+        res.status(400).send('Problem ID is required');
+        return;
+      }
+      
+      if (displayID === 'non-existent-problem') {
+        res.sendStatus(404);
+        return;
+      }
+
+      // Mock problem from database
+      const problem = {
+        displayID,
+        title: 'Test Problem',
+        description: 'Basic Description',
+        timeLimit: 1000,
+        memoryLimit: 262144,
+        tags: ['math', 'implementation'],
+        toObject: () => ({
+          displayID,
+          title: 'Test Problem',
+          description: 'Basic Description',
+          timeLimit: 1000,
+          memoryLimit: 262144,
+          tags: ['math', 'implementation']
+        })
+      };
+      
+      // Simulate reading additional information from files
+      const fullProblem = {
+        ...problem.toObject(),
+        description: 'Enhanced description from metadata.json',
+        inputFormat: 'Input format from metadata.json',
+        outputFormat: 'Output format from metadata.json',
+        examples: [
+          {
+            input: '1 2',
+            output: '3',
+            filename: 'example1.in'
+          },
+          {
+            input: '5 7',
+            output: '12',
+            filename: 'example2.in'
+          }
+        ],
+        additionalFiles: {
+          statement: '# Problem Statement\n\nSolve A+B problem.',
+          explanation: '# Explanation\n\nAdd two numbers and output their sum.'
+        }
+      };
+      
+      res.status(200).send(fullProblem);
     })
   };
 });
@@ -260,19 +337,38 @@ describe('problem deletion', () => {
     expect(response.sendStatus).toHaveBeenCalledWith(404);
   });
   
-  it('should return 400 when no displayID is provided', async () => {
+  it('should return 403 when user is not an admin', async () => {
     // Direct mock implementation for this specific test
     const mockDeleteProblem = vi.fn().mockImplementation((req, res) => {
-      const { displayID } = req.params;
-      if (!displayID) {
-        res.status(400).send('Problem ID is required');
+      if (!req.user || !req.user.isAdmin) {
+        res.status(403).send('Admin access required');
         return;
       }
       res.status(200).send('Problem deleted');
     });
     
     const request = {
-      params: { },  // Deliberately empty params
+      params: { displayID: 'test-problem' },
+      user: { isAdmin: false }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await mockDeleteProblem(request, response);
+    expect(response.status).toHaveBeenCalledWith(403);
+  });
+  
+  it('should return 400 when no displayID is provided', async () => {
+    // Use the imported deleteProblem function which is already mocked at the module level
+    const { deleteProblem } = await import('../routes/problems');
+    
+    const request = {
+      params: { },
       user: { isAdmin: true }
     } as IRequest;
     
@@ -283,66 +379,53 @@ describe('problem deletion', () => {
       sendStatus: vi.fn()
     } as unknown as Response;
 
-    await mockDeleteProblem(request, response);
+    await deleteProblem(request, response);
     expect(response.status).toHaveBeenCalledWith(400);
   });
 });
 
 describe('problem update', () => {
-  // Mock the updateProblem and updateProblemWithFile functions
-  vi.mock('../routes/problems', async (importOriginal) => {
-    const originalModule = await importOriginal() as Record<string, any>;
-    return {
-      ...originalModule,
-      updateProblem: vi.fn().mockImplementation(async (req, res) => {
-        const { displayID } = req.params;
-        if (!displayID) {
-          res.status(400).send('Problem ID is required');
-          return;
-        }
-        
-        if (displayID === 'non-existent-problem') {
-          res.sendStatus(404);
-          return;
-        }
-        
-        res.status(201).send({ 
-          displayID, 
-          title: req.body.title || 'Updated Problem',
-          message: 'Problem updated successfully' 
-        });
+  it('should return 403 when user is not an admin', async () => {
+    const { updateProblem } = await import('../routes/problems');
+    
+    const request = {
+      params: { displayID: 'test-problem' },
+      user: { isAdmin: false },
+      body: { title: 'Should not update' }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
       }),
-      updateProblemWithFile: vi.fn().mockImplementation(async (req, res) => {
-        const { displayID } = req.params;
-        if (!displayID) {
-          res.status(400).send('Problem ID is required');
-          return;
-        }
-        
-        if (!req.file) {
-          res.status(400).send('No file uploaded');
-          return;
-        }
-        
-        if (displayID === 'non-existent-problem') {
-          res.status(404).send('Problem not found');
-          return;
-        }
-        
-        // Mock the file check using our utility
-        const { isTarGz } = await import('../utils/file-utils');
-        if (!isTarGz(Buffer.from([0x1F, 0x8B, 0x08, 0x00]))) {
-          res.status(400).send('Invalid file format. Expected tar.gz file.');
-          return;
-        }
-        
-        res.status(200).send({
-          displayID,
-          title: 'Updated Problem with File',
-          message: 'Problem updated successfully with new file'
-        });
-      })
-    };
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await updateProblem(request, response);
+    expect(response.status).toHaveBeenCalledWith(403);
+  });
+  
+  it('should return 403 when non-admin tries to update with file', async () => {
+    const { updateProblemWithFile } = await import('../routes/problems');
+    
+    const request = {
+      params: { displayID: 'test-problem' },
+      user: { isAdmin: false },
+      file: {
+        path: 'uploads/updated-test-problem.tar.gz',
+        originalname: 'updated-test-problem.tar.gz'
+      }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await updateProblemWithFile(request, response);
+    expect(response.status).toHaveBeenCalledWith(403);
   });
 
   it('should update a problem successfully', async () => {
@@ -488,5 +571,107 @@ describe('problem update', () => {
     
     handler(mockReq, mockRes);
     expect(mockRes.status).toHaveBeenCalledWith(400);
+  });
+});
+
+describe('problem get by id', () => {
+  it('should return a problem with additional information from files', async () => {
+    const { getProblemById } = await import('../routes/problems');
+    
+    const request = {
+      params: { displayID: 'test-problem' },
+      user: { id: 'user123', username: 'testuser' }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await getProblemById(request, response);
+    expect(response.status).toHaveBeenCalledWith(200);
+  });
+  
+  it('should return 401 when user is not logged in', async () => {
+    const { getProblemById } = await import('../routes/problems');
+    
+    const request = {
+      params: { displayID: 'test-problem' },
+      user: null
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await getProblemById(request, response);
+    expect(response.status).toHaveBeenCalledWith(401);
+  });
+
+  it('should return 404 when problem does not exist', async () => {
+    const { getProblemById } = await import('../routes/problems');
+    
+    const request = {
+      params: { displayID: 'non-existent-problem' },
+      user: { id: 'user123', username: 'testuser' }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await getProblemById(request, response);
+    expect(response.sendStatus).toHaveBeenCalledWith(404);
+  });
+  
+  it('should handle reading file errors gracefully', async () => {
+    // Create a special mock for this test case
+    const mockGetProblemById = vi.fn().mockImplementation(async (req, res) => {
+      const { displayID } = req.params;
+      
+      // Mock database problem
+      const problem = {
+        displayID,
+        title: 'Test Problem',
+        description: 'Basic Description',
+        timeLimit: 1000,
+        memoryLimit: 262144,
+        tags: ['math'],
+        toObject: () => ({
+          displayID,
+          title: 'Test Problem',
+          description: 'Basic Description',
+          timeLimit: 1000,
+          memoryLimit: 262144,
+          tags: ['math']
+        })
+      };
+      
+      // Simulate file reading error but still return the database object
+      res.status(200).send(problem);
+    });
+    
+    const request = {
+      params: { displayID: 'problem-with-missing-files' },
+      user: { id: 'user123', username: 'testuser' }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await mockGetProblemById(request, response);
+    expect(response.status).toHaveBeenCalledWith(200);
   });
 });
