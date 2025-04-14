@@ -9,6 +9,7 @@ import multer from 'multer';
 import { readFileSync } from 'fs';
 import * as tar from 'tar';
 import { spawn, spawnSync } from 'child_process';
+import { isTarGz } from '../utils/file-utils';
 
 const problemsRouter = Router();
 
@@ -96,13 +97,8 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
   console.log(filePath);
   const file = readFileSync(filePath as string);
   // extract metadata
-  // Check if the file is a tar.gz file by examining the first few bytes (magic numbers)
-  const isTarGz = file.length > 3 &&
-    file[0] === 0x1F &&
-    file[1] === 0x8B &&
-    file[2] === 0x08; // Magic numbers for gzip
-
-  if (!isTarGz) {
+  // Check if the file is a tar.gz file
+  if (!isTarGz(file)) {
     response.status(400).send('Invalid file format. Expected tar.gz file.');
     return;
   }
@@ -234,6 +230,102 @@ const updateProblem = async (request: IRequest, response: Response) => {
   }
 };
 
+const updateProblemWithFile = async (request: IRequest, response: Response): Promise<void> => {
+  // const user = request.user as IUser;
+  // if (!request.user || !user.isAdmin) {
+  //   response.status(401).send('Please login as an admin first');
+  //   return;
+  // }
+  const { displayID } = request.params;
+  const filePath = request.file?.path;
+  if (!filePath) {
+    response.status(400).send('No file uploaded');
+    return;
+  }
+  
+  try {
+    // First check if the problem exists
+    const existingProblem: IProblem | null = await Problem.findOne({ displayID });
+    if (!existingProblem) {
+      response.status(404).send('Problem not found');
+      return;
+    }
+
+    console.log(`Updating problem: ${displayID}`);
+    const file = readFileSync(filePath as string);
+    // Check if the file is a tar.gz file
+    if (!isTarGz(file)) {
+      response.status(400).send('Invalid file format. Expected tar.gz file.');
+      return;
+    }
+
+    const fileName = (filePath as string).split('/').reverse()[0];
+    const targetPath = 'problems/' + fileName;
+    
+    // Delete the old problem directory and tar.gz file if they exist
+    try {
+      const problemDir = 'problems/' + existingProblem.displayID;
+      const oldTarFilePath = 'problems/' + existingProblem.displayID + '.tar.gz';
+      
+      if (problemDir.indexOf('..') !== -1 || oldTarFilePath.indexOf('..') !== -1) {
+        throw new Error('Invalid file path');
+      }
+      
+      spawnSync('rm', ['-rf', problemDir]);
+      spawnSync('rm', ['-f', oldTarFilePath]);
+    } catch (fsError) {
+      console.error('Error deleting existing problem files:', fsError);
+      // Continue with the update even if deletion fails
+    }
+    
+    // Move new file to problems directory
+    spawnSync('mv', [filePath as string, targetPath]);
+    
+    // Extract the tar.gz file
+    await tar.x({
+      file: targetPath,
+      cwd: 'problems/'
+    });
+
+    const problemDir = 'problems/' + displayID;
+    const metadataPath = `${problemDir}/metadata.json`;
+    
+    try {
+      const metadataContent = readFileSync(metadataPath, 'utf8');
+      const metadata = JSON.parse(metadataContent);
+      
+      // Update the problem in the database
+      const updatedProblem = await Problem.findOneAndUpdate({ displayID }, {
+        title: metadata.title,
+        timeLimit: metadata.timeLimit,
+        memoryLimit: metadata.memoryLimit,
+        tags: metadata.tags || [],
+        problemRelatedTags: metadata.problemRelatedTags || [],
+        // Keep the existing submission counts
+        description: metadata.description,
+        inputFormat: metadata.inputFormat,
+        outputFormat: metadata.outputFormat,
+        scorePolicy: metadata.scorePolicy,
+        testcase: metadata.testcase
+      }, { new: true });
+
+      if (!updatedProblem) {
+        response.status(404).send('Problem not found after update');
+        return;
+      }
+      
+      console.log(`Problem ${displayID} updated successfully`);
+      response.status(200).send(updatedProblem);
+    } catch (error) {
+      console.error('Error reading or parsing metadata.json:', error);
+      response.status(400).send('Error reading problem metadata');
+    }
+  } catch (error) {
+    console.log(error);
+    response.status(400).send('Error updating problem');
+  }
+};
+
 problemsRouter.get('/api/problems', getProblems);
 problemsRouter.get('/api/problems/:displayID', getProblemById);
 
@@ -254,5 +346,19 @@ problemsRouter.post('/api/problems', (request: IRequest, response: Response, nex
 problemsRouter.delete('/api/problems/:displayID', deleteProblem);
 problemsRouter.patch('/api/problems/:displayID', checkSchema(updateProblemValidation), updateProblem);
 
+// Add new route for updating a problem with file upload
+problemsRouter.put('/api/problems/:displayID/update-with-file', (request: IRequest, response: Response, next) => {
+  upload(request, response, (err) => {
+    if (err instanceof multer.MulterError) {
+      response.status(400).send(`Multer error: ${err.message}`);
+      return;
+    } else if (err) {
+      response.status(400).send(`Error: ${err.message}`);
+      return;
+    }
+    next();
+  });
+}, updateProblemWithFile);
+
 export default problemsRouter;
-export { getProblems, getProblemById, createProblem, deleteProblem, updateProblem };
+export { getProblems, getProblemById, createProblem, deleteProblem, updateProblem, updateProblemWithFile };
