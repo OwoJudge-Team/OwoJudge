@@ -329,7 +329,6 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 problemsRouter.get('/api/problems', getProblems);
 problemsRouter.get('/api/problems/:displayID', getProblemById);
 
-// Apply multer directly to the route as middleware
 problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
@@ -346,8 +345,7 @@ problemsRouter.post('/api/problems', (request: IRequest, response: Response, nex
 problemsRouter.delete('/api/problems/:displayID', deleteProblem);
 problemsRouter.patch('/api/problems/:displayID', checkSchema(updateProblemValidation), updateProblem);
 
-// Add new route for updating a problem with file upload
-problemsRouter.put('/api/problems/:displayID/update-with-file', (request: IRequest, response: Response, next) => {
+problemsRouter.put('/api/problems/:displayID', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);
