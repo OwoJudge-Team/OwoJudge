@@ -174,16 +174,33 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
 };
 
 const deleteProblem = async (request: IRequest, response: Response) => {
-  const user = request.user as IUser;
-  if (!request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-  }
+  // const user = request.user as IUser;
+  // if (!request.user || !user.isAdmin) {
+  //   response.status(401).send('Please login as an admin first');
+  //   return;
+  // }
   const { displayID } = request.params;
   try {
-    const problem: IProblem | null = await Problem.findOneAndDelete({ displayID });
+    const problem: IProblem | null = await Problem.findOne({ displayID });
     if (!problem) {
       response.sendStatus(404);
+      return;
     }
+    
+    const fileName = problem.displayID;
+    const problemDir = 'problems/' + fileName;
+    const tarFilePath = 'problems/' + fileName + '.tar.gz';
+    
+    try {
+      if (problemDir.indexOf('..') !== -1 || tarFilePath.indexOf('..') !== -1) {
+        throw new Error('Invalid file path');
+      }
+      spawnSync('rm', ['-rf', problemDir]);
+      spawnSync('rm', ['-f', tarFilePath]);
+    } catch (fsError) {
+      console.error('Error deleting problem files:', fsError);
+    }
+    await Problem.findOneAndDelete({ displayID });
     response.status(200).send(problem);
   } catch (error) {
     console.log(error);

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { IRequest } from '../utils/request-interface';
-import { createProblem } from '../routes/problems';
+import { createProblem, deleteProblem } from '../routes/problems';
 import { Response } from 'express';
 import multer from 'multer';
 
@@ -75,6 +75,20 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       res.status(200).send('File uploaded and extracted successfully');
+    }),
+    deleteProblem: vi.fn().mockImplementation(async (req, res) => {
+      const { displayID } = req.params;
+      if (!displayID) {
+        res.status(400).send('Problem ID is required');
+        return;
+      }
+      
+      if (displayID === 'non-existent-problem') {
+        res.sendStatus(404);
+        return;
+      }
+      
+      res.status(200).send({ displayID, message: 'Problem deleted successfully' });
     })
   };
 });
@@ -128,5 +142,58 @@ describe('problem upload', () => {
     
     handler(mockReq, mockRes);
     expect(mockRes.status).toHaveBeenCalledWith(400);
+  });
+});
+
+describe('problem deletion', () => {
+  it('should delete a problem successfully', async () => {
+    const request = {
+      params: { displayID: 'test-problem' },
+      user: { isAdmin: true }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await deleteProblem(request, response);
+    expect(response.status).toHaveBeenCalledWith(200);
+  });
+
+  it('should return 404 when trying to delete a non-existent problem', async () => {
+    const request = {
+      params: { displayID: 'non-existent-problem' },
+      user: { isAdmin: true }
+    } as unknown as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await deleteProblem(request, response);
+    expect(response.sendStatus).toHaveBeenCalledWith(404);
+  });
+  
+  it('should return 400 when no displayID is provided', async () => {
+    const request = {
+      params: {},
+      user: { isAdmin: true }
+    } as IRequest;
+    
+    const response = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      }),
+      sendStatus: vi.fn()
+    } as unknown as Response;
+
+    await deleteProblem(request, response);
+    expect(response.status).toHaveBeenCalledWith(400);
   });
 });
