@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: judge-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: judge
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - judge-network
+
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: judge-backend
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/judge
+    volumes:
+      - ./uploads:/app/uploads
+      - ./problems:/app/problems
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    networks:
+      - judge-network
+    # Necessary for isolate to work with cgroups
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+
+volumes:
+  mongodb_data:
+
+networks:
+  judge-network:
+    driver: bridge
