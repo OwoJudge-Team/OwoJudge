@@ -23,9 +23,12 @@ const conditionalJsonParser = (req: Request, res: Response, next: NextFunction) 
 };
 
 export const createApp = (): Application => {
+  // Use environment variable for MongoDB URI, with fallback to localhost
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost/judge';
+  
   mongoose
-    .connect('mongodb://localhost/judge')
-    .then(() => console.log('Connected to mongo'))
+    .connect(mongoUri)
+    .then(() => console.log(`Connected to mongo at ${mongoUri}`))
     .catch((error: Error) => console.log(`Error: ${error.message}`));
 
   const app: Application = express();
