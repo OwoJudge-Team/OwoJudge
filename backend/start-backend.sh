@@ -35,7 +35,13 @@ echo "Testing backend health..."
 if curl -f http://localhost:8787/api/auth/status > /dev/null 2>&1; then
     echo "✓ Backend is responding"
 else
-    echo "✗ Backend health check failed"
+    # Check if it's a 401 (expected for auth endpoint)
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8787/api/auth/status)
+    if [ "$status_code" = "401" ]; then
+        echo "✓ Backend is responding (401 as expected)"
+    else
+        echo "✗ Backend health check failed (status: $status_code)"
+    fi
 fi
 
 # Test isolate installation

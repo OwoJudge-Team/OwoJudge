@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:7.0
@@ -27,18 +25,28 @@ services:
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongodb:27017/judge
+      - ROOT_USERNAME=${ROOT_USERNAME:-admin}
     volumes:
       - ./uploads:/app/uploads
       - ./problems:/app/problems
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./scripts:/app/scripts
+      # Mount cgroup filesystem for isolate
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      # Mount /run for isolate runtime directories
+      - /run:/run:rw
     privileged: true
     networks:
       - judge-network
     # Necessary for isolate to work with cgroups
     cap_add:
       - SYS_ADMIN
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
     security_opt:
       - apparmor:unconfined
+    # Additional options for better cgroup support
+    cgroup: host
 
 volumes:
   mongodb_data:

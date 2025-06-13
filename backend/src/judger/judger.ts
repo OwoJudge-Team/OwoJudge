@@ -1,8 +1,8 @@
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
 import languageSupport from '../utils/language-support';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -18,7 +18,7 @@ interface JudgeResult {
 
 class Judger {
   private isJudging = false;
-  private judgeInterval: NodeJS.Timeout | null = null;
+  private judgeInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     console.log('Judger initialized');
@@ -219,9 +219,9 @@ class Judger {
         fs.copyFileSync(srcPath, destPath);
       }
 
-      // Create compilation output file
-      const compileErrorFile = path.join(workDir, 'compile_error.txt');
-      const metaFile = path.join(workDir, 'compile_meta.txt');
+      // Create compilation output files in the working directory
+      const compileErrorFile = path.join(workDir, `compile_error_${boxId}.txt`);
+      const metaFile = path.join(workDir, `compile_meta_${boxId}.txt`);
 
       // Prepare isolate compilation command
       // Remove the path prefix from the compile command since we're in the box
@@ -231,7 +231,7 @@ class Judger {
 
       const isolateCommand = `isolate --box-id=${boxId} ` +
         `--time=30 ` + // 30 seconds for compilation
-        `--memory=512000 ` + // 512MB for compilation
+        `--mem=512000 ` + // 512MB for compilation
         `--meta=${metaFile} ` +
         `--stderr=${compileErrorFile} ` +
         `--full-env ` + // Allow full environment for compilation
@@ -512,16 +512,16 @@ class Judger {
         }
       }
 
-      // Run the program
-      const metaFile = path.join(workDir, 'meta.txt');
-      const stderrFile = path.join(workDir, 'stderr.txt');
+      // Run the program  
+      const metaFile = path.join(workDir, `meta_${boxId}.txt`);
+      const stderrFile = path.join(workDir, `stderr_${boxId}.txt`);
       
       // Convert time limit from ms to seconds for isolate
       const timeLimitSeconds = Math.ceil(timeLimit / 1000);
       
       const command = `isolate --box-id=${boxId} ` +
         `--time=${timeLimitSeconds} ` +
-        `--memory=${memoryLimit} ` +
+        `--mem=${memoryLimit} ` +
         `--meta=${metaFile} ` +
         `--stdin=${inputFile} ` +
         `--stdout=${outputFile} ` +
