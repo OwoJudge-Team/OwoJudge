@@ -132,7 +132,10 @@ exec npm start\n\
 
 RUN chmod +x /app/start.sh
 
-# Running as root for isolate and cgroup operations
+# Create a sudoers file for the judgeuser to run isolate
+RUN echo "judgeuser ALL=(ALL) NOPASSWD: /usr/local/bin/isolate" >> /etc/sudoers.d/isolate
+
+# Keep running as root since we need root privileges for cgroup setup
 
 # Expose port
 EXPOSE 8787
