@@ -70,19 +70,19 @@ const ROOT_USERNAME = process.env.ROOT_USERNAME || 'admin';
 
 async function createAdminUser() {
   try {
-    console.log('🔧 Initializing admin user...');
+    console.log('Initializing admin user...');
     
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     // Check if admin user already exists
     const existingAdmin = await User.findOne({ username: ROOT_USERNAME });
     
     if (existingAdmin) {
-      console.log(`ℹ️  Admin user '${ROOT_USERNAME}' already exists`);
-      console.log(`  👤 Admin Username: ${ROOT_USERNAME}`);
-      console.log(`  ℹ️  Password: [existing password - not changed]`);
+      console.log(`Admin user '${ROOT_USERNAME}' already exists`);
+      console.log(`Admin Username: ${ROOT_USERNAME}`);
+      console.log(`Password: [existing password - not changed]`);
       return;
     }
 
@@ -102,22 +102,20 @@ async function createAdminUser() {
 
     const savedUser = await adminUser.save();
     
-    console.log('🎉 Admin user created successfully!');
-    console.log('📋 Admin User Details:');
-    console.log(`  👤 Username: ${ROOT_USERNAME}`);
-    console.log(`  🔑 Password: ${adminPassword}`);
-    console.log(`  🛡️ Admin: ${savedUser.isAdmin}`);
-    console.log('');
-    console.log('⚠️  IMPORTANT: Save these credentials securely!');
-    console.log('⚠️  The password will not be displayed again.');
-    
+    console.log('Admin user created successfully!');
+    console.log('Admin User Details:');
+    console.log(`Username: ${ROOT_USERNAME}`);
+    console.log(`Password: ${adminPassword}`);
+    console.log(`Admin: ${savedUser.isAdmin}\n`);
+    console.log('IMPORTANT: Save these credentials securely!');
+    console.log('The password will not be displayed again.');
   } catch (error) {
-    console.error('❌ Error creating admin user:', error);
+    console.error('Error creating admin user:', error);
     process.exit(1);
   } finally {
     // Close MongoDB connection
     await mongoose.disconnect();
-    console.log('✅ Disconnected from MongoDB');
+    console.log('Disconnected from MongoDB');
   }
 }
 
