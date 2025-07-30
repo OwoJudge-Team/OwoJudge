@@ -5,9 +5,8 @@ import Judger from './judger/judger';
 const app: Application = createApp();
 const PORT: number | string = process.env.PORT || 8787;
 
-// Initialize and start the judger
 const judger = new Judger();
-judger.start(10000); // Check for pending submissions every 10 seconds
+judger.start(10000);
 
 // Graceful shutdown
 process.on('SIGINT', () => {
