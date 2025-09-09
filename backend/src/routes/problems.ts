@@ -104,11 +104,11 @@ const getProblemById = async (request: IRequest, response: Response) => {
 /// │   └── ...
 /// └── ...
 const createProblem = async (request: IRequest, response: Response): Promise<void> => {
-  // const user = request.user as IUser;
-  // if (!request.user || !user.isAdmin) {
-  //   response.status(401).send('Please login as an admin first');
-  //   return;
-  // }
+  const user = request.user as IUser;
+  if (!request.user || !user.isAdmin) {
+    response.status(401).send('Please login as an admin first');
+    return;
+  }
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send('No file uploaded');
@@ -189,11 +189,11 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
 };
 
 const deleteProblem = async (request: IRequest, response: Response) => {
-  // const user = request.user as IUser;
-  // if (!request.user || !user.isAdmin) {
-  //   response.status(401).send('Please login as an admin first');
-  //   return;
-  // }
+  const user = request.user as IUser;
+  if (!request.user || !user.isAdmin) {
+    response.status(401).send('Please login as an admin first');
+    return;
+  }
   const { displayID } = request.params;
   try {
     const problem: IProblem | null = await Problem.findOne({ displayID });
@@ -250,11 +250,11 @@ const updateProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblemWithFile = async (request: IRequest, response: Response): Promise<void> => {
-  // const user = request.user as IUser;
-  // if (!request.user || !user.isAdmin) {
-  //   response.status(401).send('Please login as an admin first');
-  //   return;
-  // }
+  const user = request.user as IUser;
+  if (!request.user || !user.isAdmin) {
+    response.status(401).send('Please login as an admin first');
+    return;
+  }
   const { displayID } = request.params;
   const filePath = request.file?.path;
   if (!filePath) {
