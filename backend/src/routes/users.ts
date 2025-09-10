@@ -46,7 +46,7 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
     response.status(400).send('Username is required');
     return;
   }
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(403).send('Please login first');
     return;
   }
@@ -64,7 +64,7 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
 };
 
 const createUser = async (request: IRequest, response: Response) => {
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
   }
@@ -100,7 +100,7 @@ const createUser = async (request: IRequest, response: Response) => {
 
 const deleteUser = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
-  if (!request.user || !user.isAdmin) {
+  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
     return;
   }
@@ -123,7 +123,7 @@ const deleteUser = async (request: IRequest, response: Response) => {
 };
 
 const updateUser = async (request: IRequest, response: Response) => {
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
   }

@@ -10,7 +10,7 @@ const authenticateUser = (request: IRequest, response: Response) => {
 };
 
 const getStatus = (request: IRequest, response: Response) => {
-  if (request.user) {
+  if (request.isAuthenticated() && request.user) {
     response.status(200).send(request.user);
   } else {
     response.sendStatus(401);

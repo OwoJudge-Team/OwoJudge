@@ -49,7 +49,7 @@ const getProblems = async (request: IRequest, response: Response) => {
 };
 
 const getProblemById = async (request: IRequest, response: Response) => {
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
   }
@@ -105,7 +105,7 @@ const getProblemById = async (request: IRequest, response: Response) => {
 /// └── ...
 const createProblem = async (request: IRequest, response: Response): Promise<void> => {
   const user = request.user as IUser;
-  if (!request.user || !user.isAdmin) {
+  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
     return;
   }
@@ -190,7 +190,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
 
 const deleteProblem = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
-  if (!request.user || !user.isAdmin) {
+  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
     return;
   }
@@ -224,8 +224,9 @@ const deleteProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblem = async (request: IRequest, response: Response) => {
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
+    return;
   }
   const { displayID } = request.params;
   const data = matchedData(request);
@@ -251,7 +252,7 @@ const updateProblem = async (request: IRequest, response: Response) => {
 
 const updateProblemWithFile = async (request: IRequest, response: Response): Promise<void> => {
   const user = request.user as IUser;
-  if (!request.user || !user.isAdmin) {
+  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
     response.status(401).send('Please login as an admin first');
     return;
   }
