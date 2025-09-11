@@ -205,8 +205,8 @@ class Judger {
     
     try {
       // Initialize isolate box for compilation
-      await execAsync(`isolate --box-id=${boxId} --cleanup`);
-      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --init`);
+      await execAsync(`isolate --box-id=${boxId} --cg --cleanup`);
+      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
       
       // Get box directory - isolate returns the path directly from init
       const boxDir = path.join(boxPath.trim(), 'box');
@@ -220,7 +220,7 @@ class Judger {
       }
 
       // Create compilation output files in the working directory
-      const compileErrorFile = path.join(workDir, `compile_error_${boxId}.txt`);
+      const compileErrorFile = path.join(`compile_error_${boxId}.txt`);
       const metaFile = path.join(workDir, `compile_meta_${boxId}.txt`);
 
       // Prepare isolate compilation command
@@ -230,6 +230,7 @@ class Judger {
         .replace(/user-solutions\//g, '');
 
       const isolateCommand = `isolate --box-id=${boxId} ` +
+        `--cg ` +
         `--time=30 ` + // 30 seconds for compilation
         `--mem=512000 ` + // 512MB for compilation
         `--meta=${metaFile} ` +
@@ -295,7 +296,7 @@ class Judger {
     } finally {
       // Cleanup isolate box
       try {
-        await execAsync(`isolate --box-id=${boxId} --cleanup`);
+        await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
       } catch (error) {
         console.warn('Failed to cleanup compilation isolate box:', error);
       }
@@ -482,12 +483,12 @@ class Judger {
     executeCommand: string
   ): Promise<JudgeResult> {
     const boxId = Math.floor(Math.random() * 500) + 500; // Use 500-999 range for execution
-    const outputFile = path.join(workDir, 'user_output.txt');
+    const outputFile = path.join('user_output.txt');
 
     try {
       // Initialize isolate box
-      await execAsync(`isolate --box-id=${boxId} --cleanup`);
-      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --init`);
+      await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
+      const { stdout: boxPath } = await execAsync(`isolate --cg --box-id=${boxId} --init`);
 
       // Get box directory - isolate returns the path directly from init  
       const boxDir = path.join(boxPath.trim(), 'box');
@@ -514,14 +515,17 @@ class Judger {
 
       // Run the program  
       const metaFile = path.join(workDir, `meta_${boxId}.txt`);
-      const stderrFile = path.join(workDir, `stderr_${boxId}.txt`);
+      const stderrFile = path.join(`stderr_${boxId}.txt`);
       
       // Convert time limit from ms to seconds for isolate
       const timeLimitSeconds = Math.ceil(timeLimit / 1000);
-      
-      const command = `isolate --box-id=${boxId} ` +
+      const processesLimit = 5; // Limit number of processes
+
+      const command = `isolate --cg --box-id=${boxId} ` +
         `--time=${timeLimitSeconds} ` +
         `--mem=${memoryLimit} ` +
+        `--processes=${processesLimit} ` +
+        `--cg-mem=${memoryLimit} ` +
         `--meta=${metaFile} ` +
         `--stdin=${inputFile} ` +
         `--stdout=${outputFile} ` +
