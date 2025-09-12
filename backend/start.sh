@@ -14,7 +14,7 @@ setup_cgroups() {
         # echo $$ > /sys/fs/cgroup/isolate/cgroup.procs
         
         # Now enable controllers in the isolate cgroup (which is now empty of processes)
-        echo "+memory +cpu +pids +cpuset +io +hugetlb +rdma +misc" > /sys/fs/cgroup/isolate/cgroup.subtree_control
+        echo "+memory +cpu +pids +cpuset +io" > /sys/fs/cgroup/isolate/cgroup.subtree_control
 
         # Verify controllers are enabled
         echo "Enabled controllers: $(cat /sys/fs/cgroup/isolate/cgroup.controllers)"
