@@ -22,6 +22,9 @@ setup_cgroups() {
         # Set proper permissions
         chmod -R 755 /sys/fs/cgroup/isolate
         
+        # echo "/sys/fs/cgroup/isolate" > /run/isolate/cgroup
+        # chmod 644 /run/isolate/cgroup
+
         echo "Cgroup controllers enabled successfully"
         
     else
@@ -36,6 +39,15 @@ setup_cgroups() {
 
 # Run cgroup setup
 setup_cgroups
+
+cat > /usr/local/etc/isolate << EOF
+box_root=/var/local/lib/isolate
+cg_root=/sys/fs/cgroup/isolate
+lock_root=/var/local/lib/isolate/lock
+first_uid=60000
+first_gid=60000
+num_boxes=100
+EOF
 
 # Initialize isolate
 echo "Initializing isolate..."
