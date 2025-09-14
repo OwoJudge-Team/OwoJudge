@@ -46,12 +46,12 @@ cg_root=/sys/fs/cgroup/isolate
 lock_root=/var/local/lib/isolate/lock
 first_uid=60000
 first_gid=60000
-num_boxes=100
+num_boxes=1000
 EOF
 
 # Initialize isolate
 echo "Initializing isolate..."
-isolate-cg-keeper && echo "isolate-cg-keeper started"
+isolate-cg-keeper &
 isolate --init --cg || echo "Warning: isolate init failed, continuing anyway"
 
 # Wait for MongoDB to be ready

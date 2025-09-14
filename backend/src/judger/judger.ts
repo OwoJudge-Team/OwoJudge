@@ -169,8 +169,13 @@ class Judger {
       console.log(`Submission ${submission._id} judged: ${finalResult.status} (${finalResult.score} points)`);
 
     } catch (error) {
-      console.error(`Error judging submission ${submission._id}:`, error);
-      submission.status = 'System Error';
+      if (error instanceof Error && error.message.startsWith('Compilation Error:')) {
+        console.error(`Compilation error for submission ${submission._id}:`, error.message);
+        submission.status = 'Compilation Error';
+      } else {
+        console.error(`Error judging submission ${submission._id}:`, error);
+        submission.status = 'System Error';
+      }
       submission.result = {
         score: 0,
         maxTime: 0,
@@ -231,8 +236,10 @@ class Judger {
 
       const isolateCommand = `isolate --box-id=${boxId} ` +
         `--cg ` +
-        `--time=30 ` + // 30 seconds for compilation
-        `--mem=512000 ` + // 512MB for compilation
+        `--processes=20 ` +
+        `--time=10 ` +
+        `--wall-time=20 ` +
+        `--mem=512000 ` +
         `--meta=${metaFile} ` +
         `--stderr=${compileErrorFile} ` +
         `--full-env ` + // Allow full environment for compilation
@@ -242,7 +249,7 @@ class Judger {
 
       try {
         const { stdout, stderr } = await execAsync(isolateCommand, { 
-          timeout: 35000 // 35 seconds total timeout
+          timeout: 25000
         });
 
         // Copy compiled executable back if it exists
@@ -278,8 +285,8 @@ class Judger {
           const metaContent = fs.readFileSync(metaFile, 'utf8');
           if (metaContent.includes('status:TO')) {
             errorMessage = 'Compilation timeout (exceeded 30 seconds)';
-          } else if (metaContent.includes('status:MLE')) {
-            errorMessage = 'Compilation memory limit exceeded';
+          } else if (metaContent.includes('status:MLE') || metaContent.includes('status:RE')) {
+            errorMessage = 'Compilation error';
           }
         }
 
@@ -296,6 +303,14 @@ class Judger {
     } finally {
       // Cleanup isolate box
       try {
+        let stderrFile = path.join(`compile_error_${boxId}.txt`);
+        let stderrContent = '';
+        if (fs.existsSync(stderrFile)) {
+          stderrContent = fs.readFileSync(stderrFile, 'utf8');
+          if (stderrContent.trim()) {
+            console.log('Compilation stderr:', stderrContent);
+          }
+        }
         await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
       } catch (error) {
         console.warn('Failed to cleanup compilation isolate box:', error);
