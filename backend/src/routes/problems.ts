@@ -67,12 +67,17 @@ const getProblemById = async (request: IRequest, response: Response) => {
     try {
       const metadataContent = readFileSync(metadataPath, 'utf8');
       const metadata = JSON.parse(metadataContent);
-      
+      const testcase = metadata.testcase;
+      const sampleTestcases = testcase.filter((test: any) =>
+        test.subtask && test.subtask.includes('sample')
+      );
+
+      const description = readFileSync(`${problemDir}/description.md`, 'utf8');
+
       const fullProblem = {
         ...problem.toObject(),
-        description: metadata.description || problem.description,
-        inputFormat: metadata.inputFormat || problem.inputFormat,
-        outputFormat: metadata.outputFormat || problem.outputFormat,
+        description: description,
+        sampleTestcases: sampleTestcases || []
       };
       
       response.status(200).send(fullProblem);
@@ -94,13 +99,7 @@ const getProblemById = async (request: IRequest, response: Response) => {
 /// │   │   ├── test1.in
 /// │   │   ├── test1.out
 /// │   │   └── ...
-/// │   └── ...
-/// ├── problem2
-/// │   ├── metadata.json
-/// │   ├── testcases
-/// │   │   ├── test1.in
-/// │   │   ├── test1.out
-/// │   │   └── ...
+/// │   ├── description.md
 /// │   └── ...
 /// └── ...
 const createProblem = async (request: IRequest, response: Response): Promise<void> => {
@@ -147,32 +146,39 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
       const metadataContent = readFileSync(metadataPath, 'utf8');
       const metadata = JSON.parse(metadataContent);
       
-      const newProblem = new Problem({
-        displayID: metadata.displayID,
-        createdTime: metadata.createdTime || new Date(),
-        title: metadata.title,
-        fileName: fileName,
-        timeLimit: metadata.timeLimit,
-        memoryLimit: metadata.memoryLimit,
-        tags: metadata.tags || [],
-        problemRelatedTags: metadata.problemRelatedTags || [],
-        submissionDetail: {
-          accepted: metadata.submissionDetail?.accepted || 0,
-          submitted: metadata.submissionDetail?.submitted || 0,
-          timeLimitExceeded: metadata.submissionDetail?.timeLimitExceeded || 0,
-          memoryLimitExceeded: metadata.submissionDetail?.memoryLimitExceeded || 0,
-          wrongAnswer: metadata.submissionDetail?.wrongAnswer || 0,
-          runtimeError: metadata.submissionDetail?.runtimeError || 0,
-          compilationError: metadata.submissionDetail?.compilationError || 0,
-          processLimitExceeded: metadata.submissionDetail?.processLimitExceeded || 0
-        },
-        userDetail: {
-          solved: metadata.userDetail?.solved || 0,
-          attempted: metadata.userDetail?.attempted || 0
-        }
-      });
-
-      await newProblem.save();
+      try {
+        const newProblem = new Problem({
+          displayID: metadata.displayID,
+          createdTime: metadata.createdTime || new Date(),
+          title: metadata.title,
+          fileName: fileName,
+          timeLimit: metadata.timeLimit,
+          memoryLimit: metadata.memoryLimit,
+          scorePolicy: metadata.scorePolicy,
+          tags: metadata.tags || [],
+          testcase: metadata.testcase,
+          problemRelatedTags: metadata.problemRelatedTags || [],
+          submissionDetail: {
+            accepted: metadata.submissionDetail?.accepted || 0,
+            submitted: metadata.submissionDetail?.submitted || 0,
+            timeLimitExceeded: metadata.submissionDetail?.timeLimitExceeded || 0,
+            memoryLimitExceeded: metadata.submissionDetail?.memoryLimitExceeded || 0,
+            wrongAnswer: metadata.submissionDetail?.wrongAnswer || 0,
+            runtimeError: metadata.submissionDetail?.runtimeError || 0,
+            compilationError: metadata.submissionDetail?.compilationError || 0,
+            processLimitExceeded: metadata.submissionDetail?.processLimitExceeded || 0
+          },
+          userDetail: {
+            solved: metadata.userDetail?.solved || 0,
+            attempted: metadata.userDetail?.attempted || 0
+          }
+        });
+        await newProblem.save();
+      } catch (dupError) {
+        console.error('Error creating problem:', dupError);
+        response.status(403).send('Problem with this displayID already exists');
+        return;
+      }
       console.log(`Problem ${metadata.displayID} saved to database`);
     } catch (error) {
       console.error('Error reading or parsing metadata.json:', error);

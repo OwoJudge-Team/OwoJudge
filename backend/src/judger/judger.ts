@@ -169,8 +169,13 @@ class Judger {
       console.log(`Submission ${submission._id} judged: ${finalResult.status} (${finalResult.score} points)`);
 
     } catch (error) {
-      console.error(`Error judging submission ${submission._id}:`, error);
-      submission.status = 'System Error';
+      if (error instanceof Error && error.message.startsWith('Compilation Error:')) {
+        console.error(`Compilation error for submission ${submission._id}:`, error.message);
+        submission.status = 'Compilation Error';
+      } else {
+        console.error(`Error judging submission ${submission._id}:`, error);
+        submission.status = 'System Error';
+      }
       submission.result = {
         score: 0,
         maxTime: 0,
@@ -205,8 +210,8 @@ class Judger {
     
     try {
       // Initialize isolate box for compilation
-      await execAsync(`isolate --box-id=${boxId} --cleanup`);
-      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --init`);
+      await execAsync(`isolate --box-id=${boxId} --cg --cleanup`);
+      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
       
       // Get box directory - isolate returns the path directly from init
       const boxDir = path.join(boxPath.trim(), 'box');
@@ -220,7 +225,7 @@ class Judger {
       }
 
       // Create compilation output files in the working directory
-      const compileErrorFile = path.join(workDir, `compile_error_${boxId}.txt`);
+      const compileErrorFile = path.join(`compile_error_${boxId}.txt`);
       const metaFile = path.join(workDir, `compile_meta_${boxId}.txt`);
 
       // Prepare isolate compilation command
@@ -230,8 +235,11 @@ class Judger {
         .replace(/user-solutions\//g, '');
 
       const isolateCommand = `isolate --box-id=${boxId} ` +
-        `--time=30 ` + // 30 seconds for compilation
-        `--mem=512000 ` + // 512MB for compilation
+        `--cg ` +
+        `--processes=20 ` +
+        `--time=10 ` +
+        `--wall-time=20 ` +
+        `--mem=512000 ` +
         `--meta=${metaFile} ` +
         `--stderr=${compileErrorFile} ` +
         `--full-env ` + // Allow full environment for compilation
@@ -241,7 +249,7 @@ class Judger {
 
       try {
         const { stdout, stderr } = await execAsync(isolateCommand, { 
-          timeout: 35000 // 35 seconds total timeout
+          timeout: 25000
         });
 
         // Copy compiled executable back if it exists
@@ -277,8 +285,8 @@ class Judger {
           const metaContent = fs.readFileSync(metaFile, 'utf8');
           if (metaContent.includes('status:TO')) {
             errorMessage = 'Compilation timeout (exceeded 30 seconds)';
-          } else if (metaContent.includes('status:MLE')) {
-            errorMessage = 'Compilation memory limit exceeded';
+          } else if (metaContent.includes('status:MLE') || metaContent.includes('status:RE')) {
+            errorMessage = 'Compilation error';
           }
         }
 
@@ -295,7 +303,15 @@ class Judger {
     } finally {
       // Cleanup isolate box
       try {
-        await execAsync(`isolate --box-id=${boxId} --cleanup`);
+        let stderrFile = path.join(`compile_error_${boxId}.txt`);
+        let stderrContent = '';
+        if (fs.existsSync(stderrFile)) {
+          stderrContent = fs.readFileSync(stderrFile, 'utf8');
+          if (stderrContent.trim()) {
+            console.log('Compilation stderr:', stderrContent);
+          }
+        }
+        await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
       } catch (error) {
         console.warn('Failed to cleanup compilation isolate box:', error);
       }
@@ -482,12 +498,12 @@ class Judger {
     executeCommand: string
   ): Promise<JudgeResult> {
     const boxId = Math.floor(Math.random() * 500) + 500; // Use 500-999 range for execution
-    const outputFile = path.join(workDir, 'user_output.txt');
+    const outputFile = path.join('user_output.txt');
 
     try {
       // Initialize isolate box
-      await execAsync(`isolate --box-id=${boxId} --cleanup`);
-      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --init`);
+      await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
+      const { stdout: boxPath } = await execAsync(`isolate --cg --box-id=${boxId} --init`);
 
       // Get box directory - isolate returns the path directly from init  
       const boxDir = path.join(boxPath.trim(), 'box');
@@ -514,14 +530,17 @@ class Judger {
 
       // Run the program  
       const metaFile = path.join(workDir, `meta_${boxId}.txt`);
-      const stderrFile = path.join(workDir, `stderr_${boxId}.txt`);
+      const stderrFile = path.join(`stderr_${boxId}.txt`);
       
       // Convert time limit from ms to seconds for isolate
       const timeLimitSeconds = Math.ceil(timeLimit / 1000);
-      
-      const command = `isolate --box-id=${boxId} ` +
+      const processesLimit = 5; // Limit number of processes
+
+      const command = `isolate --cg --box-id=${boxId} ` +
         `--time=${timeLimitSeconds} ` +
         `--mem=${memoryLimit} ` +
+        `--processes=${processesLimit} ` +
+        `--cg-mem=${memoryLimit} ` +
         `--meta=${metaFile} ` +
         `--stdin=${inputFile} ` +
         `--stdout=${outputFile} ` +
