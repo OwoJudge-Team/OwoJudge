@@ -1,0 +1,1 @@
+Given two integers A and B, calculate and output their sum A + B.

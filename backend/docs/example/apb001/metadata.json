@@ -1,0 +1,24 @@
+{
+  "displayID": "apb001",
+  "title": "A + B Problem",
+  "timeLimit": 1000,
+  "memoryLimit": 128000,
+  "scorePolicy": "sum",
+  "description": "description.md",
+  "inputFormat": "input.md",
+  "outputFormat": "output.md",
+  "testcase": [
+    {
+      "filename": "1",
+      "point": 50,
+      "subtask": "basic"
+    },
+    {
+      "filename": "2",
+      "point": 50,
+      "subtask": "basic"
+    }
+  ],
+  "tags": ["basic", "math", "arithmetic"],
+  "problemRelatedTags": ["beginner", "implementation"]
+}
