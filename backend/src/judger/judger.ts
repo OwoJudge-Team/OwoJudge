@@ -31,7 +31,7 @@ const getNextBoxId = (): number => {
   return result;
 }
 
-const writeUserSolution = (submission: ISubmission, dir: string) {
+const writeUserSolution = (submission: ISubmission, dir: string) => {
   for (const file of submission.userSolution) {
     const filename = file.filename;
     const content = file.content;

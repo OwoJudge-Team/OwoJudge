@@ -7,17 +7,8 @@
   "description": "description.md",
   "inputFormat": "input.md",
   "outputFormat": "output.md",
-  "testcase": [
-    {
-      "filename": "1",
-      "point": 50,
-      "subtask": "basic"
-    },
-    {
-      "filename": "2",
-      "point": 50,
-      "subtask": "basic"
-    }
+  "subtask": [
+    {"name": "basic", "score": 100, "testcases": ".*"}
   ],
   "tags": ["basic", "math", "arithmetic"],
   "problemRelatedTags": ["beginner", "implementation"]
