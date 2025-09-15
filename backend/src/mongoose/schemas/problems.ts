@@ -15,9 +15,6 @@ interface IProblem extends Document {
   displayID: string;
   createdTime: Date;
   title: string;
-  description: string;
-  inputFormat: string;
-  outputFormat: string;
   timeLimit: number;
   memoryLimit: number;
   scorePolicy: ScorePolicy;
@@ -51,18 +48,6 @@ const problemSchema: Schema = new mongoose.Schema({
     required: true
   },
   title: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  description: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  inputFormat: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  outputFormat: {
     type: mongoose.Schema.Types.String,
     required: true
   },

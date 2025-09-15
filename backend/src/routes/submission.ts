@@ -7,7 +7,7 @@ import { IRequest } from '../utils/request-interface';
 const submissionRouter: Router = Router();
 
 const getSubmissions = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
   }
@@ -24,7 +24,7 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
 };
 
 const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.user) {
+  if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
   }
