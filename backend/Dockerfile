@@ -85,9 +85,5 @@ EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8787/api/problems || exit 1
 
-COPY judge-backend.service /etc/systemd/system/judge-backend.service
-# Enable services
-RUN systemctl enable isolate.service judge-backend.service
-
 # Use systemd as the container init
-ENTRYPOINT ["systemd"]
+ENTRYPOINT ["/app/start.sh"]
