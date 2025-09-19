@@ -16,6 +16,9 @@ test_isolate_cg_functionality() {
     isolate --cg --processes=20 --box-id=0 --time=1 --mem=512000 --run -- /bin/bash -c "echo 'first'; sleep 1; echo 'second'"
 }
 
+
+docker-compose up -d
+
 # Run tests
 test_problem_upload
 test_isolate_cg_functionality
