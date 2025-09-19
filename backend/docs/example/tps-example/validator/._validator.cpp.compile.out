@@ -1,0 +1,17 @@
+In file included from validator.cpp:3:
+./testlib.h:4944:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 4944 |     sprintf(c, "%d%s", x, englishEnding(x).c_str());
+      |     ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h:274:1: note: 'sprintf' has been explicitly marked deprecated here
+  274 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:218:48: note: expanded from macro '__deprecated_msg'
+  218 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+validator.cpp:11:19: warning: unused variable 'a' [-Wunused-variable]
+   11 |   const long long a = inf.readLong(0, MAXN, "a");
+      |                   ^
+validator.cpp:13:19: warning: unused variable 'b' [-Wunused-variable]
+   13 |   const long long b = inf.readLong(0, MAXN, "b");
+      |                   ^
+3 warnings generated.
