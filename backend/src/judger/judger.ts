@@ -12,14 +12,6 @@ import { SubmissionStatus } from '../utils/submission-status';
 
 const execAsync = promisify(exec);
 
-interface JudgeResult {
-  status: SubmissionStatus;
-  time: number;
-  memory: number;
-  exitCode?: number;
-  message?: string;
-}
-
 interface TestCaseResult {
   testcase: string;
   status: SubmissionStatus;
