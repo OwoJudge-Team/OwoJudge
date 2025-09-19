@@ -1,17 +1,17 @@
 export const createProblemValidation = {
-  displayID: {
+  problemID: {
     isLength: {
       options: {
         min: 4,
         max: 16
       },
-      errorMessage: 'Length of displayID must between 4 to 16 characters'
+      errorMessage: 'Length of problemID must between 4 to 16 characters'
     },
     notEmpty: {
-      errorMessage: 'DisplayID should not be empty'
+      errorMessage: 'ProblemID should not be empty'
     },
     isString: {
-      errorMessage: 'DisplayID should be a string'
+      errorMessage: 'ProblemID should be a string'
     }
   },
   title: {
