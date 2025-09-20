@@ -1,14 +1,14 @@
 export default {
   'gcc c11': {
-    compileCommand: 'gcc -std=c11 ./user-solutions/main.c -o ./user-solutions/main',
+    compileCommand: 'gcc -std=c11 main.c -o main',
     executeCommand: './main.exe'
   },
   'g++ c++14': {
-    compileCommand: 'g++ -std=c++14 ./user-solutions/main.cpp -o ./user-solutions/main',
+    compileCommand: 'g++ -std=c++14 main.cpp -o main',
     executeCommand: './main.exe'
   },
   'g++ c++17': {
-    compileCommand: 'g++ -std=c++17 ./user-solutions/main.cpp -o ./user-solutions/main',
+    compileCommand: 'g++ -std=c++17 main.cpp -o main',
     executeCommand: './main.exe'
   },
   rust: {

@@ -42,6 +42,9 @@ WORKDIR /app
 
 # Note: Running as root for isolate and cgroup operations
 
+# Install tps
+RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ioi-2017/tps/master/online-installer/install.sh)"
+
 # Clone and build isolate
 RUN git clone https://github.com/mtmatt/isolate.git /tmp/isolate \
     && cd /tmp/isolate \

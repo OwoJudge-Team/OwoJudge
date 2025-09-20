@@ -32,11 +32,11 @@ const getNextBoxId = (): number => {
 }
 
 const cleanupBox = async (boxId: number) => {
-  try {
-    await execAsync(`isolate --box-id=${boxId} --cg --cleanup`);
-  } catch (error) {
-    console.warn(`Failed to cleanup box ${boxId}:`, error);
-  }
+  // try {
+  //   await execAsync(`isolate --box-id=${boxId} --cg --cleanup`);
+  // } catch (error) {
+  //   console.warn(`Failed to cleanup box ${boxId}:`, error);
+  // }
 }
 
 const compileChecker = async (problemDir: string, workDir: string): Promise<boolean> => {
@@ -62,7 +62,7 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
   }
 
   const metaFile = path.join(workDir, 'checker-compile.meta');
-  const compileErrorFile = path.join(workDir, 'checker-compile.error');
+  const compileErrorFile = 'checker-compile.error';
 
   const isolateCommand = `isolate --box-id=${boxId} ` +
     `--cg ` +
@@ -80,6 +80,7 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
   try {
     await execAsync(isolateCommand, { timeout: 25000 });
     const compiledCheckerPath = path.join(boxDir, 'checker.exe');
+    fs.copyFileSync(path.join(boxDir, 'checker-compile.error'), path.join(workDir, 'checker-compile.error'));
     if (fs.existsSync(compiledCheckerPath)) {
       fs.copyFileSync(compiledCheckerPath, checkerExecutablePath);
       fs.chmodSync(checkerExecutablePath, 0o755);
@@ -166,13 +167,15 @@ const runUserSolution = async (
   const boxDir = path.join(boxPath.trim(), 'box');
 
   if (isCompiledLanguage) {
-    fs.copyFileSync(path.join(workDir, 'main.exe'), path.join(boxDir, 'main'));
+    fs.copyFileSync(path.join(workDir, 'main.exe'), path.join(boxDir, 'main.exe'));
   } else {
     writeUserSolution(submission, boxDir);
   }
 
-  const problemId = submission.problemID;
-  const problemMeta = await Problem.findOne({ problemId });
+  fs.copyFileSync(testcaseInput, path.join(boxDir, path.basename(testcaseInput)));
+
+  const problemID = submission.problemID;
+  const problemMeta = await Problem.findOne({ problemID: problemID });
   if (!problemMeta) {
     throw new Error('Problem not found');
   }
@@ -183,13 +186,13 @@ const runUserSolution = async (
     `--processes=${problemMeta.processes + 1 + (isCompiledLanguage ? 0 : 2)} ` +
     `--time=${problemMeta.timeLimit} ` +
     `--wall-time=${problemMeta.timeLimit} ` +
-    `--mem=${problemMeta.memoryLimit} ` +
+    `--mem=${problemMeta.memoryLimit * 1024} ` +
     `--meta=${metaFile} ` +
-    `--stdin=${testcaseInput} ` +
-    `--stdout=${userOutputFile} ` +
-    `--stderr=${userErrorFile} ` +
+    `--stdin=${path.basename(testcaseInput)} ` +
+    `--stdout=${path.basename(userOutputFile)} ` +
+    `--stderr=${path.basename(userErrorFile)} ` +
     // `--full-env ` + // Allow full environment for execution
-    `--run -- /bin/bash -c "${executeCommand}"`;
+    `--run -- "${executeCommand}"`;
 
   console.log('Running user solution command:', isolateCommand);
 
@@ -234,6 +237,9 @@ const runUserSolution = async (
     }
   }
 
+  fs.copyFileSync(path.join(boxDir, path.basename(userOutputFile)), userOutputFile);
+  fs.copyFileSync(path.join(boxDir, path.basename(userErrorFile)), userErrorFile);
+
   const checkerPath = path.join(workDir, 'checker.exe');
   if (!fs.existsSync(checkerPath)) {
     console.error(`Checker not found for problem ${submission.problemID}`);
@@ -269,9 +275,10 @@ const runChecker = async (
   fs.copyFileSync(userOutputFile, path.join(boxDir, 'user.out'));
   fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
 
-  const metaFile = path.join(workDir, `checker-${path.basename(inputFile)}.meta`);
-  const checkerOutputFile = path.join(boxDir, `checker-${path.basename(inputFile)}.out`);
-  const checkerErrorFile = path.join(boxDir, `checker-${path.basename(inputFile)}.err`);
+  const baseName = path.basename(inputFile).replace('.in', '');
+  const metaFile = path.join(workDir, `checker-${baseName}.meta`);
+  const checkerOutputFile = `checker-${baseName}.out`;
+  const checkerErrorFile = `checker-${baseName}.err`;
 
   const isolateCommand = `isolate --box-id=${boxId} ` +
     `--cg ` +
@@ -287,28 +294,21 @@ const runChecker = async (
 
   try {
     await execAsync(isolateCommand, { timeout: 25000 });
-    const message = fs.readFileSync(checkerOutputFile, 'utf-8').trim();
-    fs.copyFileSync(checkerOutputFile, path.join(workDir, path.basename(checkerOutputFile)));
-    fs.copyFileSync(checkerErrorFile, path.join(workDir, path.basename(checkerErrorFile)));
+    const message = fs.readFileSync(path.join(boxDir, path.basename(checkerErrorFile)), 'utf-8').trim();
+    fs.copyFileSync(path.join(boxDir, path.basename(checkerOutputFile)), path.join(workDir, path.basename(checkerOutputFile)));
+    fs.copyFileSync(path.join(boxDir, path.basename(checkerErrorFile)), path.join(workDir, path.basename(checkerErrorFile)));
     await cleanupBox(boxId);
+    const scoreStr = fs.readFileSync(path.join(workDir, path.basename(checkerOutputFile)), 'utf-8').trim();
+    const score = parseFloat(scoreStr);
+    if (!isNaN(score) && score === 0) {
+      return { status: SubmissionStatus.WA, message };
+    }
+    if (!isNaN(score) && score > 0 && score < 1) {
+      return { status: SubmissionStatus.PS, message };
+    }
     return { status: SubmissionStatus.AC, message };
   } catch (error: any) {
-    const message = fs.readFileSync(checkerOutputFile, 'utf-8').trim();
-    fs.copyFileSync(checkerOutputFile, path.join(workDir, path.basename(checkerOutputFile)));
-    fs.copyFileSync(checkerErrorFile, path.join(workDir, path.basename(checkerErrorFile)));
-    await cleanupBox(boxId);
-    switch (error.code) {
-      case 1: // WA
-        return { status: SubmissionStatus.WA, message };
-      case 2: // PE
-        return { status: SubmissionStatus.PE, message };
-      case 3: // FAIL
-        console.error(`Checker failed for ${inputFile}:`, error);
-        return { status: SubmissionStatus.SE, message: 'Checker failed' };
-      default: // Other errors
-        console.error(`Checker execution failed with unexpected code ${error.code} for ${inputFile}:`, error);
-        return { status: SubmissionStatus.SE, message: 'Checker failed with unexpected code' };
-    }
+    return { status: SubmissionStatus.SE, message: 'Checker execution failed' };
   }
 };
 
@@ -367,8 +367,8 @@ const runAllTests = async (
   }
 
   const allTestCases = new Set<string>();
-  for (const subtask of subtasks.subtasks) {
-    const cases = subtaskTestCases.get(subtask.name);
+  for (const subtaskName of Object.keys(subtasks.subtasks)) {
+    const cases = subtaskTestCases.get(subtaskName);
     if (cases) {
       cases.forEach(c => allTestCases.add(c));
     }
@@ -391,8 +391,8 @@ const runAllTests = async (
   let totalScore = 0;
   let finalStatus: SubmissionStatus = SubmissionStatus.AC;
 
-  for (const subtask of subtasks.subtasks) {
-    const cases = subtaskTestCases.get(subtask.name);
+  for (const [subtaskName, subtaskInfo] of Object.entries<any>(subtasks.subtasks)) {
+    const cases = subtaskTestCases.get(subtaskName);
     if (!cases) continue;
 
     let subtaskOk = true;
@@ -408,7 +408,7 @@ const runAllTests = async (
     }
 
     if (subtaskOk) {
-      totalScore += subtask.score;
+      totalScore += subtaskInfo.score;
     }
   }
 
@@ -491,6 +491,16 @@ const worker = async () => {
 const setupWorker = async (numWorkers: number) => {
   for (let i = 0; i < numWorkers; ++i) {
     submissionEmitter.on(submitEvent, worker);
+  }
+  while (true) {
+    const submissions = await Submission.find({ status: SubmissionStatus.PD });
+    for (const submission of submissions) {
+      submissionQueue.enqueue(submission);
+      submission.status = SubmissionStatus.QU;
+      await submission.save();
+      submissionEmitter.emit(submitEvent);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 }
 
