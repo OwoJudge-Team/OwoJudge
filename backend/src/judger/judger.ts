@@ -17,6 +17,7 @@ interface TestCaseResult {
   status: SubmissionStatus;
   time: number;
   memory: number;
+  message?: string;
 }
 
 const submissionEmitter = new EventEmitter();
@@ -214,7 +215,8 @@ const runUserSolution = async (
   const baseResult = {
     testcase: path.basename(testcaseInput, '.in'),
     time: parseFloat(meta['time'] || '0'),
-    memory: parseInt(meta['memory'] || '0', 10)
+    memory: parseInt(meta['memory'] || '0', 10),
+    message: ''
   };
 
   if (meta.status) {
@@ -239,10 +241,16 @@ const runUserSolution = async (
     return { ...baseResult, status: SubmissionStatus.SE };
   }
 
-  const checkerResult = await runChecker(checkerPath, testcaseInput, userOutputFile, testcaseOutput, workDir);
+  const { status: checkerResult, message: checkerMessage } = await runChecker(
+    checkerPath,
+    testcaseInput,
+    userOutputFile,
+    testcaseOutput,
+    workDir
+  );
   await cleanupBox(boxId);
-  return { ...baseResult, status: checkerResult };
-}
+  return { ...baseResult, status: checkerResult, message: checkerMessage };
+};
 
 const runChecker = async (
   checkerPath: string,
@@ -250,7 +258,7 @@ const runChecker = async (
   userOutputFile: string,
   answerFile: string,
   workDir: string
-): Promise<SubmissionStatus> => {
+): Promise<{ status: SubmissionStatus; message: string }> => {
   const boxId = getNextBoxId();
   const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
   const boxDir = path.join(boxPath.trim(), 'box');
@@ -279,25 +287,27 @@ const runChecker = async (
 
   try {
     await execAsync(isolateCommand, { timeout: 25000 });
+    const message = fs.readFileSync(checkerOutputFile, 'utf-8').trim();
     fs.copyFileSync(checkerOutputFile, path.join(workDir, path.basename(checkerOutputFile)));
     fs.copyFileSync(checkerErrorFile, path.join(workDir, path.basename(checkerErrorFile)));
     await cleanupBox(boxId);
-    return SubmissionStatus.AC;
+    return { status: SubmissionStatus.AC, message };
   } catch (error: any) {
+    const message = fs.readFileSync(checkerOutputFile, 'utf-8').trim();
     fs.copyFileSync(checkerOutputFile, path.join(workDir, path.basename(checkerOutputFile)));
     fs.copyFileSync(checkerErrorFile, path.join(workDir, path.basename(checkerErrorFile)));
     await cleanupBox(boxId);
     switch (error.code) {
       case 1: // WA
-        return SubmissionStatus.WA;
+        return { status: SubmissionStatus.WA, message };
       case 2: // PE
-        return SubmissionStatus.PE;
+        return { status: SubmissionStatus.PE, message };
       case 3: // FAIL
         console.error(`Checker failed for ${inputFile}:`, error);
-        return SubmissionStatus.SE;
+        return { status: SubmissionStatus.SE, message: 'Checker failed' };
       default: // Other errors
         console.error(`Checker execution failed with unexpected code ${error.code} for ${inputFile}:`, error);
-        return SubmissionStatus.SE;
+        return { status: SubmissionStatus.SE, message: 'Checker failed with unexpected code' };
     }
   }
 };
@@ -370,7 +380,7 @@ const runAllTests = async (
     const outputFile = path.join(problemDir, 'tests', `${testcase}.out`);
     if (!fs.existsSync(inputFile) || !fs.existsSync(outputFile)) {
       console.error(`Missing input or output file for testcase ${testcase}`);
-      testCaseResults.push({ testcase, status: SubmissionStatus.SE, time: 0, memory: 0 });
+      testCaseResults.push({ testcase, status: SubmissionStatus.SE, time: 0, memory: 0, message: 'Missing test case files' });
       continue;
     }
     const result = await runUserSolution(submission, inputFile, outputFile, workDir, isCompiledLanguage);

@@ -16,6 +16,7 @@ interface ITestCaseResult {
   status: SubmissionStatus;
   time: number;
   memory: number;
+  message?: string;
 }
 
 const testCaseResultSchema = new Schema<ITestCaseResult>({
@@ -23,6 +24,7 @@ const testCaseResultSchema = new Schema<ITestCaseResult>({
   status: { type: String, enum: Object.values(SubmissionStatus), required: true },
   time: { type: Number, required: true },
   memory: { type: Number, required: true },
+  message: { type: String }
 }, { _id: false });
 
 interface ISubmission extends Document {
