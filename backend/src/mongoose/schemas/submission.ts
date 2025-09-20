@@ -1,5 +1,6 @@
-import { Schema, model, Document } from 'mongoose';
+import mongoose, { Schema, model, Document } from 'mongoose';
 import { SubmissionStatus } from '../../utils/submission-status';
+import autoIncrement from 'mongoose-id-autoincrement';
 
 interface IUserSolution {
   filename: string;
@@ -40,7 +41,7 @@ interface ISubmission extends Document {
 }
 
 const submissionSchema = new Schema<ISubmission>({
-  serialNumber: { type: Schema.Types.Number, unique: true, auto: true },
+  serialNumber: { type: Schema.Types.Number, unique: true },
   problemID: { type: Schema.Types.String, required: true },
   username: { type: Schema.Types.String, required: true },
   language: { type: Schema.Types.String, required: true },
@@ -49,6 +50,14 @@ const submissionSchema = new Schema<ISubmission>({
   createdTime: { type: Schema.Types.Date, default: Date.now },
   score: { type: Schema.Types.Number, default: 0 },
   results: [testCaseResultSchema],
+});
+
+autoIncrement.initialize(mongoose.connection);
+submissionSchema.plugin(autoIncrement.plugin, {
+  field: 'serialNumber',
+  incrementBy: 1,
+  startAt: 1000000,
+  unique: true,
 });
 
 const Submission = model<ISubmission>('Submission', submissionSchema);

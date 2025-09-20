@@ -9,15 +9,11 @@ import { readFileSync } from 'fs';
 import * as tar from 'tar';
 import { spawnSync } from 'child_process';
 import { isTarGz } from '../utils/file-utils';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { generateSingleTestcase } from '../utils/generate-testcase';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const execAsync = promisify(exec);
 const problemsRouter = Router();
-
 const userRequestCounts = new Map<string, Map<string, number>>();
 const generatedTestcasesPath = 'generated_testcases';
 
@@ -61,7 +57,7 @@ const getProblems = async (request: IRequest, response: Response) => {
   }
 };
 
-const getProblemById = async (request: IRequest, response: Response) => {
+const getProblemByID = async (request: IRequest, response: Response) => {
   if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
@@ -388,17 +384,17 @@ const generateTestcase = async (request: IRequest, response: Response) => {
 
   const { problemID, testcaseName } = request.params;
   const cacheKey = `${problemID}-${testcaseName}`;
-  const userId = user.id.toString();
+  const userID = user.id.toString();
   const testcaseSetPath = path.join(generatedTestcasesPath, problemID, testcaseName);
 
   try {
     // Ensure directories exist
     fs.mkdirSync(testcaseSetPath, { recursive: true });
-    if (!userRequestCounts.has(userId)) {
-      userRequestCounts.set(userId, new Map());
+    if (!userRequestCounts.has(userID)) {
+      userRequestCounts.set(userID, new Map());
     }
 
-    const userCounts = userRequestCounts.get(userId)!;
+    const userCounts = userRequestCounts.get(userID)!;
     const currentRequestCount = userCounts.get(cacheKey) || 0;
 
     const existingTestcasesCount = fs.readdirSync(testcaseSetPath).length;
@@ -439,7 +435,7 @@ const generateTestcase = async (request: IRequest, response: Response) => {
 };
 
 problemsRouter.get('/api/problems', getProblems);
-problemsRouter.get('/api/problems/:problemID', getProblemById);
+problemsRouter.get('/api/problems/:problemID', getProblemByID);
 problemsRouter.get('/api/problems/:problemID/testcases/:testcaseName', generateTestcase);
 
 problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
@@ -474,7 +470,7 @@ problemsRouter.put('/api/problems/:problemID', (request: IRequest, response: Res
 export default problemsRouter;
 export {
   getProblems,
-  getProblemById,
+  getProblemByID,
   createProblem,
   deleteProblem,
   updateProblem,

@@ -18,7 +18,7 @@ const getAllContests = async (request: IRequest, response: Response) => {
   }
 };
 
-const getContestById = async (request: IRequest, response: Response) => {
+const getContestByID = async (request: IRequest, response: Response) => {
   const contestID: string | undefined = request.params?.contestID;
   if (!contestID) {
     response.status(400).send('Contest ID is required');
@@ -113,7 +113,7 @@ const deleteContest = async (request: IRequest, response: Response) => {
 };
 
 contestsRouter.get('/api/contests', getAllContests);
-contestsRouter.get('/api/contests/:contestID', getContestById);
+contestsRouter.get('/api/contests/:contestID', getContestByID);
 contestsRouter.post('/api/contests', checkSchema(createContestValidation), createContest);
 contestsRouter.patch(
   '/api/contests/:contestID',
@@ -123,5 +123,5 @@ contestsRouter.patch(
 contestsRouter.delete('/api/contests/:contestID', deleteContest);
 
 export default contestsRouter;
-export { getAllContests, getContestById, createContest, updateContest, deleteContest };
+export { getAllContests, getContestByID, createContest, updateContest, deleteContest };
 

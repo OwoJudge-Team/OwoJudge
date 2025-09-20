@@ -32,11 +32,11 @@ const getNextBoxID = (): number => {
 }
 
 const cleanupBox = async (boxID: number) => {
-  // try {
-  //   await execAsync(`isolate --box-ID=${boxID} --cg --cleanup`);
-  // } catch (error) {
-  //   console.warn(`Failed to cleanup box ${boxID}:`, error);
-  // }
+  try {
+    await execAsync(`isolate --box-ID=${boxID} --cg --cleanup`);
+  } catch (error) {
+    console.warn(`Failed to cleanup box ${boxID}:`, error);
+  }
 }
 
 const compileChecker = async (problemDir: string, workDir: string): Promise<boolean> => {
@@ -75,7 +75,7 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
     `--full-env ` +
     `--run -- /bin/bash -c "if [ ! -f checker.exe ]; then make; fi"`;
 
-  console.log('Running checker compilation command:', isolateCommand);
+  console.log('Running checker compilation command for box ID:', boxID);
 
   try {
     await execAsync(isolateCommand, { timeout: 25000 });
@@ -128,7 +128,7 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
     `--full-env ` + // Allow full environment for compilation
     `--run -- /bin/bash -c "${boxCompileCommand}"`;
 
-  console.log('Running compilation command:', isolateCommand);
+  console.log('Running compilation command for box ID:', boxID);
 
   try {
     const { stdout } = await execAsync(isolateCommand, {
@@ -194,7 +194,7 @@ const runUserSolution = async (
     // `--full-env ` + // Allow full environment for execution
     `--run -- "${executeCommand}"`;
 
-  console.log('Running user solution command:', isolateCommand);
+  console.log('Running user solution command:', executeCommand);
 
   try {
     const { stdout } = await execAsync(isolateCommand, {
