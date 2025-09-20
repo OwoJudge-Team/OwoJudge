@@ -217,8 +217,8 @@ const runUserSolution = async (
 
   const baseResult = {
     testcase: path.basename(testcaseInput, '.in'),
-    time: parseFloat(meta['time'] || '0'),
-    memory: parseInt(meta['memory'] || '0', 10),
+    time: parseFloat(meta['time-wall'] || '0'),
+    memory: parseInt(meta['cg-mem'] || '0', 10),
     message: ''
   };
 
