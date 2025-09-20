@@ -25,17 +25,17 @@ const submitEvent = 'submit';
 let submissionQueue: Queue<ISubmission> = new Queue();
 let nextBoxIndex: number = 0;
 
-const getNextBoxId = (): number => {
+const getNextBoxID = (): number => {
   const result = nextBoxIndex;
   nextBoxIndex = (nextBoxIndex + 1) % 500;
   return result;
 }
 
-const cleanupBox = async (boxId: number) => {
+const cleanupBox = async (boxID: number) => {
   // try {
-  //   await execAsync(`isolate --box-id=${boxId} --cg --cleanup`);
+  //   await execAsync(`isolate --box-ID=${boxID} --cg --cleanup`);
   // } catch (error) {
-  //   console.warn(`Failed to cleanup box ${boxId}:`, error);
+  //   console.warn(`Failed to cleanup box ${boxID}:`, error);
   // }
 }
 
@@ -48,23 +48,23 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
     return false;
   }
 
-  const boxId = getNextBoxId();
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
+  const boxID = getNextBoxID();
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
   const boxDir = path.join(boxPath.trim(), 'box');
 
   // Copy entire checker directory to the box
   try {
     await execAsync(`cp -r ${checkerDir}/* ${boxDir}`);
   } catch (error) {
-    console.error(`Failed to copy checker directory to box ${boxId}:`, error);
-    await cleanupBox(boxId);
+    console.error(`Failed to copy checker directory to box ${boxID}:`, error);
+    await cleanupBox(boxID);
     return false;
   }
 
   const metaFile = path.join(workDir, 'checker-compile.meta');
   const compileErrorFile = 'checker-compile.error';
 
-  const isolateCommand = `isolate --box-id=${boxId} ` +
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
     `--cg ` +
     `--time=10 ` +
     `--processes=20 ` +
@@ -85,16 +85,16 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
       fs.copyFileSync(compiledCheckerPath, checkerExecutablePath);
       fs.chmodSync(checkerExecutablePath, 0o755);
       console.log(`[${workDir}] Checker compilation successful`);
-      await cleanupBox(boxId);
+      await cleanupBox(boxID);
       return true;
     } else {
       console.error(`[${workDir}] Checker compilation failed, executable not found.`);
-      await cleanupBox(boxId);
+      await cleanupBox(boxID);
       return false;
     }
   } catch (error) {
     console.error(`[${workDir}] Checker compilation failed:`, error);
-    await cleanupBox(boxId);
+    await cleanupBox(boxID);
     return false;
   }
 };
@@ -108,16 +108,16 @@ const writeUserSolution = (submission: ISubmission, dir: string) => {
 }
 
 const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<SubmissionStatus> => {
-  const boxId = getNextBoxId();
+  const boxID = getNextBoxID();
   const metaFile = path.join(workDir, 'compile.meta');
   const compileErrorFile = 'compile.error';
   const boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
 
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
   const boxDir = path.join(boxPath.trim(), 'box');
   writeUserSolution(submission, boxDir);
 
-  const isolateCommand = `isolate --box-id=${boxId} ` +
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
     `--cg ` +
     `--processes=20 ` +
     `--time=10 ` +
@@ -144,10 +144,10 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
     }
   } catch (error) {
     console.error(`[${workDir}] Compilation failed:`, error);
-    await cleanupBox(boxId);
+    await cleanupBox(boxID);
     return SubmissionStatus.CE;
   }
-  await cleanupBox(boxId);
+  await cleanupBox(boxID);
   return SubmissionStatus.QU;
 }
 
@@ -158,12 +158,12 @@ const runUserSolution = async (
   workDir: string,
   isCompiledLanguage: boolean
 ): Promise<TestCaseResult> => {
-  const boxId = getNextBoxId();
+  const boxID = getNextBoxID();
   const userOutputFile = path.join(workDir, 'user.out');
   const userErrorFile = path.join(workDir, 'user.error');
   const metaFile = path.join(workDir, 'run.meta');
 
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
   const boxDir = path.join(boxPath.trim(), 'box');
 
   if (isCompiledLanguage) {
@@ -181,7 +181,7 @@ const runUserSolution = async (
   }
 
   const executeCommand = languageSupport[submission.language as keyof typeof languageSupport].executeCommand;
-  const isolateCommand = `isolate --box-id=${boxId} ` +
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
     `--cg ` +
     `--processes=${problemMeta.processes + 1 + (isCompiledLanguage ? 0 : 2)} ` +
     `--time=${problemMeta.timeLimit} ` +
@@ -223,7 +223,7 @@ const runUserSolution = async (
   };
 
   if (meta.status) {
-    await cleanupBox(boxId);
+    await cleanupBox(boxID);
     switch (meta.status) {
       case 'TO':
         return { ...baseResult, status: SubmissionStatus.TLE };
@@ -243,7 +243,7 @@ const runUserSolution = async (
   const checkerPath = path.join(workDir, 'checker.exe');
   if (!fs.existsSync(checkerPath)) {
     console.error(`Checker not found for problem ${submission.problemID}`);
-    await cleanupBox(boxId);
+    await cleanupBox(boxID);
     return { ...baseResult, status: SubmissionStatus.SE };
   }
 
@@ -254,7 +254,7 @@ const runUserSolution = async (
     testcaseOutput,
     workDir
   );
-  await cleanupBox(boxId);
+  await cleanupBox(boxID);
   return { ...baseResult, status: checkerResult, message: checkerMessage };
 };
 
@@ -265,8 +265,8 @@ const runChecker = async (
   answerFile: string,
   workDir: string
 ): Promise<{ status: SubmissionStatus; message: string }> => {
-  const boxId = getNextBoxId();
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
+  const boxID = getNextBoxID();
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
   const boxDir = path.join(boxPath.trim(), 'box');
 
   fs.copyFileSync(checkerPath, path.join(boxDir, 'checker'));
@@ -280,7 +280,7 @@ const runChecker = async (
   const checkerOutputFile = `checker-${baseName}.out`;
   const checkerErrorFile = `checker-${baseName}.err`;
 
-  const isolateCommand = `isolate --box-id=${boxId} ` +
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
     `--cg ` +
     `--time=10 ` +
     `--wall-time=20 ` +
@@ -297,7 +297,7 @@ const runChecker = async (
     const message = fs.readFileSync(path.join(boxDir, path.basename(checkerErrorFile)), 'utf-8').trim();
     fs.copyFileSync(path.join(boxDir, path.basename(checkerOutputFile)), path.join(workDir, path.basename(checkerOutputFile)));
     fs.copyFileSync(path.join(boxDir, path.basename(checkerErrorFile)), path.join(workDir, path.basename(checkerErrorFile)));
-    await cleanupBox(boxId);
+    await cleanupBox(boxID);
     const scoreStr = fs.readFileSync(path.join(workDir, path.basename(checkerOutputFile)), 'utf-8').trim();
     const score = parseFloat(scoreStr);
     if (!isNaN(score) && score === 0) {
@@ -317,9 +317,9 @@ const runAllTests = async (
   workDir: string,
   isCompiledLanguage: boolean
 ): Promise<{ finalStatus: SubmissionStatus, score: number, testCaseResults: TestCaseResult[] }> => {
-  const problemId = submission.problemID;
-  const problemMeta = await Problem.findOne({ problemId });
-  const problemDir = path.join('problems', problemId);
+  const problemID = submission.problemID;
+  const problemMeta = await Problem.findOne({ problemID });
+  const problemDir = path.join('problems', problemID);
 
   const checkerCompiled = await compileChecker(problemDir, workDir);
   if (!checkerCompiled) {
@@ -415,7 +415,7 @@ const runAllTests = async (
   if (totalScore === 0 && finalStatus === SubmissionStatus.AC) {
     // This can happen if there are no test cases or subtasks, or if all test cases passed but total score is 0.
     // If there were any non-AC results, finalStatus would have been updated.
-    // If all were AC but score is 0, we need to decide what to show. Let's check if any test ran.
+    // If all were AC but score is 0, we need to decIDe what to show. Let's check if any test ran.
     if (testCaseResults.length > 0 && testCaseResults.every(r => r.status === SubmissionStatus.AC)) {
       finalStatus = SubmissionStatus.AC;
     } else if (testCaseResults.length > 0) {
@@ -451,8 +451,8 @@ const setupWorkingDirectory = async (workDir: string): Promise<void> => {
 const worker = async () => {
   try {
     const submission: ISubmission = submissionQueue.dequeue();
-    const submissionId: string = hashString(submission.username + submission.createdTime);
-    const workDir: string = '/tmp/judge/' + submissionId
+    const submissionID: string = hashString(submission.username + submission.createdTime);
+    const workDir: string = '/tmp/judge/' + submissionID
     await setupWorkingDirectory(workDir);
     try {
       const langConfig = languageSupport[submission.language as keyof typeof languageSupport];
@@ -481,7 +481,7 @@ const worker = async () => {
     }
   } catch (error) {
     if (error instanceof Error && error.message === 'Queue is empty') {
-      // Ignore, just means worker is idle
+      // Ignore, just means worker is IDle
     } else {
       console.error('Unexpected error in worker:', error);
     }
