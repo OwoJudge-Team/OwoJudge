@@ -38,14 +38,14 @@ interface ISubmission extends Document {
 }
 
 const submissionSchema = new Schema<ISubmission>({
-  serialNumber: { type: Number, unique: true, index: true, auto: true },
-  problemID: { type: String, required: true },
-  username: { type: String, required: true },
-  language: { type: String, required: true },
+  serialNumber: { type: Schema.Types.Number, unique: true, auto: true },
+  problemID: { type: Schema.Types.String, required: true },
+  username: { type: Schema.Types.String, required: true },
+  language: { type: Schema.Types.String, required: true },
   userSolution: [userSolutionSchema],
-  status: { type: String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
-  createdTime: { type: Date, default: Date.now },
-  score: { type: Number, default: 0 },
+  status: { type: Schema.Types.String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
+  createdTime: { type: Schema.Types.Date, default: Date.now },
+  score: { type: Schema.Types.Number, default: 0 },
   results: [testCaseResultSchema],
 });
 
