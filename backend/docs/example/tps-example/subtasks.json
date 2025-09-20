@@ -3,12 +3,12 @@
     "subtasks": {
         "samples": {
             "index": 0,
-            "score": 0,
+            "score": 1,
             "validators": []
         },
         "full": {
             "index": 1,
-            "score": 6,
+            "score": 99,
             "validators": []
         }
     }
