@@ -26,6 +26,7 @@ const testCaseResultSchema = new Schema<ITestCaseResult>({
 }, { _id: false });
 
 interface ISubmission extends Document {
+  serialNumber: number;
   problemID: string;
   username: string;
   language: string;
@@ -37,6 +38,7 @@ interface ISubmission extends Document {
 }
 
 const submissionSchema = new Schema<ISubmission>({
+  serialNumber: { type: Number, unique: true, index: true, auto: true },
   problemID: { type: String, required: true },
   username: { type: String, required: true },
   language: { type: String, required: true },

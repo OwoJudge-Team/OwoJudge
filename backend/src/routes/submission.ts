@@ -36,14 +36,6 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
   const data: Partial<ISubmission> = matchedData(request);
   const newSubmission: ISubmission = new Submission(data);
   try {
-    newSubmission.createdTime = new Date();
-    newSubmission.status = 'pending';
-    newSubmission.result = {
-      score: -1,
-      maxTime: -1,
-      maxMemory: -1,
-      individual: []
-    };
     const savedSubmission: ISubmission = await newSubmission.save();
     response.status(201).send(savedSubmission);
   } catch (error: unknown) {
