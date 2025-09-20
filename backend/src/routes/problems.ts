@@ -38,7 +38,7 @@ const upload = multer({
 const getProblems = async (request: IRequest, response: Response) => {
   try {
     const problems: IProblem[] = await Problem.find()
-      .select('id displayID title createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
+      .select('id problemID title createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
       .sort({ createdTime: -1 });
     response.status(200).send(problems);
   } catch (error) {
@@ -53,15 +53,15 @@ const getProblemById = async (request: IRequest, response: Response) => {
     response.status(401).send('Please login first');
     return;
   }
-  const { displayID } = request.params;
+  const { problemID } = request.params;
   try {
-    const problem: IProblem | null = await Problem.findOne({ displayID });
+    const problem: IProblem | null = await Problem.findOne({ problemID });
     if (!problem) {
       response.sendStatus(404);
       return;
     }
     
-    const problemDir = 'problems/' + displayID;
+    const problemDir = 'problems/' + problemID;
     const metadataPath = `${problemDir}/metadata.json`;
     
     try {
@@ -200,15 +200,15 @@ const deleteProblem = async (request: IRequest, response: Response) => {
     response.status(401).send('Please login as an admin first');
     return;
   }
-  const { displayID } = request.params;
+  const { problemID } = request.params;
   try {
-    const problem: IProblem | null = await Problem.findOne({ displayID });
+    const problem: IProblem | null = await Problem.findOne({ problemID });
     if (!problem) {
       response.sendStatus(404);
       return;
     }
     
-    const fileName = problem.displayID;
+    const fileName = problem.problemID;
     const problemDir = 'problems/' + fileName;
     const tarFilePath = 'problems/' + fileName + '.tar.gz';
     
@@ -221,7 +221,7 @@ const deleteProblem = async (request: IRequest, response: Response) => {
     } catch (fsError) {
       console.error('Error deleting problem files:', fsError);
     }
-    await Problem.findOneAndDelete({ displayID });
+    await Problem.findOneAndDelete({ problemID });
     response.status(200).send(problem);
   } catch (error) {
     console.log(error);
@@ -234,7 +234,7 @@ const updateProblem = async (request: IRequest, response: Response) => {
     response.status(401).send('Please login first');
     return;
   }
-  const { displayID } = request.params;
+  const { problemID } = request.params;
   const data = matchedData(request);
   console.log(data);
   try {
@@ -244,11 +244,12 @@ const updateProblem = async (request: IRequest, response: Response) => {
         error: validationResult(request).array()
       };
     }
-    let problem: IProblem | null = await Problem.findOneAndUpdate({ displayID }, data);
+    let problem: IProblem | null = await Problem.findOneAndUpdate({ problemID }, data);
     if (!problem) {
       response.sendStatus(404);
+      return;
     }
-    problem = await Problem.findOne({ displayID }).select('id displayID title createdTime');
+    problem = await Problem.findOne({ problemID }).select('id problemID title createdTime');
     response.status(201).send(problem);
   } catch (error) {
     console.log(error);
@@ -262,7 +263,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
     response.status(401).send('Please login as an admin first');
     return;
   }
-  const { displayID } = request.params;
+  const { problemID } = request.params;
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send('No file uploaded');
@@ -271,13 +272,13 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
   
   try {
     // First check if the problem exists
-    const existingProblem: IProblem | null = await Problem.findOne({ displayID });
+    const existingProblem: IProblem | null = await Problem.findOne({ problemID });
     if (!existingProblem) {
       response.status(404).send('Problem not found');
       return;
     }
 
-    console.log(`Updating problem: ${displayID}`);
+    console.log(`Updating problem: ${problemID}`);
     const file = readFileSync(filePath as string);
     // Check if the file is a tar.gz file
     if (!isTarGz(file)) {
@@ -290,8 +291,8 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
     
     // Delete the old problem directory and tar.gz file if they exist
     try {
-      const problemDir = 'problems/' + existingProblem.displayID;
-      const oldTarFilePath = 'problems/' + existingProblem.displayID + '.tar.gz';
+      const problemDir = 'problems/' + existingProblem.problemID;
+      const oldTarFilePath = 'problems/' + existingProblem.problemID + '.tar.gz';
       
       if (problemDir.indexOf('..') !== -1 || oldTarFilePath.indexOf('..') !== -1) {
         throw new Error('Invalid file path');
@@ -313,7 +314,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
       cwd: 'problems/'
     });
 
-    const problemDir = 'problems/' + displayID;
+    const problemDir = 'problems/' + problemID;
     const metadataPath = `${problemDir}/metadata.json`;
     
     try {
@@ -321,7 +322,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
       const metadata = JSON.parse(metadataContent);
       
       // Update the problem in the database
-      const updatedProblem = await Problem.findOneAndUpdate({ displayID }, {
+      const updatedProblem = await Problem.findOneAndUpdate({ problemID }, {
         title: metadata.title,
         timeLimit: metadata.timeLimit,
         memoryLimit: metadata.memoryLimit,
@@ -340,7 +341,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
         return;
       }
       
-      console.log(`Problem ${displayID} updated successfully`);
+      console.log(`Problem ${problemID} updated successfully`);
       response.status(200).send(updatedProblem);
     } catch (error) {
       console.error('Error reading or parsing metadata.json:', error);
@@ -353,7 +354,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 };
 
 problemsRouter.get('/api/problems', getProblems);
-problemsRouter.get('/api/problems/:displayID', getProblemById);
+problemsRouter.get('/api/problems/:problemID', getProblemById);
 
 problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
@@ -368,10 +369,10 @@ problemsRouter.post('/api/problems', (request: IRequest, response: Response, nex
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:displayID', deleteProblem);
-problemsRouter.patch('/api/problems/:displayID', checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.delete('/api/problems/:problemID', deleteProblem);
+problemsRouter.patch('/api/problems/:problemID', checkSchema(updateProblemValidation), updateProblem);
 
-problemsRouter.put('/api/problems/:displayID', (request: IRequest, response: Response, next) => {
+problemsRouter.put('/api/problems/:problemID', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);

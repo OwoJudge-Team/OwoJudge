@@ -46,7 +46,7 @@ Structure of different types of data.
 ```js
 {
     "_id": String,
-    "displayID": String,
+    "problemID": String,
     "createdTime": Date,
     "title": String,
     "description": String,
@@ -143,9 +143,9 @@ Structure of different types of data.
         ```
         Get all problems from database. 
         ```
-    - GET /api/problems/:displayID
+    - GET /api/problems/:problemID
         ```
-        Get all field of a problem with displayID.
+        Get all field of a problem with problemID.
         ```
     - POST /api/problems
         ```
@@ -153,7 +153,7 @@ Structure of different types of data.
         
         Example:
         request.body = {
-            "displayID": "hello world",
+            "problemID": "hello-world",
             "title": "Hello World",
             "description": "Print `Hello World` on the screen.",
             "inputFormat": "No input",
@@ -171,11 +171,11 @@ Structure of different types of data.
             ]
         }
         ```
-    - DELETE /api/problems/:displayID
+    - DELETE /api/problems/:problemID
         ```
-        Delete the problem with displayID.
+        Delete the problem with problemID.
         ```
-    - PATCH /api/problems/:displayID
+    - PATCH /api/problems/:problemID
         ```
         Update the problem with data specified in request body.
 

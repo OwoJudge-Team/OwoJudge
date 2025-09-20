@@ -12,11 +12,15 @@ interface ITestcase {
 }
 
 interface IProblem extends Document {
-  displayID: string;
+  problemID: string;
   createdTime: Date;
   title: string;
   timeLimit: number;
   memoryLimit: number;
+  processes: number;
+  fullScore: number;
+  description: string;
+  inputDescription: string;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
   tags?: string[];
@@ -38,7 +42,7 @@ interface IProblem extends Document {
 }
 
 const problemSchema: Schema = new mongoose.Schema({
-  displayID: {
+  problemID: {
     type: mongoose.Schema.Types.String,
     required: true,
     unique: true
@@ -57,6 +61,23 @@ const problemSchema: Schema = new mongoose.Schema({
   },
   memoryLimit: {
     type: mongoose.Schema.Types.Number,
+    required: true
+  },
+  processes: {
+    type: mongoose.Schema.Types.Number,
+    required: true,
+    default: 1
+  },
+  fullScore: {
+    type: mongoose.Schema.Types.Number,
+    required: true
+  },
+  description: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+  inputDescription: {
+    type: mongoose.Schema.Types.String,
     required: true
   },
   scorePolicy: {
