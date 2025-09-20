@@ -207,7 +207,7 @@ const runUserSolution = async (
   metaContent.split('\n').forEach(line => {
     const parts = line.split(':');
     if (parts.length === 2) {
-      meta[parts[0]] = parts[1];
+      meta[parts[0]] = parts[1].trim();
     }
   });
 
@@ -233,7 +233,6 @@ const runUserSolution = async (
   }
 
   const checkerPath = path.join(workDir, 'checker.exe');
-
   if (!fs.existsSync(checkerPath)) {
     console.error(`Checker not found for problem ${submission.problemID}`);
     await cleanupBox(boxId);
@@ -263,8 +262,8 @@ const runChecker = async (
   fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
 
   const metaFile = path.join(workDir, `checker-${path.basename(inputFile)}.meta`);
-  const checkerOutputFile = path.join(workDir, `checker-${path.basename(inputFile)}.out`);
-  const checkerErrorFile = path.join(workDir, `checker-${path.basename(inputFile)}.err`);
+  const checkerOutputFile = path.join(boxDir, `checker-${path.basename(inputFile)}.out`);
+  const checkerErrorFile = path.join(boxDir, `checker-${path.basename(inputFile)}.err`);
 
   const isolateCommand = `isolate --box-id=${boxId} ` +
     `--cg ` +
@@ -280,9 +279,13 @@ const runChecker = async (
 
   try {
     await execAsync(isolateCommand, { timeout: 25000 });
+    fs.copyFileSync(checkerOutputFile, path.join(workDir, path.basename(checkerOutputFile)));
+    fs.copyFileSync(checkerErrorFile, path.join(workDir, path.basename(checkerErrorFile)));
     await cleanupBox(boxId);
     return SubmissionStatus.AC;
   } catch (error: any) {
+    fs.copyFileSync(checkerOutputFile, path.join(workDir, path.basename(checkerOutputFile)));
+    fs.copyFileSync(checkerErrorFile, path.join(workDir, path.basename(checkerErrorFile)));
     await cleanupBox(boxId);
     switch (error.code) {
       case 1: // WA
@@ -299,7 +302,11 @@ const runChecker = async (
   }
 };
 
-const runAllTests = async (submission: ISubmission, workDir: string, isCompiledLanguage: boolean): Promise<{ finalStatus: SubmissionStatus, score: number, testCaseResults: TestCaseResult[] }> => {
+const runAllTests = async (
+  submission: ISubmission,
+  workDir: string,
+  isCompiledLanguage: boolean
+): Promise<{ finalStatus: SubmissionStatus, score: number, testCaseResults: TestCaseResult[] }> => {
   const problemId = submission.problemID;
   const problemMeta = await Problem.findOne({ problemId });
   const problemDir = path.join('problems', problemId);
@@ -410,7 +417,6 @@ const runAllTests = async (submission: ISubmission, workDir: string, isCompiledL
   } else if (totalScore > 0 && totalScore < (problemMeta?.fullScore || 100)) {
     finalStatus = SubmissionStatus.PS;
   }
-
 
   return { finalStatus, score: totalScore, testCaseResults };
 }
