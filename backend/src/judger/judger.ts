@@ -340,7 +340,7 @@ const runAllTests = async (
     fs.accessSync(testcasesConfigPath, fs.constants.R_OK);
   } catch (error) {
     try {
-      await execAsync('tps gen', { cwd: problemDir, timeout: 3600 });
+      await execAsync('tps gen', { cwd: problemDir, timeout: 3600000 });
     } catch (genError) {
       console.error(`Failed to generate testcases in ${problemDir}:`, genError);
       return { finalStatus: SubmissionStatus.SE, score: 0, testCaseResults: [] };
