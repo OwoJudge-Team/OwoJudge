@@ -24,7 +24,9 @@ The OwoJudge backend uses an automated system to compile and run user-submitted 
 
 7. **Output Comparison**: The output of the user's program is compared with the expected output for each test case. A custom checker can be used for problems that have multiple correct outputs.
 
-8. **Result Update**: The status of the submission is updated in the database based on the results of the test cases.
+8. **Rich Feedback**: The system supports custom checkers that can provide detailed feedback for each test case. The checker can output a message that will be displayed to the user, offering more insight than a simple "Wrong Answer" verdict.
+
+9. **Result Update**: The status of the submission is updated in the database based on the results of the test cases.
 
 ## Isolate
 

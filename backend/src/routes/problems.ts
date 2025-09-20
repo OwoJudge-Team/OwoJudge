@@ -9,8 +9,22 @@ import { readFileSync } from 'fs';
 import * as tar from 'tar';
 import { spawnSync } from 'child_process';
 import { isTarGz } from '../utils/file-utils';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { generateSingleTestcase } from '../utils/generate-testcase';
+import * as fs from 'fs';
+import * as path from 'path';
 
+const execAsync = promisify(exec);
 const problemsRouter = Router();
+
+const userRequestCounts = new Map<string, Map<string, number>>();
+const generatedTestcasesPath = 'generated_testcases';
+
+// Ensure the base directory for generated testcases exists
+if (!fs.existsSync(generatedTestcasesPath)) {
+  fs.mkdirSync(generatedTestcasesPath, { recursive: true });
+}
 
 // Set up multer directly in the problems router
 const storage = multer.diskStorage({
@@ -365,8 +379,68 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
   }
 };
 
+const generateTestcase = async (request: IRequest, response: Response) => {
+  const user = request.user as IUser;
+  if (!request.isAuthenticated() || !user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+
+  const { problemID, testcaseName } = request.params;
+  const cacheKey = `${problemID}-${testcaseName}`;
+  const userId = user.id.toString();
+  const testcaseSetPath = path.join(generatedTestcasesPath, problemID, testcaseName);
+
+  try {
+    // Ensure directories exist
+    fs.mkdirSync(testcaseSetPath, { recursive: true });
+    if (!userRequestCounts.has(userId)) {
+      userRequestCounts.set(userId, new Map());
+    }
+
+    const userCounts = userRequestCounts.get(userId)!;
+    const currentRequestCount = userCounts.get(cacheKey) || 0;
+
+    const existingTestcasesCount = fs.readdirSync(testcaseSetPath).length;
+
+    // Determine if a new testcase needs to be generated
+    let shouldGenerateNew = true;
+    if (existingTestcasesCount > 0) {
+      const maxRequestsByAnyUser = Math.max(
+        0,
+        ...Array.from(userRequestCounts.values()).map((counts) => counts.get(cacheKey) || 0)
+      );
+      if (currentRequestCount < maxRequestsByAnyUser) {
+        shouldGenerateNew = false;
+      }
+    }
+
+    let output: string;
+    if (shouldGenerateNew) {
+      // Generate a new testcase and save it to disk
+      output = await generateSingleTestcase(problemID, testcaseName);
+      const newTestcasePath = path.join(testcaseSetPath, `${existingTestcasesCount}.in`);
+      fs.writeFileSync(newTestcasePath, output);
+    } else {
+      // Get the testcase corresponding to the user's request count from disk
+      const testcaseToReadPath = path.join(testcaseSetPath, `${currentRequestCount}.in`);
+      output = fs.readFileSync(testcaseToReadPath, 'utf-8');
+    }
+
+    // Increment the user's request count for this specific testcase
+    userCounts.set(cacheKey, currentRequestCount + 1);
+
+    response.setHeader('Content-Type', 'text/plain');
+    response.status(200).send(output);
+  } catch (error) {
+    console.error(`Error generating testcase for ${problemID} - ${testcaseName}:`, error);
+    response.status(500).send(`Failed to generate testcase: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
+  }
+};
+
 problemsRouter.get('/api/problems', getProblems);
 problemsRouter.get('/api/problems/:problemID', getProblemById);
+problemsRouter.get('/api/problems/:problemID/testcases/:testcaseName', generateTestcase);
 
 problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
@@ -398,4 +472,12 @@ problemsRouter.put('/api/problems/:problemID', (request: IRequest, response: Res
 }, updateProblemWithFile);
 
 export default problemsRouter;
-export { getProblems, getProblemById, createProblem, deleteProblem, updateProblem, updateProblemWithFile };
+export {
+  getProblems,
+  getProblemById,
+  createProblem,
+  deleteProblem,
+  updateProblem,
+  updateProblemWithFile,
+  generateTestcase
+};
