@@ -1,1 +1,0 @@
-Output a single integer representing the sum of A and B.

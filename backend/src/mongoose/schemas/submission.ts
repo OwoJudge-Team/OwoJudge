@@ -1,73 +1,54 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
+import { SubmissionStatus } from '../../utils/submission-status';
 
 interface IUserSolution {
   filename: string;
   content: string;
 }
 
-interface IIndividualResult {
-  status: string;
+const userSolutionSchema = new Schema<IUserSolution>({
+  filename: { type: String, required: true },
+  content: { type: String, required: true },
+}, { _id: false });
+
+interface ITestCaseResult {
+  testcase: string;
+  status: SubmissionStatus;
   time: number;
   memory: number;
 }
 
-interface IResult {
-  score: number;
-  maxTime: number;
-  maxMemory: number;
-  individual: IIndividualResult[];
-}
+const testCaseResultSchema = new Schema<ITestCaseResult>({
+  testcase: { type: String, required: true },
+  status: { type: String, enum: Object.values(SubmissionStatus), required: true },
+  time: { type: Number, required: true },
+  memory: { type: Number, required: true },
+}, { _id: false });
 
 interface ISubmission extends Document {
-  createdTime: Date;
-  status: string;
-  language: string;
-  username: string;
+  serialNumber: number;
   problemID: string;
+  username: string;
+  language: string;
   userSolution: IUserSolution[];
-  result: IResult;
+  status: SubmissionStatus;
+  createdTime: Date;
+  score?: number;
+  results?: ITestCaseResult[];
 }
 
-const submissionSchema: Schema = new mongoose.Schema({
-  createdTime: {
-    type: mongoose.Schema.Types.Date,
-    required: true
-  },
-  status: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  language: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  username: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  problemID: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  userSolution: [
-    {
-      filename: mongoose.Schema.Types.String,
-      content: mongoose.Schema.Types.String
-    }
-  ],
-  result: {
-    score: mongoose.Schema.Types.Number,
-    maxTime: mongoose.Schema.Types.Number,
-    maxMemory: mongoose.Schema.Types.Number,
-    individual: [
-      {
-        status: mongoose.Schema.Types.String,
-        time: mongoose.Schema.Types.Number,
-        memory: mongoose.Schema.Types.Number
-      }
-    ]
-  }
+const submissionSchema = new Schema<ISubmission>({
+  serialNumber: { type: Schema.Types.Number, unique: true, auto: true },
+  problemID: { type: Schema.Types.String, required: true },
+  username: { type: Schema.Types.String, required: true },
+  language: { type: Schema.Types.String, required: true },
+  userSolution: [userSolutionSchema],
+  status: { type: Schema.Types.String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
+  createdTime: { type: Schema.Types.Date, default: Date.now },
+  score: { type: Schema.Types.Number, default: 0 },
+  results: [testCaseResultSchema],
 });
 
-export const Submission = mongoose.model<ISubmission>('Submission', submissionSchema);
-export { IUserSolution, IIndividualResult, IResult, ISubmission };
+const Submission = model<ISubmission>('Submission', submissionSchema);
+
+export { Submission, ISubmission, IUserSolution, ITestCaseResult };
