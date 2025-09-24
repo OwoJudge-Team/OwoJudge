@@ -373,7 +373,14 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
   } catch (error) {
     console.log(error);
     // Cleanup uploaded and extracted files on error
-    if (newProblemDir.indexOf('..') === -1 && targetPath.indexOf('..') === -1) {
+    // Prevent directory traversal by ensuring paths are within the 'problems' directory
+    const problemsBaseDir = path.resolve('problems');
+    const absNewProblemDir = path.resolve(newProblemDir);
+    const absTargetPath = path.resolve(targetPath);
+    if (
+      absNewProblemDir.startsWith(problemsBaseDir + path.sep) &&
+      absTargetPath.startsWith(problemsBaseDir + path.sep)
+    ) {
       spawnSync('rm', ['-rf', newProblemDir]);
       spawnSync('rm', ['-f', targetPath]);
     }
