@@ -415,7 +415,7 @@ const runAllTests = async (
   if (totalScore === 0 && finalStatus === SubmissionStatus.AC) {
     // This can happen if there are no test cases or subtasks, or if all test cases passed but total score is 0.
     // If there were any non-AC results, finalStatus would have been updated.
-    // If all were AC but score is 0, we need to decIDe what to show. Let's check if any test ran.
+    // If all were AC but score is 0, we need to decide what to show. Let's check if any test ran.
     if (testCaseResults.length > 0 && testCaseResults.every(r => r.status === SubmissionStatus.AC)) {
       finalStatus = SubmissionStatus.AC;
     } else if (testCaseResults.length > 0) {
