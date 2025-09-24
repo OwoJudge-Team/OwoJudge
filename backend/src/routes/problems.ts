@@ -315,7 +315,13 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
     // Clean up old files
     const oldProblemDir = 'problems/' + existingProblem.problemID;
     const oldTarFilePath = 'problems/' + existingProblem.problemID + '.tar.gz';
-    if (oldProblemDir.indexOf('..') === -1 && oldTarFilePath.indexOf('..') === -1) {
+    const problemsBaseDir = path.resolve('problems');
+    const resolvedOldProblemDir = path.resolve(oldProblemDir);
+    const resolvedOldTarFilePath = path.resolve(oldTarFilePath);
+    if (
+      resolvedOldProblemDir.startsWith(problemsBaseDir + path.sep) &&
+      resolvedOldTarFilePath.startsWith(problemsBaseDir + path.sep)
+    ) {
       spawnSync('rm', ['-rf', oldProblemDir]);
       spawnSync('rm', ['-f', oldTarFilePath]);
     }
