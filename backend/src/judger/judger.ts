@@ -481,7 +481,7 @@ const worker = async () => {
     }
   } catch (error) {
     if (error instanceof Error && error.message === 'Queue is empty') {
-      // Ignore, just means worker is IDle
+      // Ignore, just means worker is idle
     } else {
       console.error('Unexpected error in worker:', error);
     }
