@@ -7,8 +7,10 @@ const execAsync = promisify(exec);
 
 export const generateSingleTestcase = async (problemID: string, testcaseName: string): Promise<string> => {
   // Sanitize inputs to prevent directory traversal and command injection
-  if (problemID.includes('..') || testcaseName.match(/[\s;&|`$()<>]/)) {
-    throw new Error('Invalid characters in problemID or testcaseName');
+  // Whitelist: only allow alphanumeric, hyphens, and underscores
+  const validNameRegex = /^[a-zA-Z0-9_-]+$/;
+  if (!validNameRegex.test(problemID) || !validNameRegex.test(testcaseName)) {
+    throw new Error('Invalid characters in problemID or testcaseName. Only alphanumeric characters, hyphens, and underscores are allowed.');
   }
 
   const problemDir = path.resolve('problems', problemID);
