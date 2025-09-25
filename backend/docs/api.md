@@ -120,6 +120,47 @@ Deletes a problem and its associated files.
 
 -   **Authentication:** Admin only.
 
+### `GET /api/problems/:problemID/allowed-languages`
+
+Retrieves the list of programming languages allowed for submissions to a specific problem.
+
+-   **Authentication:** Required.
+-   **Parameters:**
+    -   `problemID` (string): The unique identifier of the problem.
+-   **Response:** Array of allowed language identifiers.
+-   **Example Response:**
+    ```json
+    [
+        "gcc c17",
+        "gcc c23",
+        "g++ c++17", 
+        "g++ c++23",
+        "rust",
+        "nodejs",
+        "python3",
+        "bash"
+    ]
+    ```
+-   **Status Codes:**
+    -   `200 OK`: Successfully retrieved allowed languages.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `404 Not Found`: Problem with given ID does not exist.
+    -   `500 Internal Server Error`: Failed to read problem metadata.
+
+### `GET /api/problems/:problemID/testcases/:testcaseName`
+
+Generates or retrieves a test case for a specific problem.
+
+-   **Authentication:** Required.
+-   **Parameters:**
+    -   `problemID` (string): The unique identifier of the problem.
+    -   `testcaseName` (string): The name of the test case to generate.
+-   **Response:** Plain text test case input.
+-   **Status Codes:**
+    -   `200 OK`: Successfully generated/retrieved test case.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `500 Internal Server Error`: Failed to generate test case.
+
 ## Submissions
 
 Endpoints for managing code submissions.
