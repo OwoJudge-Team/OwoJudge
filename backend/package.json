@@ -29,7 +29,6 @@
     "express-validator": "^7.2.1",
     "file-type": "^20.4.1",
     "mongoose": "^8.12.1",
-    "mongoose-id-autoincrement": "^1.0.5",
     "multer": "^1.4.5-lts.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",

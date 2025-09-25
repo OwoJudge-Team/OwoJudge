@@ -1,6 +1,5 @@
 import mongoose, { Schema, model, Document } from 'mongoose';
 import { SubmissionStatus } from '../../utils/submission-status';
-import autoIncrement from 'mongoose-id-autoincrement';
 
 interface IUserSolution {
   filename: string;
@@ -52,12 +51,29 @@ const submissionSchema = new Schema<ISubmission>({
   results: [testCaseResultSchema],
 });
 
-autoIncrement.initialize(mongoose.connection);
-submissionSchema.plugin(autoIncrement.plugin, {
-  field: 'serialNumber',
-  incrementBy: 1,
-  startAt: 1000000,
-  unique: true,
+// Auto-increment serialNumber using pre-save hook
+submissionSchema.pre('save', async function(next) {
+  if (this.isNew && !this.serialNumber) {
+    try {
+      // Find the highest existing serialNumber
+      const lastSubmission = await mongoose.model('Submission').findOne(
+        {}, 
+        { serialNumber: 1 }, 
+        { sort: { serialNumber: -1 } }
+      );
+      
+      // Set serialNumber starting from 1000000
+      this.serialNumber = lastSubmission?.serialNumber 
+        ? lastSubmission.serialNumber + 1 
+        : 1000000;
+      
+      next();
+    } catch (error) {
+      next(error as Error);
+    }
+  } else {
+    next();
+  }
 });
 
 const Submission = model<ISubmission>('Submission', submissionSchema);
