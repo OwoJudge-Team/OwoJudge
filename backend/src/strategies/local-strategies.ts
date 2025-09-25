@@ -21,17 +21,18 @@ passport.deserializeUser(async (id: string, done: (err: any, user?: IUser | null
 });
 
 export default (passport as PassportStatic).use(
-  new Strategy(async (username: string, password: string, done: (err: any, user?: any | null) => void) => {
+  new Strategy(async (username: string, password: string, done: (err: any, user?: any | null, info?: any) => void) => {
     try {
       const findUser = await User.findOne({ username }).exec();
       if (!findUser) {
-        throw new Error('User not found');
+        return done(null, false, { message: 'User not found' });
       }
       if (!stringMatch(password, findUser.password)) {
-        throw new Error('Password incorrect');
+        return done(null, false, { message: 'Incorrect password' });
       }
       done(null, findUser);
     } catch (error) {
+      // Only call done with error for actual server errors (database issues, etc.)
       done(error, null);
     }
   })

@@ -66,6 +66,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Build TypeScript to JavaScript
+RUN npm run build
+
 # Create uploads directory if it doesn't exist
 RUN mkdir -p uploads problems user-solutions
 

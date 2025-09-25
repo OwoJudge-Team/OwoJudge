@@ -69,4 +69,4 @@ fi
 
 # Start the application
 echo "Starting application as root..."
-exec npm start
+exec npm run start:prod
