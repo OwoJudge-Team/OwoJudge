@@ -18,8 +18,8 @@ const ProblemPage: React.FC = () => {
                 <th className='py-4 px-6'>#</th>
                 <th className='py-4 px-6'>Title</th>
                 <th className='py-4 px-6'>Difficulty</th>
-                <th className='py-4 px-6'>Submissions</th>
-                <th className='py-4 px-6'>Accuracy</th>
+                <th className='py-4 px-6'>AC Ratio (User)</th>
+                <th className='py-4 px-6'>AC Ratio (Submission)</th>
               </tr>
             </thead>
             <tbody>

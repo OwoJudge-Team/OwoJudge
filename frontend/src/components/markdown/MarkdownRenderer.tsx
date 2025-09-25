@@ -10,7 +10,6 @@ interface MarkdownRendererProps {
   content: string;
 }
 
-// Basic renderer for now; can extend with syntax highlighting later
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <div className="prose prose-slate max-w-none dark:prose-invert">

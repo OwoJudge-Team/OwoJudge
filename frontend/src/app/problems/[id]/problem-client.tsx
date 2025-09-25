@@ -14,14 +14,15 @@ export default function ProblemClient({ displayID }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const submitUrl = base ? `${base}/api/submissions` : `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/submissions`;
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setMessage(null);
     setError(null);
     try {
-      const res = await fetch(`${backend}/api/submissions`, {
+      const res = await fetch(submitUrl, {
         method: "POST",
         credentials: "include",
         headers: {

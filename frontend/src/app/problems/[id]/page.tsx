@@ -19,7 +19,9 @@ interface ProblemData {
 
 async function fetchProblem(id: string): Promise<ProblemData | null> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000"}/api/problems/${id}`, {
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const url = base ? `${base}/api/problems/${id}` : `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/problems/${id}`;
+    const res = await fetch(url, {
       cache: "no-store",
       credentials: "include",
     });
@@ -36,38 +38,30 @@ export default async function ProblemPage({ params }: { params: { id: string } }
     return <div className="p-6">Problem not found or you must login.</div>;
   }
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">
-          {data.displayID}. {data.title}
-        </h1>
-        <div className="text-sm text-gray-500 mt-1 flex flex-wrap gap-4">
-          <span>Time Limit: {data.timeLimit} ms</span>
-          <span>Memory Limit: {data.memoryLimit} KB</span>
-          <span>Score Policy: {data.scorePolicy}</span>
-          {data.tags && data.tags.length > 0 && <span>Tags: {data.tags.join(", ")}</span>}
-        </div>
-      </div>
-      {data.description && (
-        <section>
-          <MarkdownRenderer content={data.description} />
-        </section>
-      )}
-      {data.sampleTestcases && data.sampleTestcases.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold mb-2">Sample Testcases</h2>
-          <div className="space-y-3">
-            {data.sampleTestcases.map((t, i) => (
-              <div key={i} className="border rounded p-3 bg-gray-50">
-                <div className="text-xs text-gray-600 mb-1">{t.subtask}</div>
-                <div className="font-mono text-sm">{t.filename}</div>
-                <div className="text-xs text-gray-500">Point: {t.point}</div>
-              </div>
-            ))}
+    <div className="bg-neutral-light min-h-screen p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Title */}
+        <div className="mb-8 border-b-2 border-gray-200 pb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            {data.displayID}. {data.title}
+          </h1>
+          <div className="text-sm text-gray-500 flex flex-wrap gap-4">
+            <span>Time Limit: {data.timeLimit} ms</span>
+            <span>Memory Limit: {data.memoryLimit} KB</span>
+            <span>Score Policy: {data.scorePolicy}</span>
+            {data.tags && data.tags.length > 0 && <span>Tags: {data.tags.join(", ")}</span>}
           </div>
-        </section>
-      )}
-      <ProblemClient displayID={data.displayID} />
+        </div>
+
+        {/* Intro Section */}
+        {data.description && (
+          <section className="bg-white shadow-lg rounded-lg p-8 mb-8">
+            <MarkdownRenderer content={data.description} />
+          </section>
+        )}
+
+        <ProblemClient displayID={data.displayID} />
+      </div>
     </div>
   );
 }
