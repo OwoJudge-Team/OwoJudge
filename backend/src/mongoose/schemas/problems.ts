@@ -2,7 +2,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 enum ScorePolicy {
   Sum = 'sum',
-  Max = 'max'
+  Max = 'max',
+  Min = 'min'
 }
 
 interface ITestcase {
@@ -12,11 +13,13 @@ interface ITestcase {
 }
 
 interface IProblem extends Document {
-  displayID: string;
+  problemID: string;
   createdTime: Date;
   title: string;
   timeLimit: number;
   memoryLimit: number;
+  processes: number;
+  fullScore: number;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
   tags?: string[];
@@ -37,92 +40,30 @@ interface IProblem extends Document {
   };
 }
 
-const problemSchema: Schema = new mongoose.Schema({
-  displayID: {
-    type: mongoose.Schema.Types.String,
-    required: true,
-    unique: true
-  },
-  createdTime: {
-    type: mongoose.Schema.Types.Date,
-    required: true
-  },
-  title: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  timeLimit: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  memoryLimit: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  scorePolicy: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  testcase: [
-    {
-      filename: mongoose.Schema.Types.String,
-      point: mongoose.Schema.Types.Number,
-      subtask: mongoose.Schema.Types.String
-    }
-  ],
-  tags: [
-    {
-      type: mongoose.Schema.Types.String
-    }
-  ],
-  problemRelatedTags: [
-    {
-      type: mongoose.Schema.Types.String
-    }
-  ],
+const problemSchema = new Schema<IProblem>({
+  problemID: { type: String, required: true, unique: true },
+  createdTime: { type: Date, required: true, default: Date.now },
+  title: { type: String, required: true },
+  timeLimit: { type: Number, required: true },
+  memoryLimit: { type: Number, required: true },
+  processes: { type: Number, required: true, default: 1 },
+  fullScore: { type: Number, required: true },
+  scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
+  tags: [String],
+  problemRelatedTags: [String],
   submissionDetail: {
-    accepted: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    submitted: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    timeLimitExceeded: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    memoryLimitExceeded: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    wrongAnswer: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    runtimeError: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    compilationError: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    processLimitExceeded: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    }
+    accepted: { type: Number, default: 0 },
+    submitted: { type: Number, default: 0 },
+    timeLimitExceeded: { type: Number, default: 0 },
+    memoryLimitExceeded: { type: Number, default: 0 },
+    wrongAnswer: { type: Number, default: 0 },
+    runtimeError: { type: Number, default: 0 },
+    compilationError: { type: Number, default: 0 },
+    processLimitExceeded: { type: Number, default: 0 }
   },
   userDetail: {
-    solved: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    },
-    attempted: {
-      type: mongoose.Schema.Types.Number,
-      default: 0
-    }
+    solved: { type: Number, default: 0 },
+    attempted: { type: Number, default: 0 }
   }
 });
 

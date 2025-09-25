@@ -1,820 +1,521 @@
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
 import languageSupport from '../utils/language-support';
+import { hashString } from '../utils/hash-password';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { Queue } from 'queue-typescript';
+import { EventEmitter } from 'events';
+import { SubmissionStatus } from '../utils/submission-status';
 
 const execAsync = promisify(exec);
 
-interface JudgeResult {
-  status: string;
+interface TestCaseResult {
+  testcase: string;
+  status: SubmissionStatus;
   time: number;
   memory: number;
-  exitCode?: number;
   message?: string;
 }
 
-class Judger {
-  private isJudging = false;
-  private judgeInterval: ReturnType<typeof setInterval> | null = null;
+const submissionEmitter = new EventEmitter();
+const submitEvent = 'submit';
+let submissionQueue: Queue<ISubmission> = new Queue();
+let nextBoxIndex: number = 0;
 
-  constructor() {
-    console.log('Judger initialized');
+const getNextBoxID = (): number => {
+  const result = nextBoxIndex;
+  nextBoxIndex = (nextBoxIndex + 1) % 500;
+  return result;
+}
+
+const cleanupBox = async (boxID: number) => {
+  try {
+    await execAsync(`isolate --box-ID=${boxID} --cg --cleanup`);
+  } catch (error) {
+    console.warn(`Failed to cleanup box ${boxID}:`, error);
+  }
+}
+
+const compileChecker = async (problemDir: string, workDir: string): Promise<boolean> => {
+  const checkerDir = path.join(problemDir, 'checker');
+  const checkerExecutablePath = path.join(workDir, 'checker.exe');
+
+  if (!fs.existsSync(checkerDir)) {
+    console.error(`Checker directory not found for problem in ${problemDir}`);
+    return false;
   }
 
-  /**
-   * Start the judger to poll for pending submissions
-   */
-  public start(intervalMs: number = 5000): void {
-    if (this.judgeInterval) {
-      console.log('Judger is already running');
-      return;
+  const boxID = getNextBoxID();
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
+  const boxDir = path.join(boxPath.trim(), 'box');
+
+  // Copy entire checker directory to the box
+  try {
+    await execAsync(`cp -r ${checkerDir}/* ${boxDir}`);
+  } catch (error) {
+    console.error(`Failed to copy checker directory to box ${boxID}:`, error);
+    await cleanupBox(boxID);
+    return false;
+  }
+
+  const metaFile = path.join(workDir, 'checker-compile.meta');
+  const compileErrorFile = 'checker-compile.error';
+
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
+    `--cg ` +
+    `--time=10 ` +
+    `--processes=20 ` +
+    `--wall-time=20 ` +
+    `--mem=512000 ` +
+    `--meta=${metaFile} ` +
+    `--stderr=${compileErrorFile} ` +
+    `--full-env ` +
+    `--run -- /bin/bash -c "if [ ! -f checker.exe ]; then make; fi"`;
+
+  console.log('Running checker compilation command for box ID:', boxID);
+
+  try {
+    await execAsync(isolateCommand, { timeout: 25000 });
+    const compiledCheckerPath = path.join(boxDir, 'checker.exe');
+    fs.copyFileSync(path.join(boxDir, 'checker-compile.error'), path.join(workDir, 'checker-compile.error'));
+    if (fs.existsSync(compiledCheckerPath)) {
+      fs.copyFileSync(compiledCheckerPath, checkerExecutablePath);
+      fs.chmodSync(checkerExecutablePath, 0o755);
+      console.log(`[${workDir}] Checker compilation successful`);
+      await cleanupBox(boxID);
+      return true;
+    } else {
+      console.error(`[${workDir}] Checker compilation failed, executable not found.`);
+      await cleanupBox(boxID);
+      return false;
     }
+  } catch (error) {
+    console.error(`[${workDir}] Checker compilation failed:`, error);
+    await cleanupBox(boxID);
+    return false;
+  }
+};
 
-    console.log(`Starting judger with ${intervalMs}ms interval`);
-    this.judgeInterval = setInterval(async () => {
-      if (!this.isJudging) {
-        await this.processPendingSubmissions();
-      }
-    }, intervalMs);
+const writeUserSolution = (submission: ISubmission, dir: string) => {
+  for (const file of submission.userSolution) {
+    const filename = file.filename;
+    const content = file.content;
+    fs.writeFileSync(path.join(dir, filename), content);
+  }
+}
+
+const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<SubmissionStatus> => {
+  const boxID = getNextBoxID();
+  const metaFile = path.join(workDir, 'compile.meta');
+  const compileErrorFile = 'compile.error';
+  const boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
+
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
+  const boxDir = path.join(boxPath.trim(), 'box');
+  writeUserSolution(submission, boxDir);
+
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
+    `--cg ` +
+    `--processes=20 ` +
+    `--time=10 ` +
+    `--wall-time=20 ` +
+    `--mem=512000 ` +
+    `--meta=${metaFile} ` +
+    `--stderr=${compileErrorFile} ` +
+    `--full-env ` + // Allow full environment for compilation
+    `--run -- /bin/bash -c "${boxCompileCommand}"`;
+
+  console.log('Running compilation command for box ID:', boxID);
+
+  try {
+    const { stdout } = await execAsync(isolateCommand, {
+      timeout: 25000
+    });
+    console.log(stdout);
+    const executablePath = path.join(boxDir, 'main');
+    const targetPath = path.join(workDir, 'main.exe');
+    if (fs.existsSync(executablePath)) {
+      fs.copyFileSync(executablePath, targetPath);
+      fs.chmodSync(targetPath, 0o755);
+      console.log(`[${workDir}] Compilation successful, executable copied`);
+    }
+  } catch (error) {
+    console.error(`[${workDir}] Compilation failed:`, error);
+    await cleanupBox(boxID);
+    return SubmissionStatus.CE;
+  }
+  await cleanupBox(boxID);
+  return SubmissionStatus.QU;
+}
+
+const runUserSolution = async (
+  submission: ISubmission,
+  testcaseInput: string,
+  testcaseOutput: string,
+  workDir: string,
+  isCompiledLanguage: boolean
+): Promise<TestCaseResult> => {
+  const boxID = getNextBoxID();
+  const userOutputFile = path.join(workDir, 'user.out');
+  const userErrorFile = path.join(workDir, 'user.error');
+  const metaFile = path.join(workDir, 'run.meta');
+
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
+  const boxDir = path.join(boxPath.trim(), 'box');
+
+  if (isCompiledLanguage) {
+    fs.copyFileSync(path.join(workDir, 'main.exe'), path.join(boxDir, 'main.exe'));
+  } else {
+    writeUserSolution(submission, boxDir);
   }
 
-  /**
-   * Stop the judger
-   */
-  public stop(): void {
-    if (this.judgeInterval) {
-      clearInterval(this.judgeInterval);
-      this.judgeInterval = null;
-      console.log('Judger stopped');
+  fs.copyFileSync(testcaseInput, path.join(boxDir, path.basename(testcaseInput)));
+
+  const problemID = submission.problemID;
+  const problemMeta = await Problem.findOne({ problemID: problemID });
+  if (!problemMeta) {
+    throw new Error('Problem not found');
+  }
+
+  const executeCommand = languageSupport[submission.language as keyof typeof languageSupport].executeCommand;
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
+    `--cg ` +
+    `--processes=${problemMeta.processes + 1 + (isCompiledLanguage ? 0 : 2)} ` +
+    `--time=${problemMeta.timeLimit} ` +
+    `--wall-time=${problemMeta.timeLimit} ` +
+    `--mem=${problemMeta.memoryLimit * 1024} ` +
+    `--meta=${metaFile} ` +
+    `--stdin=${path.basename(testcaseInput)} ` +
+    `--stdout=${path.basename(userOutputFile)} ` +
+    `--stderr=${path.basename(userErrorFile)} ` +
+    // `--full-env ` + // Allow full environment for execution
+    `--run -- "${executeCommand}"`;
+
+  console.log('Running user solution command:', executeCommand);
+
+  try {
+    const { stdout } = await execAsync(isolateCommand, {
+      timeout: (problemMeta.timeLimit + 1) * 1000
+    });
+    console.log(stdout);
+  } catch (error) {
+    console.error(`[${workDir}] Execution failed:`, error);
+  }
+
+  // Compare user output with expected output
+  const metaContent = fs.readFileSync(metaFile, 'utf-8');
+  const meta: { [key: string]: string } = {};
+  metaContent.split('\n').forEach(line => {
+    const parts = line.split(':');
+    if (parts.length === 2) {
+      meta[parts[0]] = parts[1].trim();
+    }
+  });
+
+  const baseResult = {
+    testcase: path.basename(testcaseInput, '.in'),
+    time: parseFloat(meta['time-wall'] || '0'),
+    memory: parseInt(meta['cg-mem'] || '0', 10),
+    message: ''
+  };
+
+  if (meta.status) {
+    await cleanupBox(boxID);
+    switch (meta.status) {
+      case 'TO':
+        return { ...baseResult, status: SubmissionStatus.TLE };
+      case 'ML':
+        return { ...baseResult, status: SubmissionStatus.MLE };
+      case 'RE':
+      case 'SG':
+        return { ...baseResult, status: SubmissionStatus.RE };
+      default:
+        return { ...baseResult, status: SubmissionStatus.SE };
     }
   }
 
-  /**
-   * Process all pending submissions
-   */
-  private async processPendingSubmissions(): Promise<void> {
+  fs.copyFileSync(path.join(boxDir, path.basename(userOutputFile)), userOutputFile);
+  fs.copyFileSync(path.join(boxDir, path.basename(userErrorFile)), userErrorFile);
+
+  const checkerPath = path.join(workDir, 'checker.exe');
+  if (!fs.existsSync(checkerPath)) {
+    console.error(`Checker not found for problem ${submission.problemID}`);
+    await cleanupBox(boxID);
+    return { ...baseResult, status: SubmissionStatus.SE };
+  }
+
+  const { status: checkerResult, message: checkerMessage } = await runChecker(
+    checkerPath,
+    testcaseInput,
+    userOutputFile,
+    testcaseOutput,
+    workDir
+  );
+  await cleanupBox(boxID);
+  return { ...baseResult, status: checkerResult, message: checkerMessage };
+};
+
+const runChecker = async (
+  checkerPath: string,
+  inputFile: string,
+  userOutputFile: string,
+  answerFile: string,
+  workDir: string
+): Promise<{ status: SubmissionStatus; message: string }> => {
+  const boxID = getNextBoxID();
+  const { stdout: boxPath } = await execAsync(`isolate --box-ID=${boxID} --cg --init`);
+  const boxDir = path.join(boxPath.trim(), 'box');
+
+  fs.copyFileSync(checkerPath, path.join(boxDir, 'checker'));
+  fs.chmodSync(path.join(boxDir, 'checker'), 0o755);
+  fs.copyFileSync(inputFile, path.join(boxDir, 'input.in'));
+  fs.copyFileSync(userOutputFile, path.join(boxDir, 'user.out'));
+  fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
+
+  const baseName = path.basename(inputFile).replace('.in', '');
+  const metaFile = path.join(workDir, `checker-${baseName}.meta`);
+  const checkerOutputFile = `checker-${baseName}.out`;
+  const checkerErrorFile = `checker-${baseName}.err`;
+
+  const isolateCommand = `isolate --box-ID=${boxID} ` +
+    `--cg ` +
+    `--time=10 ` +
+    `--wall-time=20 ` +
+    `--mem=512000 ` +
+    `--meta=${metaFile} ` +
+    `--stdout=${checkerOutputFile} ` +
+    `--stderr=${checkerErrorFile} ` +
+    `--run -- ./checker input.in user.out answer.out`;
+
+  console.log('Running checker command:', isolateCommand);
+
+  try {
+    await execAsync(isolateCommand, { timeout: 25000 });
+    const message = fs.readFileSync(path.join(boxDir, path.basename(checkerErrorFile)), 'utf-8').trim();
+    fs.copyFileSync(path.join(boxDir, path.basename(checkerOutputFile)), path.join(workDir, path.basename(checkerOutputFile)));
+    fs.copyFileSync(path.join(boxDir, path.basename(checkerErrorFile)), path.join(workDir, path.basename(checkerErrorFile)));
+    await cleanupBox(boxID);
+    const scoreStr = fs.readFileSync(path.join(workDir, path.basename(checkerOutputFile)), 'utf-8').trim();
+    const score = parseFloat(scoreStr);
+    if (!isNaN(score) && score === 0) {
+      return { status: SubmissionStatus.WA, message };
+    }
+    if (!isNaN(score) && score > 0 && score < 1) {
+      return { status: SubmissionStatus.PS, message };
+    }
+    return { status: SubmissionStatus.AC, message };
+  } catch (error: any) {
+    return { status: SubmissionStatus.SE, message: 'Checker execution failed' };
+  }
+};
+
+const runAllTests = async (
+  submission: ISubmission,
+  workDir: string,
+  isCompiledLanguage: boolean
+): Promise<{ finalStatus: SubmissionStatus, score: number, testCaseResults: TestCaseResult[] }> => {
+  const problemID = submission.problemID;
+  const problemMeta = await Problem.findOne({ problemID });
+  const problemDir = path.join('problems', problemID);
+
+  const checkerCompiled = await compileChecker(problemDir, workDir);
+  if (!checkerCompiled) {
+    return { finalStatus: SubmissionStatus.SE, score: 0, testCaseResults: [] };
+  }
+
+  const subtasksPath = fs.readFileSync(path.join(problemDir, 'subtasks.json'), 'utf-8');
+  const subtasks = JSON.parse(subtasksPath);
+
+  const testcasesConfigPath = path.join(problemDir, 'tests', 'mapping');
+
+  // Although this may cause Race Condition, it's acceptable here
+  // because we assume that the administrator won't delete the tests directory
+  // while users are submitting solutions.
+  // If the tests directory doesn't exist, we generate it using `tps gen`.
+  // We set a timeout of 1 hour to prevent infinite loops.
+  try {
+    fs.accessSync(testcasesConfigPath, fs.constants.R_OK);
+  } catch (error) {
     try {
-      this.isJudging = true;
-      
-      // Find all pending submissions
-      const pendingSubmissions = await Submission.find({ status: 'pending' })
-        .sort({ createdTime: 1 })
-        .limit(5); // Process max 5 at a time
+      await execAsync('tps gen', { cwd: problemDir, timeout: 3600000 });
+    } catch (genError) {
+      console.error(`Failed to generate testcases in ${problemDir}:`, genError);
+      return { finalStatus: SubmissionStatus.SE, score: 0, testCaseResults: [] };
+    }
+  }
+  const testcasesConfig = fs.readFileSync(testcasesConfigPath, 'utf-8');
 
-      if (pendingSubmissions.length === 0) {
-        this.isJudging = false;
-        return;
-      }
+  const subtaskTestCases = new Map<string, string[]>();
 
-      console.log(`Found ${pendingSubmissions.length} pending submission(s)`);
+  for (const line of testcasesConfig.split('\n')) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
 
-      for (const submission of pendingSubmissions) {
-        try {
-          await this.judgeSubmission(submission);
-        } catch (error) {
-          console.error(`Error judging submission ${submission._id}:`, error);
-          // Mark as system error
-          submission.status = 'System Error';
-          submission.result = {
-            score: 0,
-            maxTime: 0,
-            maxMemory: 0,
-            individual: []
-          };
-          await submission.save();
+    const parts = trimmedLine.split(/\s+/);
+    if (parts.length < 2) continue;
+
+    const subtaskName = parts[0];
+    const testcaseName = parts[1];
+
+    if (!subtaskTestCases.has(subtaskName)) {
+      subtaskTestCases.set(subtaskName, []);
+    }
+    subtaskTestCases.get(subtaskName)!.push(testcaseName);
+  }
+
+  const allTestCases = new Set<string>();
+  for (const subtaskName of Object.keys(subtasks.subtasks)) {
+    const cases = subtaskTestCases.get(subtaskName);
+    if (cases) {
+      cases.forEach(c => allTestCases.add(c));
+    }
+  }
+
+  const testCaseResults: TestCaseResult[] = [];
+  for (const testcase of allTestCases) {
+    const inputFile = path.join(problemDir, 'tests', `${testcase}.in`);
+    const outputFile = path.join(problemDir, 'tests', `${testcase}.out`);
+    if (!fs.existsSync(inputFile) || !fs.existsSync(outputFile)) {
+      console.error(`Missing input or output file for testcase ${testcase}`);
+      testCaseResults.push({ testcase, status: SubmissionStatus.SE, time: 0, memory: 0, message: 'Missing test case files' });
+      continue;
+    }
+    const result = await runUserSolution(submission, inputFile, outputFile, workDir, isCompiledLanguage);
+    testCaseResults.push(result);
+  }
+
+  const resultsByTestCase = new Map(testCaseResults.map(r => [r.testcase, r]));
+  let totalScore = 0;
+  let finalStatus: SubmissionStatus = SubmissionStatus.AC;
+
+  for (const [subtaskName, subtaskInfo] of Object.entries<any>(subtasks.subtasks)) {
+    const cases = subtaskTestCases.get(subtaskName);
+    if (!cases) continue;
+
+    let subtaskOk = true;
+    for (const testcaseName of cases) {
+      const result = resultsByTestCase.get(testcaseName);
+      if (!result || result.status !== SubmissionStatus.AC) {
+        subtaskOk = false;
+        if (finalStatus === SubmissionStatus.AC) { // First non-AC result determines the final status
+          finalStatus = result?.status || SubmissionStatus.SE;
         }
+        break;
       }
-    } catch (error) {
-      console.error('Error processing pending submissions:', error);
-    } finally {
-      this.isJudging = false;
+    }
+
+    if (subtaskOk) {
+      totalScore += subtaskInfo.score;
     }
   }
 
-  /**
-   * Judge a single submission
-   */
-  private async judgeSubmission(submission: ISubmission): Promise<void> {
-    console.log(`Judging submission ${submission._id} for problem ${submission.problemID}`);
+  if (totalScore === 0 && finalStatus === SubmissionStatus.AC) {
+    // This can happen if there are no test cases or subtasks, or if all test cases passed but total score is 0.
+    // If there were any non-AC results, finalStatus would have been updated.
+    // If all were AC but score is 0, we need to decide what to show. Let's check if any test ran.
+    if (testCaseResults.length > 0 && testCaseResults.every(r => r.status === SubmissionStatus.AC)) {
+      finalStatus = SubmissionStatus.AC;
+    } else if (testCaseResults.length > 0) {
+      // find first non-AC
+      finalStatus = testCaseResults.find(r => r.status !== SubmissionStatus.AC)?.status || SubmissionStatus.WA;
+    } else {
+      finalStatus = SubmissionStatus.SE;
+    }
+  } else if (totalScore > 0 && totalScore < (problemMeta?.fullScore || 100)) {
+    finalStatus = SubmissionStatus.PS;
+  }
 
-    // Update status to judging
-    submission.status = 'Judging';
-    await submission.save();
+  return { finalStatus, score: totalScore, testCaseResults };
+}
 
+/// working directory
+/// workDir
+/// ├── main.exe
+/// ├── compile.meta
+/// ├── compile.error
+/// ├── user.out
+/// ├── user.error
+/// └── ...
+const setupWorkingDirectory = async (workDir: string): Promise<void> => {
+  if (fs.existsSync(workDir)) {
+    return;
+  }
+  const userSolutionDir: string = path.join(workDir, 'src');
+  fs.mkdirSync(workDir, { recursive: true });
+  fs.mkdirSync(userSolutionDir, { recursive: true });
+}
+
+const worker = async () => {
+  try {
+    const submission: ISubmission = submissionQueue.dequeue();
+    const submissionID: string = hashString(submission.username + submission.createdTime);
+    const workDir: string = '/tmp/judge/' + submissionID
+    await setupWorkingDirectory(workDir);
     try {
-      // Get problem details
-      const problem = await Problem.findOne({ displayID: submission.problemID });
-      if (!problem) {
-        throw new Error(`Problem ${submission.problemID} not found`);
-      }
-
-      // Check language support
-      if (!languageSupport[submission.language as keyof typeof languageSupport]) {
-        throw new Error(`Language ${submission.language} is not supported`);
-      }
-
       const langConfig = languageSupport[submission.language as keyof typeof languageSupport];
-
-      // Create working directory for this submission
-      const workDir = `/tmp/judge_${submission._id}`;
-      const userSolutionDir = path.join(workDir, 'user-solutions');
-      const testDataDir = path.join(workDir, 'testdata');
-
-      // Clean up and create directories
-      await this.setupWorkingDirectory(workDir, userSolutionDir, testDataDir);
-
-      // Write user solution files
-      for (const file of submission.userSolution) {
-        const filePath = path.join(userSolutionDir, file.filename);
-        fs.writeFileSync(filePath, file.content);
+      if (!langConfig) {
+        throw new Error('language not supported');
       }
-
-      // Compile if needed
-      if (langConfig.compileCommand) {
-        await this.compileUserSolution(workDir, langConfig.compileCommand);
+      let isCompiledLanguage: boolean = false;
+      if (langConfig.compileCommand !== '') {
+        const result = await compileUserSolution(submission, workDir);
+        if (result === SubmissionStatus.CE) {
+          submission.status = SubmissionStatus.CE;
+          await submission.save();
+          return;
+        }
+        isCompiledLanguage = true;
       }
-
-      // Copy test data
-      await this.copyTestData(submission.problemID, testDataDir);
-
-      // Run test cases
-      const testResults = await this.runTestCases(
-        workDir,
-        userSolutionDir,
-        testDataDir,
-        problem,
-        langConfig.executeCommand
-      );
-
-      // Calculate final score and status
-      const finalResult = this.calculateFinalResult(testResults, problem);
-
-      // Update submission with results
-      submission.status = finalResult.status;
-      submission.result = {
-        score: finalResult.score,
-        maxTime: finalResult.maxTime,
-        maxMemory: finalResult.maxMemory,
-        individual: testResults
-      };
-
+      const { finalStatus, score, testCaseResults } = await runAllTests(submission, workDir, isCompiledLanguage);
+      submission.status = finalStatus;
+      submission.score = score;
+      submission.results = testCaseResults;
       await submission.save();
-
-      // Clean up
-      await this.cleanupWorkingDirectory(workDir);
-
-      console.log(`Submission ${submission._id} judged: ${finalResult.status} (${finalResult.score} points)`);
-
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith('Compilation Error:')) {
-        console.error(`Compilation error for submission ${submission._id}:`, error.message);
-        submission.status = 'Compilation Error';
-      } else {
-        console.error(`Error judging submission ${submission._id}:`, error);
-        submission.status = 'System Error';
-      }
-      submission.result = {
-        score: 0,
-        maxTime: 0,
-        maxMemory: 0,
-        individual: []
-      };
+      console.error('Error during worker execution:', error);
+      submission.status = SubmissionStatus.SE;
       await submission.save();
     }
-  }
-
-  /**
-   * Setup working directory structure
-   */
-  private async setupWorkingDirectory(workDir: string, userSolutionDir: string, testDataDir: string): Promise<void> {
-    // Remove existing directory if it exists
-    if (fs.existsSync(workDir)) {
-      fs.rmSync(workDir, { recursive: true, force: true });
-    }
-
-    // Create directories
-    fs.mkdirSync(workDir, { recursive: true });
-    fs.mkdirSync(userSolutionDir, { recursive: true });
-    fs.mkdirSync(testDataDir, { recursive: true });
-  }
-
-  /**
-   * Compile user solution using isolate
-   */
-  private async compileUserSolution(workDir: string, compileCommand: string): Promise<void> {
-    const boxId = Math.floor(Math.random() * 500); // Use 0-499 range for compilation
-    const userSolutionDir = path.join(workDir, 'user-solutions');
-    
-    try {
-      // Initialize isolate box for compilation
-      await execAsync(`isolate --box-id=${boxId} --cg --cleanup`);
-      const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxId} --cg --init`);
-      
-      // Get box directory - isolate returns the path directly from init
-      const boxDir = path.join(boxPath.trim(), 'box');
-
-      // Copy source files to isolate box
-      const sourceFiles = fs.readdirSync(userSolutionDir);
-      for (const file of sourceFiles) {
-        const srcPath = path.join(userSolutionDir, file);
-        const destPath = path.join(boxDir, file);
-        fs.copyFileSync(srcPath, destPath);
-      }
-
-      // Create compilation output files in the working directory
-      const compileErrorFile = path.join(`compile_error_${boxId}.txt`);
-      const metaFile = path.join(workDir, `compile_meta_${boxId}.txt`);
-
-      // Prepare isolate compilation command
-      // Remove the path prefix from the compile command since we're in the box
-      const boxCompileCommand = compileCommand
-        .replace('./user-solutions/', './')
-        .replace(/user-solutions\//g, '');
-
-      const isolateCommand = `isolate --box-id=${boxId} ` +
-        `--cg ` +
-        `--processes=20 ` +
-        `--time=10 ` +
-        `--wall-time=20 ` +
-        `--mem=512000 ` +
-        `--meta=${metaFile} ` +
-        `--stderr=${compileErrorFile} ` +
-        `--full-env ` + // Allow full environment for compilation
-        `--run -- /bin/bash -c "${boxCompileCommand}"`;
-
-      console.log('Running compilation command:', isolateCommand);
-
-      try {
-        const { stdout, stderr } = await execAsync(isolateCommand, { 
-          timeout: 25000
-        });
-
-        // Copy compiled executable back if it exists
-        const executablePath = path.join(boxDir, 'main');
-        const targetPath = path.join(userSolutionDir, 'main');
-        
-        if (fs.existsSync(executablePath)) {
-          fs.copyFileSync(executablePath, targetPath);
-          fs.chmodSync(targetPath, 0o755);
-          console.log('Compilation successful, executable copied');
-        }
-
-        // Check for compilation warnings/errors
-        if (fs.existsSync(compileErrorFile)) {
-          const compileOutput = fs.readFileSync(compileErrorFile, 'utf8');
-          if (compileOutput.trim()) {
-            console.log('Compile output:', compileOutput);
-          }
-        }
-
-      } catch (error: any) {
-        // Read compilation error if available
-        let errorMessage = error.message;
-        if (fs.existsSync(compileErrorFile)) {
-          const compileError = fs.readFileSync(compileErrorFile, 'utf8');
-          if (compileError.trim()) {
-            errorMessage = compileError;
-          }
-        }
-
-        // Read meta file to check if it was a timeout or memory issue
-        if (fs.existsSync(metaFile)) {
-          const metaContent = fs.readFileSync(metaFile, 'utf8');
-          if (metaContent.includes('status:TO')) {
-            errorMessage = 'Compilation timeout (exceeded 30 seconds)';
-          } else if (metaContent.includes('status:MLE') || metaContent.includes('status:RE')) {
-            errorMessage = 'Compilation error';
-          }
-        }
-
-        console.error('Compilation failed:', errorMessage);
-        throw new Error(`Compilation Error: ${errorMessage}`);
-      }
-
-    } catch (error: any) {
-      if (error.message.startsWith('Compilation Error:')) {
-        throw error; // Re-throw compilation errors as-is
-      }
-      console.error('Compilation system error:', error);
-      throw new Error(`Compilation System Error: ${error.message}`);
-    } finally {
-      // Cleanup isolate box
-      try {
-        let stderrFile = path.join(`compile_error_${boxId}.txt`);
-        let stderrContent = '';
-        if (fs.existsSync(stderrFile)) {
-          stderrContent = fs.readFileSync(stderrFile, 'utf8');
-          if (stderrContent.trim()) {
-            console.log('Compilation stderr:', stderrContent);
-          }
-        }
-        await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
-      } catch (error) {
-        console.warn('Failed to cleanup compilation isolate box:', error);
-      }
-    }
-  }
-
-  /**
-   * Copy test data for the problem
-   */
-  private async copyTestData(problemID: string, testDataDir: string): Promise<void> {
-    const problemDir = path.join(process.cwd(), 'problems', problemID);
-    const testsDir = path.join(problemDir, 'tests');
-    
-    if (!fs.existsSync(problemDir)) {
-      throw new Error(`Test data directory not found for problem ${problemID}`);
-    }
-
-    let testFilesCopied = 0;
-
-    // Check if tests subdirectory exists
-    if (fs.existsSync(testsDir)) {
-      console.log(`Looking for test cases in: ${testsDir}`);
-      // Copy test files from tests subdirectory
-      const testFiles = fs.readdirSync(testsDir);
-      const relevantFiles = testFiles.filter(f => f.endsWith('.in') || f.endsWith('.out'));
-      
-      for (const file of relevantFiles) {
-        const srcPath = path.join(testsDir, file);
-        const destPath = path.join(testDataDir, file);
-        fs.copyFileSync(srcPath, destPath);
-        testFilesCopied++;
-      }
-      console.log(`Copied ${testFilesCopied} test files from tests directory`);
-      
-      // Log the test case pairs found
-      const inputFiles = relevantFiles.filter(f => f.endsWith('.in'));
-      const outputFiles = relevantFiles.filter(f => f.endsWith('.out'));
-      console.log(`Found ${inputFiles.length} input files and ${outputFiles.length} output files`);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Queue is empty') {
+      // Ignore, just means worker is idle
     } else {
-      console.log(`Tests directory not found, checking problem root: ${problemDir}`);
-      // Fallback: look for test files in problem directory
-      const files = fs.readdirSync(problemDir);
-      const testFiles = files.filter(f => f.endsWith('.in') || f.endsWith('.out'));
-      
-      for (const file of testFiles) {
-        const srcPath = path.join(problemDir, file);
-        const destPath = path.join(testDataDir, file);
-        if (fs.lstatSync(srcPath).isFile()) {
-          fs.copyFileSync(srcPath, destPath);
-          testFilesCopied++;
-        }
-      }
-      console.log(`Copied ${testFilesCopied} test files from problem directory (fallback)`);
-    }
-
-    if (testFilesCopied === 0) {
-      console.warn(`No test case files (.in/.out) found for problem ${problemID}`);
-    }
-  }
-
-  /**
-   * Run test cases using isolate
-   */
-  private async runTestCases(
-    workDir: string,
-    userSolutionDir: string,
-    testDataDir: string,
-    problem: IProblem,
-    executeCommand: string
-  ): Promise<JudgeResult[]> {
-    const results: JudgeResult[] = [];
-    
-    // Look for input and output files in test data directory
-    const testFiles = fs.readdirSync(testDataDir);
-    console.log(`Found ${testFiles.length} files in test data directory:`, testFiles);
-    
-    const inputFiles = testFiles.filter(f => f.endsWith('.in'));
-    const outputFiles = testFiles.filter(f => f.endsWith('.out'));
-    
-    console.log(`Test files analysis: ${inputFiles.length} .in files, ${outputFiles.length} .out files`);
-    
-    if (inputFiles.length === 0 && outputFiles.length === 0) {
-      console.log('No test case files found, creating demo test case');
-      // Create a dummy test case for demo (A + B problem)
-      const inputPath = path.join(testDataDir, 'demo_input.txt');
-      const outputPath = path.join(testDataDir, 'demo_output.txt');
-      fs.writeFileSync(inputPath, '1 2\n');
-      fs.writeFileSync(outputPath, '3\n');
-      
-      const result = await this.runSingleTestCase(
-        workDir,
-        userSolutionDir,
-        inputPath,
-        outputPath,
-        problem.timeLimit,
-        problem.memoryLimit,
-        executeCommand
-      );
-      results.push(result);
-    } else {
-      // Run actual test cases with proper input/output pairing
-      const testCasePairs = this.matchTestCaseFiles(testFiles);
-      
-      if (testCasePairs.length > 0) {
-        console.log(`Running ${testCasePairs.length} test cases`);
-        
-        for (let i = 0; i < testCasePairs.length; i++) {
-          const pair = testCasePairs[i];
-          console.log(`Running test case ${i + 1}/${testCasePairs.length}: ${pair.input} -> ${pair.output}`);
-          
-          const inputFile = path.join(testDataDir, pair.input);
-          const outputFile = path.join(testDataDir, pair.output);
-          
-          const result = await this.runSingleTestCase(
-            workDir,
-            userSolutionDir,
-            inputFile,
-            outputFile,
-            problem.timeLimit,
-            problem.memoryLimit,
-            executeCommand
-          );
-          results.push(result);
-          
-          console.log(`Test case ${i + 1} result: ${result.status} (${result.time}ms, ${result.memory}KB)`);
-        }
-      } else if (inputFiles.length > 0 || outputFiles.length > 0) {
-        console.warn('Found test files but could not match input/output pairs properly');
-        
-        if (inputFiles.length > 0 && outputFiles.length > 0) {
-          // Fallback: assume first input and first output match
-          console.log('Using fallback: matching first input with first output file');
-          const inputFile = path.join(testDataDir, inputFiles[0]);
-          const outputFile = path.join(testDataDir, outputFiles[0]);
-          
-          const result = await this.runSingleTestCase(
-            workDir,
-            userSolutionDir,
-            inputFile,
-            outputFile,
-            problem.timeLimit,
-            problem.memoryLimit,
-            executeCommand
-          );
-          results.push(result);
-        } else {
-          // Create basic test case if only inputs or only outputs exist
-          console.warn('Incomplete test case files found, creating basic test case');
-          const inputPath = path.join(testDataDir, 'generated_input.txt');
-          const outputPath = path.join(testDataDir, 'generated_output.txt');
-          
-          // Generate a simple test case (A + B)
-          fs.writeFileSync(inputPath, '1 2\n');
-          fs.writeFileSync(outputPath, '3\n');
-          
-          const result = await this.runSingleTestCase(
-            workDir,
-            userSolutionDir,
-            inputPath,
-            outputPath,
-            problem.timeLimit,
-            problem.memoryLimit,
-            executeCommand
-          );
-          results.push(result);
-        }
-      }
-    }
-
-    console.log(`Completed ${results.length} test cases`);
-    return results;
-  }
-
-  /**
-   * Run a single test case using isolate
-   */
-  private async runSingleTestCase(
-    workDir: string,
-    userSolutionDir: string,
-    inputFile: string,
-    expectedOutputFile: string,
-    timeLimit: number,
-    memoryLimit: number,
-    executeCommand: string
-  ): Promise<JudgeResult> {
-    const boxId = Math.floor(Math.random() * 500) + 500; // Use 500-999 range for execution
-    const outputFile = path.join('user_output.txt');
-
-    try {
-      // Initialize isolate box
-      await execAsync(`isolate --cg --box-id=${boxId} --cleanup`);
-      const { stdout: boxPath } = await execAsync(`isolate --cg --box-id=${boxId} --init`);
-
-      // Get box directory - isolate returns the path directly from init  
-      const boxDir = path.join(boxPath.trim(), 'box');
-
-      // Copy executable to box
-      if (fs.existsSync(path.join(userSolutionDir, 'main'))) {
-        const targetPath = path.join(boxDir, 'main');
-        fs.copyFileSync(path.join(userSolutionDir, 'main'), targetPath);
-        fs.chmodSync(targetPath, 0o755);
-        console.log('Executable copied to isolate box');
-      }
-
-      // Copy source files if no compilation was needed (for interpreted languages)
-      const sourceFiles = fs.readdirSync(userSolutionDir);
-      for (const file of sourceFiles) {
-        if (file !== 'main') {
-          const srcPath = path.join(userSolutionDir, file);
-          const destPath = path.join(boxDir, file);
-          if (fs.existsSync(srcPath)) {
-            fs.copyFileSync(srcPath, destPath);
-          }
-        }
-      }
-
-      // Run the program  
-      const metaFile = path.join(workDir, `meta_${boxId}.txt`);
-      const stderrFile = path.join(`stderr_${boxId}.txt`);
-      
-      // Convert time limit from ms to seconds for isolate
-      const timeLimitSeconds = Math.ceil(timeLimit / 1000);
-      const processesLimit = 5; // Limit number of processes
-
-      const command = `isolate --cg --box-id=${boxId} ` +
-        `--time=${timeLimitSeconds} ` +
-        `--mem=${memoryLimit} ` +
-        `--processes=${processesLimit} ` +
-        `--cg-mem=${memoryLimit} ` +
-        `--meta=${metaFile} ` +
-        `--stdin=${inputFile} ` +
-        `--stdout=${outputFile} ` +
-        `--stderr=${stderrFile} ` +
-        `--run -- ${executeCommand}`;
-
-      console.log('Running test case with command:', command);
-
-      const startTime = Date.now();
-      
-      try {
-        await execAsync(command, { timeout: (timeLimit + 5000) });
-      } catch (error: any) {
-        // Isolate returns non-zero exit code for various reasons
-        // We'll check the meta file to determine the actual status
-        console.log('Isolate execution completed with exit code (this is normal)');
-      }
-
-      const runTime = Date.now() - startTime;
-
-      // Read meta file to get execution statistics
-      let execTime = 0;
-      let execMemory = 0;
-      let status = 'Unknown';
-
-      if (fs.existsSync(metaFile)) {
-        const metaContent = fs.readFileSync(metaFile, 'utf8');
-        const metaLines = metaContent.split('\n');
-        
-        console.log('Meta file content:', metaContent);
-        
-        for (const line of metaLines) {
-          if (line.startsWith('time:')) {
-            execTime = parseFloat(line.split(':')[1]) * 1000; // Convert to ms
-          } else if (line.startsWith('max-rss:')) {
-            execMemory = parseInt(line.split(':')[1]); // KB
-          } else if (line.startsWith('status:')) {
-            const statusCode = line.split(':')[1];
-            status = this.getStatusFromCode(statusCode);
-          }
-        }
-      } else {
-        console.warn('Meta file not found');
-      }
-
-      // Read stderr for debugging
-      if (fs.existsSync(stderrFile)) {
-        const stderrContent = fs.readFileSync(stderrFile, 'utf8');
-        if (stderrContent.trim()) {
-          console.log('Program stderr:', stderrContent);
-        }
-      }
-
-      // Check if output file exists and compare with expected output
-      if (status === 'OK' && fs.existsSync(outputFile)) {
-        const userOutput = fs.readFileSync(outputFile, 'utf8').trim();
-        const expectedOutput = fs.readFileSync(expectedOutputFile, 'utf8').trim();
-        
-        console.log('User output:', JSON.stringify(userOutput));
-        console.log('Expected output:', JSON.stringify(expectedOutput));
-        
-        if (userOutput === expectedOutput) {
-          status = 'Accepted';
-        } else {
-          status = 'Wrong Answer';
-        }
-      } else if (status === 'OK') {
-        console.warn('No output file generated');
-        status = 'Runtime Error';
-      }
-
-      return {
-        status,
-        time: execTime,
-        memory: execMemory
-      };
-
-    } catch (error: any) {
-      console.error('Error running test case:', error);
-      return {
-        status: 'System Error',
-        time: 0,
-        memory: 0,
-        message: error.message
-      };
-    } finally {
-      // Cleanup isolate box
-      try {
-        await execAsync(`isolate --box-id=${boxId} --cleanup`);
-      } catch (error) {
-        console.warn('Failed to cleanup isolate box:', error);
-      }
-    }
-  }
-
-  /**
-   * Convert isolate status code to readable status
-   */
-  private getStatusFromCode(statusCode: string): string {
-    switch (statusCode.trim()) {
-      case 'OK': return 'OK';
-      case 'RE': return 'Runtime Error';
-      case 'TLE': return 'Time Limit Exceeded';
-      case 'MLE': return 'Memory Limit Exceeded';
-      case 'SG': return 'Runtime Error';
-      case 'TO': return 'Time Limit Exceeded';
-      case 'XX': return 'System Error';
-      default: return 'Unknown';
-    }
-  }
-
-  /**
-   * Calculate final result from individual test results
-   */
-  private calculateFinalResult(testResults: JudgeResult[], problem: IProblem) {
-    let totalScore = 0;
-    let maxTime = 0;
-    let maxMemory = 0;
-    let finalStatus = 'Accepted';
-
-    for (const result of testResults) {
-      maxTime = Math.max(maxTime, result.time);
-      maxMemory = Math.max(maxMemory, result.memory);
-
-      if (result.status === 'Accepted') {
-        totalScore += 100; // Each test case worth 100 points for now
-      } else if (finalStatus === 'Accepted') {
-        finalStatus = result.status;
-      }
-    }
-
-    // If all test cases passed, keep status as Accepted
-    if (testResults.every(r => r.status === 'Accepted')) {
-      finalStatus = 'Accepted';
-    }
-
-    return {
-      status: finalStatus,
-      score: totalScore,
-      maxTime,
-      maxMemory
-    };
-  }
-
-  /**
-   * Clean up working directory
-   */
-  private async cleanupWorkingDirectory(workDir: string): Promise<void> {
-    try {
-      if (fs.existsSync(workDir)) {
-        fs.rmSync(workDir, { recursive: true, force: true });
-      }
-    } catch (error) {
-      console.warn('Failed to cleanup working directory:', error);
-    }
-  }
-
-  /**
-   * Match input and output test case files
-   */
-  /**
-   * Match input files (.in) with their corresponding output files (.out)
-   * Supports various naming conventions like: 1.in/1.out, test01.in/test01.out, sample.in/sample.out
-   */
-  private matchTestCaseFiles(testFiles: string[]): Array<{input: string, output: string}> {
-    const pairs: Array<{input: string, output: string}> = [];
-    const inputFiles = testFiles.filter(f => f.endsWith('.in'));
-    const outputFiles = testFiles.filter(f => f.endsWith('.out'));
-    
-    console.log(`Matching test cases: ${inputFiles.length} input files, ${outputFiles.length} output files`);
-    
-    for (const inputFile of inputFiles) {
-      // Extract the base name (e.g., "1.in" -> "1", "test01.in" -> "test01")
-      const baseName = inputFile.replace(/\.in$/, '');
-      
-      // Look for exact match first (e.g., "1.in" -> "1.out")
-      let correspondingOutput = outputFiles.find(f => f === `${baseName}.out`);
-      
-      // If no exact match, look for files that start with the base name
-      if (!correspondingOutput) {
-        correspondingOutput = outputFiles.find(f => f.startsWith(baseName) && f.endsWith('.out'));
-      }
-      
-      if (correspondingOutput) {
-        pairs.push({
-          input: inputFile,
-          output: correspondingOutput
-        });
-        console.log(`Matched test case: ${inputFile} -> ${correspondingOutput}`);
-      } else {
-        console.warn(`No matching output file found for input: ${inputFile}`);
-      }
-    }
-    
-    console.log(`Successfully matched ${pairs.length} test case pairs`);
-    return pairs;
-  }
-
-  /**
-   * Public method to test judging a single submission (for testing purposes)
-   */
-  public async testJudgeSubmission(submissionData: any, problem: IProblem): Promise<any> {
-    console.log(`Test judging submission for problem ${problem._id}`);
-
-    try {
-      // Check language support
-      if (!languageSupport[submissionData.language as keyof typeof languageSupport]) {
-        throw new Error(`Language ${submissionData.language} is not supported`);
-      }
-
-      const langConfig = languageSupport[submissionData.language as keyof typeof languageSupport];
-
-      // Create working directory for this submission
-      const workDir = `/tmp/test_judge_${Date.now()}`;
-      const userSolutionDir = path.join(workDir, 'user-solutions');
-      const testDataDir = path.join(workDir, 'testdata');
-
-      // Clean up and create directories
-      await this.setupWorkingDirectory(workDir, userSolutionDir, testDataDir);
-
-      // Write user solution files - determine filename based on language
-      let filename = 'main.cpp';
-      if (submissionData.language === 'gcc c11') filename = 'main.c';
-      else if (submissionData.language === 'rust') filename = 'main.rs';
-      else if (submissionData.language === 'pseudo') filename = 'main.ps';
-      
-      const filePath = path.join(userSolutionDir, filename);
-      fs.writeFileSync(filePath, submissionData.code || '');
-
-      // Compile if needed
-      if (langConfig.compileCommand) {
-        await this.compileUserSolution(workDir, langConfig.compileCommand);
-      }
-
-      // Copy test data
-      await this.copyTestData(problem._id as string, testDataDir);
-
-      // Run test cases
-      const testResults = await this.runTestCases(
-        workDir,
-        userSolutionDir,
-        testDataDir,
-        problem,
-        langConfig.executeCommand
-      );
-
-      // Calculate final score and status
-      const finalResult = this.calculateFinalResult(testResults, problem);
-
-      // Clean up
-      await this.cleanupWorkingDirectory(workDir);
-
-      console.log(`Test judging completed: ${finalResult.status} (${finalResult.score} points)`);
-
-      return {
-        status: finalResult.status,
-        score: finalResult.score,
-        maxTime: finalResult.maxTime,
-        maxMemory: finalResult.maxMemory,
-        individual: testResults
-      };
-
-    } catch (error) {
-      console.error(`Error in test judging:`, error);
-      return {
-        status: 'System Error',
-        score: 0,
-        maxTime: 0,
-        maxMemory: 0,
-        individual: [],
-        error: error instanceof Error ? error.message : String(error)
-      };
+      console.error('Unexpected error in worker:', error);
     }
   }
 }
 
-export default Judger;
+const setupWorker = async (numWorkers: number) => {
+  for (let i = 0; i < numWorkers; ++i) {
+    submissionEmitter.on(submitEvent, worker);
+  }
+  while (true) {
+    const submissions = await Submission.find({ status: SubmissionStatus.PD });
+    for (const submission of submissions) {
+      submissionQueue.enqueue(submission);
+      submission.status = SubmissionStatus.QU;
+      await submission.save();
+      submissionEmitter.emit(submitEvent);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+}
+
+const shutdownJudger = async () => {
+  for (let submission of submissionQueue) {
+    submission.status = SubmissionStatus.PD;
+    await submission.save();
+  }
+}
+
+const submitUserSubmission = async (submission: ISubmission) => {
+  // Implementation for submitting user submission for judging
+  submissionQueue.enqueue(submission);
+  submission.status = SubmissionStatus.QU;
+  submissionEmitter.emit(submitEvent);
+};
+
+export { setupWorker, submitUserSubmission, shutdownJudger };

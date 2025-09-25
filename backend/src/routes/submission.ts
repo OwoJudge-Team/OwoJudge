@@ -3,6 +3,7 @@ import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
+import { submitUserSubmission } from '../judger/judger';
 
 const submissionRouter: Router = Router();
 
@@ -36,15 +37,8 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
   const data: Partial<ISubmission> = matchedData(request);
   const newSubmission: ISubmission = new Submission(data);
   try {
-    newSubmission.createdTime = new Date();
-    newSubmission.status = 'pending';
-    newSubmission.result = {
-      score: -1,
-      maxTime: -1,
-      maxMemory: -1,
-      individual: []
-    };
     const savedSubmission: ISubmission = await newSubmission.save();
+    submitUserSubmission(savedSubmission);
     response.status(201).send(savedSubmission);
   } catch (error: unknown) {
     console.log(`Error: ${error}`);

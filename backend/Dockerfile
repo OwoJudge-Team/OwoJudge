@@ -42,6 +42,9 @@ WORKDIR /app
 
 # Note: Running as root for isolate and cgroup operations
 
+# Install tps
+RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ioi-2017/tps/master/online-installer/install.sh)"
+
 # Clone and build isolate
 RUN git clone https://github.com/mtmatt/isolate.git /tmp/isolate \
     && cd /tmp/isolate \
@@ -85,9 +88,5 @@ EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8787/api/problems || exit 1
 
-COPY judge-backend.service /etc/systemd/system/judge-backend.service
-# Enable services
-RUN systemctl enable isolate.service judge-backend.service
-
 # Use systemd as the container init
-ENTRYPOINT ["systemd"]
+ENTRYPOINT ["/app/start.sh"]

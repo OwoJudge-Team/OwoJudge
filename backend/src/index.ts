@@ -1,23 +1,22 @@
 import { createApp } from './create-app';
 import { Application } from 'express';
-import Judger from './judger/judger';
+import { setupWorker, shutdownJudger } from './judger/judger';
 
 const app: Application = createApp();
 const PORT: number | string = process.env.PORT || 8787;
 
-const judger = new Judger();
-judger.start(10000);
+setupWorker(4);
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('Received SIGINT, shutting down gracefully...');
-  judger.stop();
+  await shutdownJudger();
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('Received SIGTERM, shutting down gracefully...');
-  judger.stop();
+  await shutdownJudger();
   process.exit(0);
 });
 

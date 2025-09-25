@@ -35,7 +35,9 @@ afterAll(async () => {
 
 describe('User Routes', () => {
   it('should get all users', async () => {
-    const req = {} as Request;
+    const req = {
+      isAuthenticated: () => true
+    } as unknown as Request;
     const res = {
       status: vi.fn(() => {
         return { send: vi.fn() };
@@ -48,7 +50,10 @@ describe('User Routes', () => {
   });
 
   it('should get user with name admin', async () => {
-    const req = { query: { filter: 'username', value: 'admin' } } as unknown as Request;
+    const req = { 
+      query: { filter: 'username', value: 'admin' },
+      isAuthenticated: () => true
+    } as unknown as Request;
     let data: any;
     const res = {
       status: vi.fn(() => {
@@ -64,7 +69,11 @@ describe('User Routes', () => {
   });
 
   it('should get user with name admin', async () => {
-    const req = { params: { username: 'admin' }, user: 'test' } as unknown as Request;
+    const req = { 
+      params: { username: 'admin' }, 
+      user: 'test',
+      isAuthenticated: () => true
+    } as unknown as Request;
     let data: any;
     const res = {
       status: vi.fn(() => {
@@ -78,7 +87,10 @@ describe('User Routes', () => {
   });
 
   it('should get 403 if not login', async () => {
-    const req = { params: { username: 'admin' } } as unknown as Request;
+    const req = { 
+      params: { username: 'admin' },
+      isAuthenticated: () => false
+    } as unknown as Request;
     let data: any;
     const res = {
       status: vi.fn(() => {
@@ -98,7 +110,8 @@ describe('User Routes', () => {
         password: 'Testtest',
         isAdmin: false
       },
-      user: { isAdmin: true }
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -118,7 +131,8 @@ describe('User Routes', () => {
         password: 'Testtest',
         isAdmin: 'true'
       },
-      user: { isAdmin: true }
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -138,7 +152,8 @@ describe('User Routes', () => {
         password: 'Testtest',
         isAdmin: 'true'
       },
-      user: { isAdmin: true }
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -158,7 +173,8 @@ describe('User Routes', () => {
         password: 'Testtest',
         isAdmin: true
       },
-      user: { isAdmin: false }
+      user: { isAdmin: false },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -173,7 +189,8 @@ describe('User Routes', () => {
   it('should delete user', async () => {
     const req = {
       params: { username: 'testuser' },
-      user: { isAdmin: true }
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -188,7 +205,8 @@ describe('User Routes', () => {
   it('should get 401 for deleting user by non admin user', async () => {
     const req = {
       params: { username: 'testuser' },
-      user: { isAdmin: false }
+      user: { isAdmin: false },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -203,7 +221,8 @@ describe('User Routes', () => {
   it('should get 400 for deleting user but without username', async () => {
     const req = {
       params: {},
-      user: { isAdmin: true }
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -219,7 +238,8 @@ describe('User Routes', () => {
     const req = {
       params: { username: 'admin' },
       body: { password: 'papspsps' },
-      user: { isAdmin: true }
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -235,7 +255,8 @@ describe('User Routes', () => {
     const req = {
       params: { username: 'admin' },
       body: { password: 'papspsps' },
-      user: { isAdmin: false }
+      user: { isAdmin: false },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
@@ -251,7 +272,8 @@ describe('User Routes', () => {
     const req = {
       params: { username: 'admin' },
       body: { password: 'papspsps', isAdmin: true },
-      user: { username: 'admin', isAdmin: false }
+      user: { username: 'admin', isAdmin: false },
+      isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
     const res = {
