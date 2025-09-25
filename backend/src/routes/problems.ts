@@ -447,9 +447,42 @@ const generateTestcase = async (request: IRequest, response: Response) => {
   }
 };
 
+const getAllowedLanguages = async (request: IRequest, response: Response) => {
+  if (!request.isAuthenticated() || !request.user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+  const { problemID } = request.params;
+  try {
+    const problem: IProblem | null = await Problem.findOne({ problemID });
+    if (!problem) {
+      response.sendStatus(404);
+      return;
+    }
+    
+    const problemDir = 'problems/' + problemID;
+    const metadataPath = `${problemDir}/problem.json`;
+    
+    try {
+      const metadataContent = readFileSync(metadataPath, 'utf8');
+      const metadata = JSON.parse(metadataContent);
+      const allowedLanguages = metadata.allowed_languages || [];
+      
+      response.status(200).send(allowedLanguages);
+    } catch (metadataErr) {
+      console.error('Error reading metadata:', metadataErr);
+      response.status(200).send([]);
+    }
+  } catch (error) {
+    console.log(error);
+    response.status(500).send('Internal Server Error');
+  }
+};
+
 problemsRouter.get('/api/problems', getProblems);
 problemsRouter.get('/api/problems/:problemID', getProblemByID);
 problemsRouter.get('/api/problems/:problemID/testcases/:testcaseName', generateTestcase);
+problemsRouter.get('/api/problems/:problemID/allowed-languages', getAllowedLanguages);
 
 problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
