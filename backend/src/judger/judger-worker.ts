@@ -31,15 +31,121 @@ interface WorkerResponse {
   error?: string;
 }
 
-const getNextBoxID = (): number => {
-  return Math.floor(Math.random() * 500);
+// Track used box IDs to prevent conflicts with atomic protection
+const usedBoxIDs = new Set<number>();
+const boxLocks = new Map<number, boolean>(); // Track locked boxes for extended operations
+let boxIDCounter = Math.floor(Math.random() * 100); // Start from a random base
+let boxIDMutex = false; // Simple mutex for atomic operations
+
+// Atomic sleep function for mutex waiting
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// File-based locking for additional safety
+const acquireBoxLock = async (boxID: number): Promise<void> => {
+  const lockFile = `/tmp/judge-box-${boxID}.lock`;
+  let attempts = 0;
+  
+  while (attempts < 100) { // Max 10 seconds wait
+    try {
+      // Try to create lock file exclusively (fails if exists)
+      fs.writeFileSync(lockFile, process.pid.toString(), { flag: 'wx' });
+      return; // Successfully acquired lock
+    } catch (error: any) {
+      if (error.code === 'EEXIST') {
+        // Lock file exists, check if process is still alive
+        try {
+          const pidStr = fs.readFileSync(lockFile, 'utf-8');
+          const pid = parseInt(pidStr);
+          
+          // Check if process is still running
+          process.kill(pid, 0); // Signal 0 checks existence without killing
+          
+          // Process exists, wait and retry
+          await sleep(0.5);
+          attempts++;
+        } catch {
+          // Process doesn't exist, remove stale lock and retry
+          try {
+            fs.unlinkSync(lockFile);
+          } catch {}
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error(`Failed to acquire lock for box ${boxID} after ${attempts} attempts`);
+};
+
+const releaseBoxLock = (boxID: number): void => {
+  const lockFile = `/tmp/judge-box-${boxID}.lock`;
+  try {
+    fs.unlinkSync(lockFile);
+  } catch (error) {
+    console.warn(`Failed to release lock file for box ${boxID}:`, error);
+  }
+};
+
+const getNextBoxID = async (): Promise<number> => {
+  // Acquire mutex with exponential backoff
+  while (boxIDMutex) {
+    await sleep(Math.random() * 2 + 0.5); // Random wait 1-11ms to prevent thundering herd
+  }
+  boxIDMutex = true;
+  
+  try {
+    let boxID: number;
+    let attempts = 0;
+    
+    do {
+      boxID = (boxIDCounter++) % 500; // Cycle through 0-499
+      attempts++;
+      
+      // If we've tried all possible IDs, force cleanup and restart
+      if (attempts > 500) {
+        console.warn('All box IDs exhausted, forcing cleanup of all boxes');
+        usedBoxIDs.clear();
+        boxLocks.clear();
+        boxIDCounter = Math.floor(Math.random() * 100);
+        boxID = (boxIDCounter++) % 500;
+        break;
+      }
+    } while (usedBoxIDs.has(boxID) || boxLocks.get(boxID)); // Also check if box is locked
+    
+    usedBoxIDs.add(boxID);
+    boxLocks.set(boxID, true); // Lock the box for extended operations
+    return boxID;
+  } finally {
+    // Always release mutex
+    boxIDMutex = false;
+  }
+}
+
+const releaseBoxID = async (boxID: number): Promise<void> => {
+  // Acquire mutex for atomic delete
+  while (boxIDMutex) {
+    await sleep(Math.random() * 2 + 0.5); // Shorter wait for release
+  }
+  boxIDMutex = true;
+  
+  try {
+    usedBoxIDs.delete(boxID);
+    boxLocks.delete(boxID); // Also release the lock
+  } finally {
+    boxIDMutex = false;
+  }
 }
 
 const cleanupBox = async (boxID: number) => {
   try {
-    await execAsync(`isolate --box-id=${boxID} --cg --cleanup`);
+    await execAsync(`isolate --box-id=${boxID} --cg --wait --cleanup`);
   } catch (error) {
     console.warn(`Failed to cleanup box ${boxID}:`, error);
+  } finally {
+    // Always release both file lock and box ID, even if cleanup failed
+    releaseBoxLock(boxID);
+    await releaseBoxID(boxID);
   }
 }
 
@@ -52,14 +158,20 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
     return false;
   }
 
-  const boxID = getNextBoxID();
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --init`);
-  const boxDir = path.join(boxPath.trim(), 'box');
-
+  const boxID = await getNextBoxID();
+  let boxDir: string;
+  
   try {
+    // Acquire file system lock for this box
+    await acquireBoxLock(boxID);
+    
+    const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --wait --init`);
+    boxDir = path.join(boxPath.trim(), 'box');
+
+    // Critical section: ensure atomic file operations
     await execAsync(`cp -r ${checkerDir}/* ${boxDir}`);
   } catch (error) {
-    console.error(`Failed to copy checker directory to box ${boxID}:`, error);
+    console.error(`Failed to initialize or copy checker directory to box ${boxID}:`, error);
     await cleanupBox(boxID);
     return false;
   }
@@ -69,6 +181,7 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
 
   const isolateCommand = `isolate --box-id=${boxID} ` +
     `--cg ` +
+    `--wait ` +
     `--time=10 ` +
     `--processes=20 ` +
     `--wall-time=20 ` +
@@ -107,15 +220,27 @@ const runChecker = async (
   answerFile: string,
   workDir: string
 ): Promise<{ status: SubmissionStatus; message: string }> => {
-  const boxID = getNextBoxID();
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --init`);
-  const boxDir = path.join(boxPath.trim(), 'box');
+  const boxID = await getNextBoxID();
+  let boxDir: string;
+  
+  try {
+    // Acquire file system lock for this box
+    await acquireBoxLock(boxID);
+    
+    const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --wait --init`);
+    boxDir = path.join(boxPath.trim(), 'box');
 
-  fs.copyFileSync(checkerPath, path.join(boxDir, 'checker'));
-  fs.chmodSync(path.join(boxDir, 'checker'), 0o755);
-  fs.copyFileSync(inputFile, path.join(boxDir, 'input.in'));
-  fs.copyFileSync(userOutputFile, path.join(boxDir, 'user.out'));
-  fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
+    // Critical section: ensure atomic file operations
+    fs.copyFileSync(checkerPath, path.join(boxDir, 'checker'));
+    fs.chmodSync(path.join(boxDir, 'checker'), 0o755);
+    fs.copyFileSync(inputFile, path.join(boxDir, 'input.in'));
+    fs.copyFileSync(userOutputFile, path.join(boxDir, 'user.out'));
+    fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
+  } catch (error) {
+    console.error(`Failed to initialize or copy files to box ${boxID}:`, error);
+    await cleanupBox(boxID);
+    return { status: SubmissionStatus.SE, message: `Box setup error: ${error}` };
+  }
 
   const baseName = path.basename(inputFile).replace('.in', '');
   const metaFile = path.join(workDir, `checker-${baseName}.meta`);
@@ -124,6 +249,7 @@ const runChecker = async (
 
   const isolateCommand = `isolate --box-id=${boxID} ` +
     `--cg ` +
+    `--wait ` +
     `--time=10 ` +
     `--wall-time=20 ` +
     `--mem=512000 ` +
@@ -171,21 +297,38 @@ const runUserSolution = async (
   workDir: string,
   isCompiledLanguage: boolean
 ): Promise<TestCaseResult> => {
-  const boxID = getNextBoxID();
+  const boxID = await getNextBoxID();
   const userOutputFile = path.join(workDir, 'user.out');
   const userErrorFile = path.join(workDir, 'user.error');
   const metaFile = path.join(workDir, 'run.meta');
+  let boxDir: string;
 
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --init`);
-  const boxDir = path.join(boxPath.trim(), 'box');
+  try {
+    // Acquire file system lock for this box
+    await acquireBoxLock(boxID);
+    
+    const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --wait --init`);
+    boxDir = path.join(boxPath.trim(), 'box');
 
-  if (isCompiledLanguage) {
-    fs.copyFileSync(path.join(workDir, 'main.exe'), path.join(boxDir, 'main.exe'));
-  } else {
-    writeUserSolution(submission, boxDir);
+    // Critical section: ensure atomic file operations
+    if (isCompiledLanguage) {
+      fs.copyFileSync(path.join(workDir, 'main.exe'), path.join(boxDir, 'main.exe'));
+    } else {
+      writeUserSolution(submission, boxDir);
+    }
+
+    fs.copyFileSync(testcaseInput, path.join(boxDir, path.basename(testcaseInput)));
+  } catch (error) {
+    console.error(`Failed to initialize or copy files to box ${boxID}:`, error);
+    await cleanupBox(boxID);
+    return { 
+      testcase: path.basename(testcaseInput, '.in'), 
+      status: SubmissionStatus.SE, 
+      time: 0, 
+      memory: 0, 
+      message: `Box setup error: ${error}` 
+    };
   }
-
-  fs.copyFileSync(testcaseInput, path.join(boxDir, path.basename(testcaseInput)));
 
   const problemID = submission.problemID;
   const problemMeta = await Problem.findOne({ problemID: problemID });
@@ -196,6 +339,7 @@ const runUserSolution = async (
   const executeCommand = languageSupport[submission.language as keyof typeof languageSupport].executeCommand;
   const isolateCommand = `isolate --box-id=${boxID} ` +
     `--cg ` +
+    `--wait ` +
     `--processes=${problemMeta.processes + 1 + (isCompiledLanguage ? 0 : 2)} ` +
     `--time=${problemMeta.timeLimit} ` +
     `--wall-time=${problemMeta.timeLimit} ` +
@@ -388,17 +532,30 @@ const writeUserSolution = (submission: ISubmission, dir: string) => {
 }
 
 const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<SubmissionStatus> => {
-  const boxID = getNextBoxID();
+  const boxID = await getNextBoxID();
   const metaFile = path.join(workDir, 'compile.meta');
   const compileErrorFile = 'compile.error';
   const boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
+  let boxDir: string;
 
-  const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --init`);
-  const boxDir = path.join(boxPath.trim(), 'box');
-  writeUserSolution(submission, boxDir);
+  try {
+    // Acquire file system lock for this box
+    await acquireBoxLock(boxID);
+    
+    const { stdout: boxPath } = await execAsync(`isolate --box-id=${boxID} --cg --wait --init`);
+    boxDir = path.join(boxPath.trim(), 'box');
+    
+    // Critical section: ensure atomic file operations
+    writeUserSolution(submission, boxDir);
+  } catch (error) {
+    console.error(`Failed to initialize or write files to box ${boxID}:`, error);
+    await cleanupBox(boxID);
+    return SubmissionStatus.SE;
+  }
 
   const isolateCommand = `isolate --box-id=${boxID} ` +
     `--cg ` +
+    `--wait ` +
     `--processes=20 ` +
     `--time=10 ` +
     `--wall-time=20 ` +
