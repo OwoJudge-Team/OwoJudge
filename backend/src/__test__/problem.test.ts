@@ -2,18 +2,18 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { IRequest } from '../utils/request-interface';
 import { Response } from 'express';
 import multer from 'multer';
-import { createProblem, deleteProblem, updateProblem, updateProblemWithFile } from '../routes/problems';
+import { createProblem, deleteProblem } from '../routes/problems';
 
 // Mock the mongoose models with factory functions
 vi.mock('../mongoose/schemas/problems', () => {
   return {
     Problem: {
       findOne: vi.fn().mockImplementation((query) => {
-        if (query.displayID === 'non-existent-problem') {
+        if (query.problemID === 'non-existent-problem') {
           return null;
         }
         return {
-          displayID: query.displayID || 'test-problem',
+          problemID: query.problemID || 'test-problem',
           title: 'Test Problem',
           timeLimit: 1000,
           memoryLimit: 262144,
@@ -21,26 +21,27 @@ vi.mock('../mongoose/schemas/problems', () => {
         };
       }),
       findOneAndUpdate: vi.fn().mockImplementation((query, data) => {
-        if (query.displayID === 'non-existent-problem') {
+        if (query.problemID === 'non-existent-problem') {
           return null;
         }
         return {
           ...data,
-          displayID: query.displayID,
+          problemID: query.problemID,
           _id: 'mockedid123'
         };
       }),
       findOneAndDelete: vi.fn().mockImplementation((query) => {
-        if (query.displayID === 'non-existent-problem') {
+        if (query.problemID === 'non-existent-problem') {
           return null;
         }
         return {
-          displayID: query.displayID,
+          problemID: query.problemID,
           title: 'Test Problem',
           timeLimit: 1000,
           memoryLimit: 262144,
         };
-      })
+      }),
+      isAuthenticated: vi.fn().mockReturnValue(true),
     },
     IProblem: {}
   };
@@ -54,7 +55,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
     ...actualModule,
     Problem: function() {
       return {
-        displayID: '',
+        problemID: '',
         createdTime: new Date(),
         title: '',
         fileName: '',
@@ -65,7 +66,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
         submissionDetail: {},
         userDetail: {},
         save: vi.fn().mockResolvedValue({
-          displayID: 'test-problem',
+          problemID: 'test-problem',
           title: 'Test Problem'
         })
       };
@@ -79,9 +80,9 @@ vi.mock('../routes/problems', async (importOriginal) => {
       res.status(200).send('File uploaded and extracted successfully');
     }),
     deleteProblem: vi.fn().mockImplementation(async (req, res) => {
-      const { displayID } = req.params;
-      // Check for empty displayID - consider empty string as no displayID
-      if (!displayID) {
+      const { problemID } = req.params;
+      // Check for empty problemID - consider empty string as no problemID
+      if (!problemID) {
         res.status(400).send('Problem ID is required');
         return;
       }
@@ -91,16 +92,16 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
-      if (displayID === 'non-existent-problem') {
+      if (problemID === 'non-existent-problem') {
         res.sendStatus(404);
         return;
       }
       
-      res.status(200).send({ displayID, message: 'Problem deleted successfully' });
+      res.status(200).send({ problemID, message: 'Problem deleted successfully' });
     }),
     updateProblem: vi.fn().mockImplementation(async (req, res) => {
-      const { displayID } = req.params;
-      if (!displayID) {
+      const { problemID } = req.params;
+      if (!problemID) {
         res.status(400).send('Problem ID is required');
         return;
       }
@@ -110,20 +111,20 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
-      if (displayID === 'non-existent-problem') {
+      if (problemID === 'non-existent-problem') {
         res.sendStatus(404);
         return;
       }
       
       res.status(201).send({ 
-        displayID, 
+        problemID, 
         title: req.body.title || 'Updated Problem',
         message: 'Problem updated successfully' 
       });
     }),
     updateProblemWithFile: vi.fn().mockImplementation(async (req, res) => {
-      const { displayID } = req.params;
-      if (!displayID) {
+      const { problemID } = req.params;
+      if (!problemID) {
         res.status(400).send('Problem ID is required');
         return;
       }
@@ -138,45 +139,45 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
-      if (displayID === 'non-existent-problem') {
+      if (problemID === 'non-existent-problem') {
         res.status(404).send('Problem not found');
         return;
       }
       
       res.status(200).send({
-        displayID,
+        problemID,
         title: 'Updated Problem with File',
         message: 'Problem updated successfully with new file'
       });
     }),
-    getProblemById: vi.fn().mockImplementation(async (req, res) => {
-      const { displayID } = req.params;
+    getProblemByID: vi.fn().mockImplementation(async (req, res) => {
+      const { problemID } = req.params;
       
       if (!req.user) {
         res.status(401).send('Please login first');
         return;
       }
       
-      if (!displayID) {
+      if (!problemID) {
         res.status(400).send('Problem ID is required');
         return;
       }
       
-      if (displayID === 'non-existent-problem') {
+      if (problemID === 'non-existent-problem') {
         res.sendStatus(404);
         return;
       }
 
       // Mock problem from database
       const problem = {
-        displayID,
+        problemID,
         title: 'Test Problem',
         description: 'Basic Description',
         timeLimit: 1000,
         memoryLimit: 262144,
         tags: ['math', 'implementation'],
         toObject: () => ({
-          displayID,
+          problemID,
           title: 'Test Problem',
           description: 'Basic Description',
           timeLimit: 1000,
@@ -219,7 +220,7 @@ vi.mock('fs', () => ({
   readFileSync: vi.fn().mockImplementation((path) => {
     if (path.includes('metadata.json')) {
       return JSON.stringify({
-        displayID: 'test-problem',
+        problemID: 'test-problem',
         title: 'Test Problem',
         timeLimit: 1000,
         memoryLimit: 262144
@@ -256,8 +257,9 @@ describe('problem upload', () => {
       file: {
         path: 'uploads/test-problem.tar.gz',
         originalname: 'test-problem.tar.gz'
-      }
-    } as IRequest;
+      },
+      isAuthenticated: () => true
+    } as unknown as IRequest;
     
     const response = {
       status: vi.fn(() => {
@@ -305,8 +307,9 @@ describe('problem upload', () => {
 describe('problem deletion', () => {
   it('should delete a problem successfully', async () => {
     const request = {
-      params: { displayID: 'test-problem' },
-      user: { isAdmin: true }
+      params: { problemID: 'test-problem' },
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -322,8 +325,9 @@ describe('problem deletion', () => {
 
   it('should return 404 when trying to delete a non-existent problem', async () => {
     const request = {
-      params: { displayID: 'non-existent-problem' },
-      user: { isAdmin: true }
+      params: { problemID: 'non-existent-problem' },
+      user: { isAdmin: true },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -348,8 +352,9 @@ describe('problem deletion', () => {
     });
     
     const request = {
-      params: { displayID: 'test-problem' },
-      user: { isAdmin: false }
+      params: { problemID: 'test-problem' },
+      user: { isAdmin: false },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -363,14 +368,15 @@ describe('problem deletion', () => {
     expect(response.status).toHaveBeenCalledWith(403);
   });
   
-  it('should return 400 when no displayID is provided', async () => {
+  it('should return 400 when no problemID is provided', async () => {
     // Use the imported deleteProblem function which is already mocked at the module level
     const { deleteProblem } = await import('../routes/problems');
     
     const request = {
       params: { },
-      user: { isAdmin: true }
-    } as IRequest;
+      user: { isAdmin: true },
+      isAuthenticated: () => true
+    } as unknown as IRequest;
     
     const response = {
       status: vi.fn(() => {
@@ -389,9 +395,10 @@ describe('problem update', () => {
     const { updateProblem } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
+      params: { problemID: 'test-problem' },
       user: { isAdmin: false },
-      body: { title: 'Should not update' }
+      body: { title: 'Should not update' },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -409,12 +416,13 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
+      params: { problemID: 'test-problem' },
       user: { isAdmin: false },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
         originalname: 'updated-test-problem.tar.gz'
-      }
+      },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -432,13 +440,14 @@ describe('problem update', () => {
     const { updateProblem } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
+      params: { problemID: 'test-problem' },
       user: { isAdmin: true },
       body: {
         title: 'Updated Test Problem',
         timeLimit: 2000,
         memoryLimit: 524288
-      }
+      },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -456,11 +465,12 @@ describe('problem update', () => {
     const { updateProblem } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'non-existent-problem' },
+      params: { problemID: 'non-existent-problem' },
       user: { isAdmin: true },
       body: {
         title: 'This Should Fail'
-      }
+      },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -478,12 +488,13 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
+      params: { problemID: 'test-problem' },
       user: { isAdmin: true },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
         originalname: 'updated-test-problem.tar.gz'
-      }
+      },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -500,9 +511,10 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
+      params: { problemID: 'test-problem' },
       user: { isAdmin: true },
-      file: undefined
+      file: undefined,
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -519,12 +531,13 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'non-existent-problem' },
+      params: { problemID: 'non-existent-problem' },
       user: { isAdmin: true },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
         originalname: 'updated-test-problem.tar.gz'
-      }
+      },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -541,7 +554,8 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const mockReq = {
-      params: { displayID: 'test-problem' }
+      params: { problemID: 'test-problem' },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const mockRes = {
@@ -576,11 +590,12 @@ describe('problem update', () => {
 
 describe('problem get by id', () => {
   it('should return a problem with additional information from files', async () => {
-    const { getProblemById } = await import('../routes/problems');
+    const { getProblemByID } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
-      user: { id: 'user123', username: 'testuser' }
+      params: { problemID: 'test-problem' },
+      user: { id: 'user123', username: 'testuser' },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -590,16 +605,17 @@ describe('problem get by id', () => {
       sendStatus: vi.fn()
     } as unknown as Response;
 
-    await getProblemById(request, response);
+    await getProblemByID(request, response);
     expect(response.status).toHaveBeenCalledWith(200);
   });
   
   it('should return 401 when user is not logged in', async () => {
-    const { getProblemById } = await import('../routes/problems');
+    const { getProblemByID } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'test-problem' },
-      user: null
+      params: { problemID: 'test-problem' },
+      user: null,
+      isAuthenticated: () => false
     } as unknown as IRequest;
     
     const response = {
@@ -609,16 +625,17 @@ describe('problem get by id', () => {
       sendStatus: vi.fn()
     } as unknown as Response;
 
-    await getProblemById(request, response);
+    await getProblemByID(request, response);
     expect(response.status).toHaveBeenCalledWith(401);
   });
 
   it('should return 404 when problem does not exist', async () => {
-    const { getProblemById } = await import('../routes/problems');
+    const { getProblemByID } = await import('../routes/problems');
     
     const request = {
-      params: { displayID: 'non-existent-problem' },
-      user: { id: 'user123', username: 'testuser' }
+      params: { problemID: 'non-existent-problem' },
+      user: { id: 'user123', username: 'testuser' },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -628,25 +645,25 @@ describe('problem get by id', () => {
       sendStatus: vi.fn()
     } as unknown as Response;
 
-    await getProblemById(request, response);
+    await getProblemByID(request, response);
     expect(response.sendStatus).toHaveBeenCalledWith(404);
   });
   
   it('should handle reading file errors gracefully', async () => {
     // Create a special mock for this test case
-    const mockGetProblemById = vi.fn().mockImplementation(async (req, res) => {
-      const { displayID } = req.params;
+    const mockGetProblemByID = vi.fn().mockImplementation(async (req, res) => {
+      const { problemID } = req.params;
       
       // Mock database problem
       const problem = {
-        displayID,
+        problemID,
         title: 'Test Problem',
         description: 'Basic Description',
         timeLimit: 1000,
         memoryLimit: 262144,
         tags: ['math'],
         toObject: () => ({
-          displayID,
+          problemID,
           title: 'Test Problem',
           description: 'Basic Description',
           timeLimit: 1000,
@@ -660,8 +677,9 @@ describe('problem get by id', () => {
     });
     
     const request = {
-      params: { displayID: 'problem-with-missing-files' },
-      user: { id: 'user123', username: 'testuser' }
+      params: { problemID: 'problem-with-missing-files' },
+      user: { id: 'user123', username: 'testuser' },
+      isAuthenticated: () => true
     } as unknown as IRequest;
     
     const response = {
@@ -671,7 +689,7 @@ describe('problem get by id', () => {
       sendStatus: vi.fn()
     } as unknown as Response;
 
-    await mockGetProblemById(request, response);
+    await mockGetProblemByID(request, response);
     expect(response.status).toHaveBeenCalledWith(200);
   });
 });
