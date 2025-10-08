@@ -25,14 +25,18 @@ export const updateContestValidation: Schema = {
   startTime: {
     in: ['body'],
     optional: true,
-    isISO8601: true,
+    isISO8601: {
+      options: { strict: false }
+    },
     toDate: true,
     errorMessage: 'Start time must be a valid date'
   },
   endTime: {
     in: ['body'],
     optional: true,
-    isISO8601: true,
+    isISO8601: {
+      options: { strict: false }
+    },
     toDate: true,
     errorMessage: 'End time must be a valid date'
   },
