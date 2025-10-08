@@ -1,6 +1,7 @@
 import { parentPort, workerData } from 'worker_threads';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
+import { User } from '../mongoose/schemas/users';
 import languageSupport from '../utils/language-support';
 import { hashString } from '../utils/hash-password';
 import { SubmissionStatus } from '../utils/submission-status';
@@ -131,28 +132,33 @@ const runChecker = async (
         stderr: checkerErrorFile
       }, 25000);
 
-      const message = fs.readFileSync(path.join(boxDir, path.basename(checkerErrorFile)), 'utf-8').trim();
-
-      const metaContent = fs.readFileSync(metaFile, 'utf-8');
-      const exitCodeMatch = metaContent.match(/exitcode:(\d+)/);
-      const exitCode = exitCodeMatch ? parseInt(exitCodeMatch[1], 10) : -1;
-
-      let status: SubmissionStatus;
-      switch (exitCode) {
-        case 0:
-          status = SubmissionStatus.AC;
-          break;
-        case 1:
-          status = SubmissionStatus.WA;
-          break;
-        case 2:
-          status = SubmissionStatus.PE;
-          break;
-        default:
-          status = SubmissionStatus.SE;
+      // Read checker message from stderr (inside the box)
+      const checkerErrorPath = path.join(boxDir, checkerErrorFile);
+      let message = '';
+      if (fs.existsSync(checkerErrorPath)) {
+        message = fs.readFileSync(checkerErrorPath, 'utf-8').trim();
       }
 
-      return { status, message };
+      // Read score from stdout
+      const checkerOutputPath = path.join(boxDir, checkerOutputFile);
+      let score = 0;
+      if (fs.existsSync(checkerOutputPath)) {
+        const scoreStr = fs.readFileSync(checkerOutputPath, 'utf-8').trim();
+        score = parseFloat(scoreStr);
+      }
+
+      // Determine status based on score
+      if (!isNaN(score)) {
+        if (score === 0) {
+          return { status: SubmissionStatus.WA, message };
+        }
+        if (score > 0 && score < 1) {
+          return { status: SubmissionStatus.PS, message };
+        }
+        return { status: SubmissionStatus.AC, message };
+      }
+
+      return { status: SubmissionStatus.SE, message: 'Invalid score from checker' };
     } catch (error) {
       console.error('Checker execution error:', error);
       return { status: SubmissionStatus.SE, message: `Checker error: ${error}` };
@@ -473,6 +479,26 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       throw new Error(`Problem ${submission.problemID} not found`);
     }
 
+    const user = await User.findOne({ username: submission.username });
+    if (!user) {
+      throw new Error(`User ${submission.username} not found`);
+    }
+
+    // Check if this is the user's first attempt on this problem
+    const previousSubmissions = await Submission.countDocuments({
+      username: submission.username,
+      problemID: submission.problemID,
+      _id: { $ne: submissionID } // Exclude current submission
+    });
+
+    const isFirstAttempt = previousSubmissions === 0;
+
+    // If first attempt, update problem's attempted count
+    if (isFirstAttempt) {
+      problem.userDetail.attempted += 1;
+      await problem.save();
+    }
+
     submission.status = SubmissionStatus.QU;
     await submission.save();
 
@@ -490,6 +516,11 @@ const processSubmission = async (submissionID: string): Promise<void> => {
         if (result === SubmissionStatus.CE) {
           submission.status = SubmissionStatus.CE;
           await submission.save();
+          
+          // Update submission statistics
+          problem.submissionDetail.compilationError += 1;
+          problem.submissionDetail.submitted += 1;
+          await problem.save();
           return;
         }
         isCompiledLanguage = true;
@@ -499,10 +530,71 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       submission.score = score;
       submission.results = testCaseResults;
       await submission.save();
+
+      // Update submission statistics based on final status
+      problem.submissionDetail.submitted += 1;
+      
+      switch (finalStatus) {
+        case SubmissionStatus.AC:
+          problem.submissionDetail.accepted += 1;
+          
+          // Check if this is the user's first AC on this problem
+          const previousAC = await Submission.countDocuments({
+            username: submission.username,
+            problemID: submission.problemID,
+            status: SubmissionStatus.AC,
+            _id: { $ne: submissionID }
+          });
+          
+          if (previousAC === 0) {
+            // First time solving this problem
+            problem.userDetail.solved += 1;
+            await problem.save();
+            
+            // Update user statistics
+            user.solvedProblem += 1;
+            if (!user.solvedProblems.includes(submission.problemID)) {
+              user.solvedProblems.push(submission.problemID);
+            }
+            await user.save();
+          } else {
+            await problem.save();
+          }
+          break;
+        case SubmissionStatus.WA:
+          problem.submissionDetail.wrongAnswer += 1;
+          await problem.save();
+          break;
+        case SubmissionStatus.TLE:
+          problem.submissionDetail.timeLimitExceeded += 1;
+          await problem.save();
+          break;
+        case SubmissionStatus.MLE:
+          problem.submissionDetail.memoryLimitExceeded += 1;
+          await problem.save();
+          break;
+        case SubmissionStatus.RE:
+          problem.submissionDetail.runtimeError += 1;
+          await problem.save();
+          break;
+        case SubmissionStatus.PE:
+          // PE doesn't have a specific counter, treat as wrong answer
+          problem.submissionDetail.wrongAnswer += 1;
+          await problem.save();
+          break;
+        default:
+          // For SE, PS and other statuses
+          await problem.save();
+          break;
+      }
     } catch (error) {
       console.error('Error during worker execution:', error);
       submission.status = SubmissionStatus.SE;
       await submission.save();
+      
+      // Update submission statistics for system error
+      problem.submissionDetail.submitted += 1;
+      await problem.save();
     } finally {
       // Clean up work directory
       fs.rmSync(workDir, { recursive: true, force: true });
