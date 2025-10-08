@@ -21,10 +21,7 @@ async function fetchProblem(id: string): Promise<ProblemData | null> {
   try {
     const base = process.env.NEXT_PUBLIC_BACKEND_URL;
     const url = base ? `${base}/api/problems/${id}` : `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/problems/${id}`;
-    const res = await fetch(url, {
-      cache: "no-store",
-      credentials: "include",
-    });
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -32,11 +29,11 @@ async function fetchProblem(id: string): Promise<ProblemData | null> {
   }
 }
 
-export default async function ProblemPage({ params }: { params: { id: string } }) {
-  const data = await fetchProblem(params.id);
-  if (!data) {
-    return <div className="p-6">Problem not found or you must login.</div>;
-  }
+export default async function ProblemPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const data = await fetchProblem(id);
+  if (!data) return <div className="p-6">Problem not found or you must login.</div>;
+
   return (
     <div className="bg-neutral-light min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
