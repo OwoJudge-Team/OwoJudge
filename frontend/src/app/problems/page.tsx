@@ -1,42 +1,44 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { problems } from '@/constants/problems';
+import Link from "next/link";
+import { problems } from "@/constants/problems";
 
 const ProblemPage: React.FC = () => {
   return (
-    <div className='bg-neutral-light min-h-screen p-8'>
-      <div className='max-w-6xl mx-auto'>
+    <div className="min-h-screen bg-neutral-light p-8">
+      <div className="mx-auto max-w-6xl">
         {/* Title */}
-        <h1 className='text-4xl font-bold text-foreground mb-8'>Problems</h1>
+        <h1 className="mb-8 text-4xl font-bold text-foreground">Problems</h1>
 
         {/* Problems Table */}
-        <div className='bg-white shadow-lg rounded-lg overflow-hidden'>
-          <table className='w-full text-left'>
-            <thead className='bg-primary-light text-white'>
+        <div className="overflow-hidden rounded-lg bg-white shadow-lg">
+          <table className="w-full text-left">
+            <thead className="bg-primary-light text-white">
               <tr>
-                <th className='py-4 px-6'>#</th>
-                <th className='py-4 px-6'>Title</th>
-                <th className='py-4 px-6'>Difficulty</th>
-                <th className='py-4 px-6'>AC Ratio (User)</th>
-                <th className='py-4 px-6'>AC Ratio (Submission)</th>
+                <th className="px-6 py-4">#</th>
+                <th className="px-6 py-4">Title</th>
+                <th className="px-6 py-4">Difficulty</th>
+                <th className="px-6 py-4">AC Ratio (User)</th>
+                <th className="px-6 py-4">AC Ratio (Submission)</th>
               </tr>
             </thead>
             <tbody>
               {problems.map((problem) => (
-                <tr key={problem.id} className='hover:bg-neutral transition'>
-                  <td className='py-4 px-6'>{problem.id}</td>
-                  <td className='py-4 px-6'>
+                <tr key={problem.id} className="transition hover:bg-neutral">
+                  <td className="px-6 py-4">{problem.id}</td>
+                  <td className="px-6 py-4">
                     <Link
                       href={`/problems/${problem.id}`}
-                      className='text-primary-dark font-semibold hover:underline transition'
+                      className="font-semibold text-primary-dark transition hover:underline"
                     >
                       {problem.title}
                     </Link>
                   </td>
-                  <td className={`py-4 px-6 ${getDifficultyColor(problem.difficulty)}`}>{problem.difficulty}</td>
-                  <td className='py-4 px-6'>{problem.submissions}</td>
-                  <td className='py-4 px-6'>{problem.accuracy}</td>
+                  <td className={`px-6 py-4 ${getDifficultyColor(problem.difficulty)}`}>
+                    {problem.difficulty}
+                  </td>
+                  <td className="px-6 py-4">{problem.submissions}</td>
+                  <td className="px-6 py-4">{problem.accuracy}</td>
                 </tr>
               ))}
             </tbody>
@@ -49,14 +51,14 @@ const ProblemPage: React.FC = () => {
 
 const getDifficultyColor = (difficulty: string) => {
   switch (difficulty) {
-    case 'Easy':
-      return 'text-green-600';
-    case 'Medium':
-      return 'text-yellow-500';
-    case 'Hard':
-      return 'text-red-600';
+    case "Easy":
+      return "text-green-600";
+    case "Medium":
+      return "text-yellow-500";
+    case "Hard":
+      return "text-red-600";
     default:
-      return '';
+      return "";
   }
 };
 

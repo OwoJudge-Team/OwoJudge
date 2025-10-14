@@ -12,14 +12,23 @@ interface MarkdownRendererProps {
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
-    <div className="prose prose-slate max-w-none dark:prose-invert">
+    <div className="prose prose-slate dark:prose-invert max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={
           {
-            pre: (props) => <pre className="bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto" {...props} />,
-            code: ({ children, className, ...rest }: { children?: React.ReactNode; className?: string }) => (
+            pre: (props) => (
+              <pre className="overflow-x-auto rounded bg-gray-800 p-3 text-gray-100" {...props} />
+            ),
+            code: ({
+              children,
+              className,
+              ...rest
+            }: {
+              children?: React.ReactNode;
+              className?: string;
+            }) => (
               <code className={`font-mono text-sm ${className || ""}`} {...rest}>
                 {children}
               </code>
