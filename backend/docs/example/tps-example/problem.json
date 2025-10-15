@@ -1,0 +1,30 @@
+{
+    "name": "Problem",
+    "code": "tps-example",
+    "title": "Problem Title",
+    "type": "Batch",
+    "score_policy": "sum",
+    "full_score": 100,
+    "tags": [
+        "basic"
+    ],
+    "problemRelatedTags": [
+        "math"
+    ],
+    "allowed_languages": [
+        "gcc c17",
+        "gcc c23",
+        "g++ c++17",
+        "g++ c++23",
+        "rust",
+        "nodejs",
+        "python3",
+        "bash"
+    ],
+    "has_grader": false,
+    "java_enabled": false,
+    "python_enabled": false,
+    "time_limit": 1.0,
+    "memory_limit": 2048,
+    "process_limit": 1
+}
