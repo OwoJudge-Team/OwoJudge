@@ -27,8 +27,9 @@
   },
   "include": [
     "src/**/*",
-    "**/*.ts"
-, "scripts/init-admin.js"  ],
+    "**/*.ts",
+    "scripts/init-admin.js"
+  ],
   "exclude": [
     "node_modules",
     "dist",
