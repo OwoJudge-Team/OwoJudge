@@ -7,11 +7,15 @@ import { IRequest } from '../utils/request-interface';
 import multer from 'multer';
 import { readFileSync } from 'fs';
 import * as tar from 'tar';
-import { spawnSync } from 'child_process';
+import { spawnSync, exec } from 'child_process';
+import { promisify } from 'util';
 import { isTarGz } from '../utils/file-utils';
 import { generateSingleTestcase } from '../utils/generate-testcase';
+import { IsolateManager } from '../utils/isolate-manager';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const execAsync = promisify(exec);
 
 const problemsRouter = Router();
 const userRequestCounts = new Map<string, Map<string, number>>();
@@ -71,17 +75,50 @@ const getProblemByID = async (request: IRequest, response: Response) => {
     }
     
     const problemDir = 'problems/' + problemID;
-    const metadataPath = `${problemDir}/problem.json`;
     
     try {
-      const metadataContent = readFileSync(metadataPath, 'utf8');
-      const metadata = JSON.parse(metadataContent);
-      const testcase = metadata.testcase;
-      const sampleTestcases = testcase.filter((test: any) =>
-        test.subtask && test.subtask.includes('sample')
-      );
+      // Read sample testcases from tests/mapping file
+      const sampleTestcases: any[] = [];
+      const testsDir = path.join(problemDir, 'tests');
+      const mappingPath = path.join(testsDir, 'mapping');
+      
+      if (fs.existsSync(mappingPath)) {
+        const mappingContent = fs.readFileSync(mappingPath, 'utf-8');
+        const sampleTestcaseNames: string[] = [];
+        
+        // Parse mapping file to find sample subtask testcases
+        for (const line of mappingContent.split('\n')) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+          
+          const parts = trimmedLine.split(/\s+/);
+          if (parts.length < 2) continue;
+          
+          const subtaskName = parts[0];
+          const testcaseName = parts[1];
+          
+          // Check if this belongs to sample subtask
+          if (subtaskName === 'sample' || subtaskName.includes('sample')) {
+            sampleTestcaseNames.push(testcaseName);
+          }
+        }
+        
+        // Read actual test case files
+        for (const testcaseName of sampleTestcaseNames) {
+          const inputPath = path.join(testsDir, `${testcaseName}.in`);
+          const outputPath = path.join(testsDir, `${testcaseName}.out`);
+          
+          if (fs.existsSync(inputPath) && fs.existsSync(outputPath)) {
+            sampleTestcases.push({
+              name: testcaseName,
+              input: fs.readFileSync(inputPath, 'utf-8'),
+              output: fs.readFileSync(outputPath, 'utf-8')
+            });
+          }
+        }
+      }
 
-      const description = readFileSync(`${problemDir}/description.md`, 'utf8');
+      const description = readFileSync(`${problemDir}/statement/description.md`, 'utf8');
 
       const fullProblem = {
         ...problem.toObject(),
@@ -192,6 +229,65 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
         return;
       }
       console.log(`Problem ${metadata.code} saved to database`);
+      
+      // Generate test cases asynchronously using tps gen in isolated environment
+      // This runs in the background and doesn't block the response
+      (async () => {
+        try {
+          console.log(`Starting async test generation for ${metadata.code} in isolated environment`);
+          
+          await IsolateManager.withBox(async (box) => {
+            const genBoxDir = box.getBoxDir();
+            const workDir = path.join('judging', 'tps-gen-' + metadata.code);
+            
+            // Ensure work directory exists
+            fs.mkdirSync(workDir, { recursive: true });
+            
+            try {
+              // Copy entire problem directory to isolated box
+              await box.copyToBox(`${problemDir}/*`);
+
+              const genMetaFile = path.join(workDir, 'tps-gen.meta');
+
+              // Run tps gen inside isolate with generous limits
+              await box.run('tps gen', {
+                processes: 50,
+                timeLimit: 600,
+                wallTimeLimit: 3600,
+                memoryLimit: 2048000,
+                metaFile: genMetaFile,
+                stderr: 'tps-gen.error',
+                fullEnv: true,
+                dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+                cwd: '/box'
+              }, 4000000);
+
+              // Copy generated tests directory back to problem directory
+              const generatedTestsDir = path.join(genBoxDir, 'tests');
+              const targetTestsDir = path.join(problemDir, 'tests');
+
+              if (fs.existsSync(generatedTestsDir)) {
+                // Remove old tests directory if exists and copy new one
+                if (fs.existsSync(targetTestsDir)) {
+                  fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                }
+                await execAsync(`cp -r ${generatedTestsDir} ${targetTestsDir}`);
+                console.log(`Test cases generated and copied successfully for ${metadata.code}`);
+              } else {
+                throw new Error('Tests directory not generated by tps gen');
+              }
+            } finally {
+              // Clean up work directory
+              if (fs.existsSync(workDir)) {
+                fs.rmSync(workDir, { recursive: true, force: true });
+              }
+            }
+          });
+        } catch (genError) {
+          console.error(`Failed to generate test cases for ${metadata.code}:`, genError);
+        }
+      })();
+      
     } catch (error) {
       console.error('Error reading or parsing metadata.json:', error);
       throw error;
@@ -365,6 +461,65 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 
       await Problem.findOneAndUpdate({ problemID }, updateData, { new: true, runValidators: true });
       console.log(`Problem ${problemID} updated successfully`);
+      
+      // Generate test cases asynchronously using tps gen in isolated environment
+      // This runs in the background and doesn't block the response
+      (async () => {
+        try {
+          console.log(`Starting async test generation for ${problemID} in isolated environment`);
+          
+          await IsolateManager.withBox(async (box) => {
+            const genBoxDir = box.getBoxDir();
+            const workDir = path.join('judging', 'tps-gen-' + problemID);
+            
+            // Ensure work directory exists
+            fs.mkdirSync(workDir, { recursive: true });
+            
+            try {
+              // Copy entire problem directory to isolated box
+              await box.copyToBox(`${newProblemDir}/*`);
+
+              const genMetaFile = path.join(workDir, 'tps-gen.meta');
+
+              // Run tps gen inside isolate with generous limits
+              await box.run('tps gen', {
+                processes: 50,
+                timeLimit: 600,
+                wallTimeLimit: 3600,
+                memoryLimit: 2048000,
+                metaFile: genMetaFile,
+                stderr: 'tps-gen.error',
+                fullEnv: true,
+                dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+                cwd: '/box'
+              }, 4000000);
+
+              // Copy generated tests directory back to problem directory
+              const generatedTestsDir = path.join(genBoxDir, 'tests');
+              const targetTestsDir = path.join(newProblemDir, 'tests');
+
+              if (fs.existsSync(generatedTestsDir)) {
+                // Remove old tests directory if exists and copy new one
+                if (fs.existsSync(targetTestsDir)) {
+                  fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                }
+                await execAsync(`cp -r ${generatedTestsDir} ${targetTestsDir}`);
+                console.log(`Test cases generated and copied successfully for ${problemID}`);
+              } else {
+                throw new Error('Tests directory not generated by tps gen');
+              }
+            } finally {
+              // Clean up work directory
+              if (fs.existsSync(workDir)) {
+                fs.rmSync(workDir, { recursive: true, force: true });
+              }
+            }
+          });
+        } catch (genError) {
+          console.error(`Failed to generate test cases for ${problemID}:`, genError);
+        }
+      })();
+      
       response.status(200).send('Problem updated successfully');
     } catch (error) {
       console.error('Error processing metadata or updating database:', error);

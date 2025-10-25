@@ -5,6 +5,20 @@ interface ProblemInContest {
     score: number;
 }
 
+interface ProblemScore {
+    problemID: string;
+    score: number;
+    lastSubmissionTime?: Date;
+}
+
+interface UserStanding {
+    username: string;
+    totalScore: number;
+    solvedCount: number;
+    problemScores: ProblemScore[];
+    lastSubmissionTime?: Date;
+}
+
 interface IContest extends Document {
   contestID: string;
   title: string;
@@ -12,6 +26,7 @@ interface IContest extends Document {
   startTime: Date;
   endTime: Date;
   problems: ProblemInContest[];
+  standings: UserStanding[];
 }
 
 const contestSchema: Schema = new Schema({
@@ -41,8 +56,32 @@ const contestSchema: Schema = new Schema({
         name: Schema.Types.String,
         score: Schema.Types.Number
     }
+  ],
+  standings: [
+    {
+      username: {
+        type: Schema.Types.String,
+        required: true
+      },
+      totalScore: {
+        type: Schema.Types.Number,
+        default: 0
+      },
+      solvedCount: {
+        type: Schema.Types.Number,
+        default: 0
+      },
+      problemScores: [
+        {
+          problemID: Schema.Types.String,
+          score: Schema.Types.Number,
+          lastSubmissionTime: Schema.Types.Date
+        }
+      ],
+      lastSubmissionTime: Schema.Types.Date
+    }
   ]
 });
 
 export const Contest = mongoose.model<IContest>('Contest', contestSchema);
-export { IContest };
+export { IContest, UserStanding, ProblemScore };
