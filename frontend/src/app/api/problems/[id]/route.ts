@@ -5,16 +5,13 @@ import path from "path";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ displayID: string }> }
-) {
-  const { displayID } = await params;
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
-  // Prefer per-ID markdown at src/app/api/problems/<id>/index.md, fallback to the [displayID]/index.md in this folder
+  // Prefer per-ID markdown at src/app/api/problems/<id>/index.md, fallback to the [id]/index.md in this folder
   const candidates = [
-    path.join(process.cwd(), "src", "app", "api", "problems", displayID, "index.md"),
-    path.join(process.cwd(), "src", "app", "api", "problems", "[displayID]", "index.md"),
+    path.join(process.cwd(), "src", "app", "api", "problems", id, "index.md"),
+    path.join(process.cwd(), "src", "app", "api", "problems", "[id]", "index.md"),
   ];
   let description = "# Description not found";
   for (const p of candidates) {
@@ -28,9 +25,9 @@ export async function GET(
 
   // Mock problem data for frontend-only testing
   const mock = {
-    _id: "mock-" + displayID,
-    displayID,
-    title: "Sample Problem " + displayID.toUpperCase(),
+    _id: "mock-" + id,
+    id,
+    title: "CF341E Candies Game",
     timeLimit: 1000,
     memoryLimit: 262144,
     scorePolicy: "sum",
