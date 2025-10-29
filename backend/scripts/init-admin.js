@@ -87,7 +87,7 @@ async function createAdminUser() {
     }
 
     // Generate random password for admin user
-    const adminPassword = randomString(12);
+    const adminPassword = process.env.ADMIN_PASSWD || randomString(12);
     
     // Create admin user object
     const adminUser = new User({
@@ -106,9 +106,22 @@ async function createAdminUser() {
     console.log('Admin User Details:');
     console.log(`Username: ${ROOT_USERNAME}`);
     console.log(`Password: ${adminPassword}`);
-    console.log(`Admin: ${savedUser.isAdmin}\n`);
     console.log('IMPORTANT: Save these credentials securely!');
     console.log('The password will not be displayed again.');
+    try {
+      const credPath = './admin-credentials.json';
+      const credentials = {
+        username: ROOT_USERNAME,
+        password: adminPassword,
+        userId: savedUser._id?.toString?.() || String(savedUser._id),
+        createdAt: new Date().toISOString()
+      };
+      // Write file with restrictive permissions
+      fs.writeFileSync(credPath, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+      console.log(`Credentials written to ${credPath} (permissions 600)`);
+    } catch (writeErr) {
+      console.error('Failed to write credentials file:', writeErr);
+    }
   } catch (error) {
     console.error('Error creating admin user:', error);
     process.exit(1);
