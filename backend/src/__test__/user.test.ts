@@ -99,7 +99,7 @@ describe('User Routes', () => {
     } as unknown as Response;
 
     await getUserByUsername(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.status).toHaveBeenCalledWith(401);
   });
 
   it('should create user', async () => {

@@ -80,9 +80,34 @@ async function createAdminUser() {
     const existingAdmin = await User.findOne({ username: ROOT_USERNAME });
     
     if (existingAdmin) {
-      console.log(`Admin user '${ROOT_USERNAME}' already exists`);
-      console.log(`Admin Username: ${ROOT_USERNAME}`);
-      console.log(`Password: [existing password - not changed]`);
+      const newPass = process.env.ADMIN_PASSWD;
+      if (!newPass) {
+        console.log('Admin user already exists. To change the password set ADMIN_PASSWD and re-run the script.');
+        return;
+      }
+
+      existingAdmin.password = hashString(newPass);
+      await existingAdmin.save();
+
+      console.log('Admin password updated successfully!');
+      console.log('Admin User Details:');
+      console.log(`Username: ${ROOT_USERNAME}`);
+      console.log('Password: (from ADMIN_PASSWD environment variable)');
+      console.log('IMPORTANT: Save this password securely!');
+
+      try {
+        const credPath = './admin-credentials.json';
+        const credentials = {
+          username: ROOT_USERNAME,
+          password: newPass,
+          userId: existingAdmin._id?.toString?.() || String(existingAdmin._id),
+          updatedAt: new Date().toISOString()
+        };
+        fs.writeFileSync(credPath, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+        console.log(`Credentials written to ${credPath} (permissions 600)`);
+      } catch (writeErr) {
+        console.error('Failed to write credentials file:', writeErr);
+      }
       return;
     }
 
@@ -108,20 +133,6 @@ async function createAdminUser() {
     console.log(`Password: ${adminPassword}`);
     console.log('IMPORTANT: Save these credentials securely!');
     console.log('The password will not be displayed again.');
-    try {
-      const credPath = './admin-credentials.json';
-      const credentials = {
-        username: ROOT_USERNAME,
-        password: adminPassword,
-        userId: savedUser._id?.toString?.() || String(savedUser._id),
-        createdAt: new Date().toISOString()
-      };
-      // Write file with restrictive permissions
-      fs.writeFileSync(credPath, JSON.stringify(credentials, null, 2), { mode: 0o600 });
-      console.log(`Credentials written to ${credPath} (permissions 600)`);
-    } catch (writeErr) {
-      console.error('Failed to write credentials file:', writeErr);
-    }
   } catch (error) {
     console.error('Error creating admin user:', error);
     process.exit(1);
