@@ -1,0 +1,212 @@
+# OwoJudge Frontend Design Style Guide
+
+## Design Philosophy
+Modern, clean, and professional interface with excellent readability and visual hierarchy. Focus on simplicity over complexity, with subtle interactions and smooth transitions.
+
+## Color Palette
+
+### Primary Colors
+- **Slate (Gray Scale)**: Main neutral color family
+  - Light backgrounds: slate-50 (#f8fafc)
+  - Dark backgrounds: slate-950 (#020617)
+  - Dark mode cards: slate-900 (#0f172a)
+  - Borders (light): slate-200 (#e2e8f0)
+  - Borders (dark): slate-800 (#1e293b)
+  - Text secondary: slate-600 (light) / slate-400 (dark)
+  - Text primary: slate-900 (light) / slate-100 (dark)
+
+- **Indigo (Accent/Interactive)**: Primary interactive color
+  - Badges light: indigo-50 background / indigo-700 text
+  - Badges dark: indigo-950 background / indigo-300 text
+  - Links hover: indigo-600 (light) / indigo-400 (dark)
+
+### Semantic Colors
+- **Emerald (Success/AC)**: For accepted/solved problems
+  - Solid state: emerald-500 (#10b981)
+  - Light background: emerald-50 (#ecfdf5)
+  - Dark background: emerald-950 with 20-30% opacity
+  - Row highlight: emerald-50/50 (light) / emerald-950/20 (dark)
+
+- **Amber (Points/Rewards)**: For scores and achievements
+  - Background: amber-50 (light) / amber-950/50 (dark)
+  - Text: amber-700 (light) / amber-400 (dark)
+
+## Typography
+
+### Font Hierarchy
+- **Page Title (H1)**: 
+  - Size: text-5xl md:text-6xl (3rem / 3.75rem)
+  - Weight: font-extrabold (800)
+  - Letter spacing: tracking-tight
+  - Gradient: from-slate-900 via-slate-800 to-slate-700 (light mode)
+  - Gradient: from-slate-50 via-slate-200 to-slate-400 (dark mode)
+  - Use bg-clip-text for gradient text effect
+
+- **Subtitle**:
+  - Size: text-lg (1.125rem)
+  - Color: slate-600 (light) / slate-400 (dark)
+
+- **Section Badge**:
+  - Size: text-sm (0.875rem)
+  - Weight: font-medium (500)
+  - Shape: rounded-full with padding px-4 py-2
+
+- **Table Headers**:
+  - Size: text-xs (0.75rem)
+  - Weight: font-semibold (600)
+  - Transform: uppercase
+  - Letter spacing: tracking-wider
+  - Color: slate-600 (light) / slate-400 (dark)
+
+- **Table Content**:
+  - Size: text-base (1rem) for main content
+  - Size: text-sm (0.875rem) for secondary info
+  - Weight: font-semibold (600) for problem titles
+
+- **Badges/Pills**:
+  - Size: text-xs (0.75rem)
+  - Weight: font-bold (700) for status badges
+  - Weight: font-medium/semibold for info badges
+  - Transform: uppercase for status
+
+## Components
+
+### Cards & Containers
+- **Rounded corners**: rounded-2xl (1rem) for main containers
+- **Borders**: 
+  - Light: border-slate-200
+  - Dark: border-slate-800
+- **Shadows**: shadow-xl for elevated cards
+- **Background**:
+  - Light: bg-white
+  - Dark: bg-slate-900
+
+### Tables
+- **Container**: 
+  - Rounded: rounded-2xl
+  - Border: single border with slate colors
+  - Shadow: shadow-xl
+  
+- **Header Row**:
+  - Background: slate-50 (light) / slate-900/50 (dark)
+  - Border bottom: border-slate-200 (light) / border-slate-800 (dark)
+  - Padding: px-6 py-4
+
+- **Body Rows**:
+  - Divider: divide-y divide-slate-100 (light) / divide-slate-800/50 (dark)
+  - Padding: px-6 py-4
+  - Hover state: hover:bg-slate-50 (light) / hover:bg-slate-800/50 (dark)
+  - AC rows: emerald-50/50 background with emerald-50 hover (light)
+  - AC rows dark: emerald-950/20 background with emerald-950/30 hover
+
+### Badges & Pills
+- **ID Badge**:
+  - Size: h-8 w-8
+  - Shape: rounded-lg
+  - Background: slate-100 (light) / slate-800 (dark)
+
+- **Info Pills** (Quota, Score):
+  - Shape: rounded-lg
+  - Padding: px-3 py-1.5
+  - Display icons with gap-1.5
+
+- **Status Pills**:
+  - Shape: rounded-full
+  - Padding: px-3.5 py-1.5
+  - Solved: solid emerald-500 background, white text
+  - Unsolved: slate-100/800 background, simple without borders
+
+### Interactive Elements
+- **Links**:
+  - Base color: slate-900 (light) / slate-100 (dark)
+  - Hover: indigo-600 (light) / indigo-400 (dark)
+  - Animated arrow on hover: opacity 0→100, translateX -8px→0px
+  - Title slide: translateX 0→4px on hover
+
+- **Transitions**:
+  - Default: transition-all duration-150
+  - Hover states: duration-150 (150ms)
+  - Keep animations subtle and fast
+
+### Icons
+- **Standard size**: h-4 w-4
+- **Color**: Inherit from parent or use semantic colors
+- **Usage**:
+  - Always pair with text in badges
+  - Use gap-1 or gap-1.5 for icon-text spacing
+  - Use currentColor for fill/stroke
+
+## Layout
+
+### Spacing
+- **Page padding**: px-4 py-12 (mobile), md:px-8 (desktop)
+- **Max width**: max-w-7xl
+- **Section margins**: mb-10 for header sections
+- **Row padding**: px-6 py-4 (standard table cells)
+
+### Responsive Design
+- Mobile-first approach
+- Breakpoint: md: (768px) for desktop adjustments
+- Text scales up on desktop (text-5xl → md:text-6xl)
+
+## Dark Mode Strategy
+- Use dark: prefix for all dark mode variants
+- Maintain same visual hierarchy in both modes
+- Reduce opacity and saturation in dark mode (e.g., /50, /30 for overlays)
+- Use slate-950 as dark background, not pure black
+- Ensure sufficient contrast for accessibility
+
+## Animation Principles
+- **Subtle and fast**: 150ms for most transitions
+- **Purposeful**: Animations should guide user attention (hover arrows, title slides)
+- **Consistent**: Same timing function throughout
+- **Group interactions**: Use group and group/link classes for coordinated animations
+
+## Accessibility
+- Semantic HTML structure
+- Sufficient color contrast ratios
+- Uppercase text for emphasis, not decoration
+- Icon + text combinations for clarity
+- Keyboard navigation support (implicit through proper link/button usage)
+
+## Do's
+✓ Use slate as the primary neutral color
+✓ Keep gradients subtle (for text only, not backgrounds)
+✓ Maintain consistent spacing with Tailwind spacing scale
+✓ Use rounded-lg for small elements, rounded-2xl for containers
+✓ Implement smooth hover states
+✓ Keep status indicators clear with bold colors (emerald-500 for success)
+
+## Don'ts
+✗ Avoid multiple bright gradient backgrounds
+✗ No heavy drop shadows or glows
+✗ Don't mix too many color families (stick to slate, indigo, emerald, amber)
+✗ Avoid slow animations (>200ms)
+✗ No border-dashed or overly decorative borders
+✗ Don't use pure black (#000000) or pure white borders in dark mode
+
+## Example Component Patterns
+
+### Solved Row Highlight
+```
+className="bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
+```
+
+### Status Badge (Solved)
+```
+className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm"
+```
+
+### Interactive Link with Arrow
+```
+className="group/link inline-flex items-center gap-2 text-base font-semibold text-slate-900 transition-all hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+```
+
+### Info Pill (with icon)
+```
+className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+```
+
+---
+
+This design system prioritizes readability, consistency, and modern aesthetics while maintaining excellent performance and accessibility across both light and dark modes.

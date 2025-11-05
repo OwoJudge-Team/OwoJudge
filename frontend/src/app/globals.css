@@ -23,12 +23,12 @@
   --neutral-dark: #dcdcdc;
 }
 
-/* @media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0a0a0a; /* Dark Background */
+    --foreground: #e5e7eb; /* Light Foreground */
   }
-} */
+}
 
 body {
   color: var(--foreground);
