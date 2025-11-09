@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { submissions } from "@/constants/submissions";
+import { getStatusColor } from "@/utils/submission-status";
 
 const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<"global" | "user">("global"); // Switch between global/user submissions
@@ -101,9 +103,9 @@ const SubmissionPage: React.FC = () => {
             <thead className="bg-primary-light text-white">
               <tr>
                 <th className="px-6 py-4">#</th>
+                <th className="px-6 py-4">Timestamp</th>
                 <th className="px-6 py-4">User</th>
                 <th className="px-6 py-4">Problem</th>
-                <th className="px-6 py-4">Language</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Time</th>
                 <th className="px-6 py-4">Memory</th>
@@ -112,10 +114,14 @@ const SubmissionPage: React.FC = () => {
             <tbody>
               {filteredSubmissions.map((submission) => (
                 <tr key={submission.id} className="transition hover:bg-neutral">
-                  <td className="px-6 py-4">{submission.id}</td>
+                  <td className="px-6 py-4">
+                    <Link href={`/submissions/${submission.id}`} className="text-primary underline break-normal">
+                      {submission.id}
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4">{submission.createdTime}</td>
                   <td className="px-6 py-4">{submission.user}</td>
                   <td className="px-6 py-4">{submission.problem}</td>
-                  <td className="px-6 py-4">{submission.language}</td>
                   <td className={`px-6 py-4 ${getStatusColor(submission.status)}`}>
                     {submission.status}
                   </td>
@@ -129,22 +135,6 @@ const SubmissionPage: React.FC = () => {
       </div>
     </div>
   );
-};
-
-// Helper function to get status color
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "AC":
-      return "text-green-600";
-    case "WA":
-      return "text-red-600";
-    case "TLE":
-      return "text-blue-500";
-    case "MLE":
-      return "text-purple-500";
-    default:
-      return "";
-  }
 };
 
 export default SubmissionPage;
