@@ -7,6 +7,9 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { nord } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Components } from 'react-markdown';
 
 interface ProblemData {
   _id: string;
@@ -140,7 +143,30 @@ export default function ProblemPage() {
               </h2>
             </div>
             <div className="prose prose-lg max-w-none p-8">
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkMath]} 
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  code({className, children, ...props}: any) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !match ? (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    ) : (
+                      <SyntaxHighlighter
+                        {...props}
+                        style={nord as any}
+                        language={match[1]}
+                        PreTag="div"
+                        customStyle={{ backgroundColor: 'transparent', padding: 0, margin: 0 }}
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    );
+                  }
+                }}
+              >
                 {data.description}
               </ReactMarkdown>
             </div>
