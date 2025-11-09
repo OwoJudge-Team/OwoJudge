@@ -4,6 +4,20 @@ import React from "react";
 import { submissions } from "@/constants/submissions";
 import { useParams } from "next/navigation";
 import { getStatusColor } from "@/utils/submission-status";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { nord } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+const LANGUAGE_MAPPING: { [key: string]: string } = {
+  "C++": "cpp",
+  "Python": "python",
+  "Java": "java",
+  "JavaScript": "javascript",
+  "TypeScript": "typescript",
+  "C": "c",
+  "Ruby": "ruby",
+  "Go": "go",
+  "Rust": "rust",
+}
 
 export default function SubmissionPage() {
   const id = useParams().id;
@@ -21,7 +35,7 @@ export default function SubmissionPage() {
     );
   }
 
-  const { status, score, problem, user, createdTime, time, memory, results, userSolution } = submission;
+  const { status, score, problem, user, createdTime, time, memory, results, userSolution, language } = submission;
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -104,9 +118,13 @@ export default function SubmissionPage() {
 
       <div className="mb-12">
         <h3 className="text-lg font-semibold mb-3">Code</h3>
-        <div className="border rounded-lg overflow-auto bg-gray-50">
-          <pre className="p-4 text-sm whitespace-pre-wrap">{userSolution.content}</pre>
-        </div>
+        <SyntaxHighlighter 
+          language={LANGUAGE_MAPPING[language] || "cpp"}
+          style={nord}
+          showLineNumbers={true}
+        >
+          {userSolution.content}
+        </SyntaxHighlighter>
       </div>
 
     </div>
