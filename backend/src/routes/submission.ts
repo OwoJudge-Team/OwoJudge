@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
+import { Problem } from '../mongoose/schemas/problems';
+import { User } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
@@ -14,7 +16,7 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
   }
   try {
     const submissions: ISubmission[] = await Submission.find()
-      .select('problemID username status language createdTime')
+      .select('serialNumber problemID problemSerialNumber problemTitle username userHandle userID status language createdTime score')
       .sort({ createdTime: 1 });
     response.status(200).send(submissions);
   } catch (error: unknown) {
@@ -35,8 +37,29 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     return;
   }
   const data: Partial<ISubmission> = matchedData(request);
-  const newSubmission: ISubmission = new Submission(data);
+  
   try {
+    // Fetch user details
+    const user = await User.findOne({ username: request.user.username });
+    if (!user) {
+      response.status(404).send('User not found');
+      return;
+    }
+
+    // Fetch problem details
+    const problem = await Problem.findOne({ problemID: data.problemID });
+    if (!problem) {
+      response.status(404).send('Problem not found');
+      return;
+    }
+
+    // Add the additional fields
+    data.userHandle = user.displayName;
+    data.userID = user.id;
+    data.problemSerialNumber = problem.serialNumber;
+    data.problemTitle = problem.title;
+
+    const newSubmission: ISubmission = new Submission(data);
     const savedSubmission: ISubmission = await newSubmission.save();
     submitUserSubmission(savedSubmission);
     response.status(201).send(savedSubmission);
@@ -47,6 +70,7 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
 };
 
 submissionRouter.get('/api/submissions', getSubmissions);
+submissionRouter.get('/api/submission/:serialNumber');
 submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;

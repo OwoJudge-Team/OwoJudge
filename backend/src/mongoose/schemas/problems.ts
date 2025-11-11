@@ -13,6 +13,7 @@ interface ITestcase {
 }
 
 interface IProblem extends Document {
+  serialNumber: number;
   problemID: string;
   createdTime: Date;
   title: string;
@@ -41,7 +42,8 @@ interface IProblem extends Document {
 }
 
 const problemSchema = new Schema<IProblem>({
-  problemID: { type: String, required: true, unique: true },
+  serialNumber: { type: Number, unique: true },
+  problemID: { type: String, required: true },
   createdTime: { type: Date, required: true, default: Date.now },
   title: { type: String, required: true },
   timeLimit: { type: Number, required: true },
@@ -64,6 +66,31 @@ const problemSchema = new Schema<IProblem>({
   userDetail: {
     solved: { type: Number, default: 0 },
     attempted: { type: Number, default: 0 }
+  }
+});
+
+// Auto-increment serialNumber using pre-save hook
+problemSchema.pre('save', async function(next) {
+  if (this.isNew && !this.serialNumber) {
+    try {
+      // Find the highest existing serialNumber
+      const lastProblem = await mongoose.model('Problem').findOne(
+        {}, 
+        { serialNumber: 1 }, 
+        { sort: { serialNumber: -1 } }
+      );
+      
+      // Set serialNumber starting from 0
+      this.serialNumber = lastProblem?.serialNumber !== undefined
+        ? lastProblem.serialNumber + 1 
+        : 0;
+      
+      next();
+    } catch (error) {
+      next(error as Error);
+    }
+  } else {
+    next();
   }
 });
 
