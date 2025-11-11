@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { Problem } from '../mongoose/schemas/problems';
-import { User } from '../mongoose/schemas/users';
+import { User, IUser } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
@@ -14,15 +14,48 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
     response.status(401).send('Please login first');
     return;
   }
+  
+  const user = request.user as IUser;
+  const query = user.isAdmin ? {} : { username: user.username };
+  
   try {
-    const submissions: ISubmission[] = await Submission.find()
+    const submissions: ISubmission[] = await Submission.find(query)
       .select('serialNumber problemID problemSerialNumber problemTitle username userHandle userID status language createdTime score')
-      .sort({ createdTime: 1 });
+      .sort({ createdTime: -1 });
     response.status(200).send(submissions);
   } catch (error: unknown) {
     if (error) {
       response.status(400).send(error);
     }
+  }
+};
+
+const getSubmissionByID = async (request: IRequest, response: Response): Promise<void> => {
+  if (!request.isAuthenticated() || !request.user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+  
+  const user = request.user as IUser;
+  const { serialNumber } = request.params;
+  
+  try {
+    const submission: ISubmission | null = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
+    if (!submission) {
+      response.status(404).send('Submission not found');
+      return;
+    }
+    
+    // Check if user is authorized to view this submission
+    if (!user.isAdmin && submission.username !== user.username) {
+      response.status(403).send('You are not authorized to view this submission');
+      return;
+    }
+    
+    response.status(200).send(submission);
+  } catch (error: unknown) {
+    console.log(`Error: ${error}`);
+    response.status(400).send(error);
   }
 };
 
@@ -70,7 +103,7 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
 };
 
 submissionRouter.get('/api/submissions', getSubmissions);
-submissionRouter.get('/api/submission/:serialNumber');
+submissionRouter.get('/api/submission/:serialNumber', getSubmissionByID);
 submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;
