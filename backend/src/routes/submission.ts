@@ -16,7 +16,34 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
   }
   
   const user = request.user as IUser;
-  const query = user.isAdmin ? {} : { username: user.username };
+  const query: any = user.isAdmin ? {} : { username: user.username };
+  
+  // Add filters from query parameters
+  const { username, userID, problemID, problemSerialNumber, status, minScore, maxScore } = request.query;
+  if (username && (user.isAdmin || username === user.username)) {
+    query.username = username;
+  }
+  if (userID && (user.isAdmin || userID === user.id.toString())) {
+    query.userID = userID;
+  }
+  if (problemID) {
+    query.problemID = problemID;
+  }
+  if (problemSerialNumber) {
+    query.problemSerialNumber = parseInt(problemSerialNumber as string);
+  }
+  if (status) {
+    query.status = status;
+  }
+  if (minScore !== undefined || maxScore !== undefined) {
+    query.score = {};
+    if (minScore !== undefined) {
+      query.score.$gte = parseInt(minScore as string);
+    }
+    if (maxScore !== undefined) {
+      query.score.$lte = parseInt(maxScore as string);
+    }
+  }
   
   try {
     const submissions: ISubmission[] = await Submission.find(query)
