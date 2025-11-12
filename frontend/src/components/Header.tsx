@@ -12,7 +12,8 @@ const navItems = [
 
 const Header: React.FC = () => {
   return (
-    <header className="bg-primary p-4 shadow-lg">
+    <header className="sticky top-0 z-50 bg-slate-700/30 py-4 shadow-md backdrop-blur">
+      {/* <header className="bg-indigo-950 p-4 shadow-lg"> */}
       <div className="mx-auto flex max-w-6xl items-center">
         {/* Logo */}
         <Link
