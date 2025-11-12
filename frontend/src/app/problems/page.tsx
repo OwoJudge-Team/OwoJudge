@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { problems } from "@/constants/problems";
-import { FaAngleRight, FaChartPie, FaStar, FaUserGroup } from "react-icons/fa6";
+import {
+  FaAngleRight,
+  FaChartPie,
+  FaCircleCheck,
+  FaCircleDot,
+  FaCircleXmark,
+  FaStar,
+  FaUserGroup,
+} from "react-icons/fa6";
 
 const ProblemPage: React.FC = () => {
   return (
@@ -52,14 +60,14 @@ const ProblemPage: React.FC = () => {
                     </Link>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-900/40 px-3 py-1.5 text-sm font-medium text-indigo-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
                       <FaChartPie />
                       {p.quota}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-950/50 px-3 text-sm font-semibold text-amber-400">
+                      <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
                         <FaStar />
                         {p.score}
                       </div>
@@ -72,39 +80,21 @@ const ProblemPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {p.isAC ? (
-                      <span className="inline-flex w-[20ch] items-center gap-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm">
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
+                    {p.status === "correct" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
+                        <FaCircleCheck />
                         Solved
                       </span>
-                    ) : (
-                      <span className="inline-flex w-[20ch] items-center gap-1.5 rounded-full bg-rose-500 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm">
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        123 Try
+                    ) : p.status === "wrong" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
+                        <FaCircleXmark />
+                        {p.tryCount} {p.tryCount === 1 ? "Try" : "Tries"}
                       </span>
-                      // ) : (
-                      //   <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700">
-                      //     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                      //       <path
-                      //         fillRule="evenodd"
-                      //         d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z"
-                      //         clipRule="evenodd"
-                      //       />
-                      //     </svg>
-                      //     Unsolved
-                      //   </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
+                        <FaCircleDot />
+                        Unseen
+                      </span>
                     )}
                   </td>
                 </tr>
