@@ -1,84 +1,78 @@
 "use client";
 
 import Link from "next/link";
+import { FaCode, FaTrophy, FaRocket } from "react-icons/fa6";
 
 const HomePage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-neutral-light p-8">
-      <div className="mx-auto max-w-6xl text-center">
+    <div className="bg-background px-8 py-12">
+      <div className="mx-auto max-w-6xl">
         {/* Hero Section */}
-        <section className="py-20">
-          <h1 className="mb-6 text-5xl font-bold text-foreground">
-            Welcome to Our Coding Judge Platform
-          </h1>
-          <p className="mb-8 text-xl text-gray-700">
-            Sharpen your problem-solving skills, compete with others, and learn from a wide range of
-            algorithmic challenges. Whether you&apos;re a beginner or an expert, we have something
-            for you.
+        <section className="py-20 text-center">
+          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600/20 shadow-xl">
+            <FaCode className="h-10 w-10 text-indigo-400" />
+          </div>
+          <h1 className="mb-6 text-5xl font-bold text-slate-100">OwoJudge</h1>
+          <p className="mb-8 text-xl text-slate-300">
+            Solve problems, compete, and improve your coding skills
           </p>
-          <Link href="/problems">
-            <button className="rounded-xl bg-primary-dark px-8 py-3 text-white transition hover:bg-primary">
-              Get Started
-            </button>
+          <Link
+            href="/problems"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-8 py-3 text-base font-bold text-white transition-all duration-150 hover:bg-indigo-500"
+          >
+            Start Solving
           </Link>
         </section>
 
-        {/* Key Features Section */}
-        <section className="grid grid-cols-1 gap-8 py-16 md:grid-cols-3">
-          <div className="rounded-lg bg-white p-8 shadow-lg">
-            <h3 className="mb-4 text-2xl font-bold text-primary-dark">Explore Problems</h3>
-            <p className="mb-4 text-lg text-gray-700">
-              Solve a wide range of algorithmic problems from beginner to expert levels and track
-              your progress.
+        {/* Features Section */}
+        <section className="grid grid-cols-3 gap-6 py-12">
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl transition-all duration-150 hover:bg-slate-700/50">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-800/50">
+              <FaCode className="h-6 w-6 text-blue-200" />
+            </div>
+            <h3 className="mb-3 text-xl font-bold text-slate-100">Practice Problems</h3>
+            <p className="mb-4 text-sm text-slate-300">
+              Solve algorithmic challenges from beginner to advanced levels
             </p>
-            <Link href="/problems">
-              <button className="font-semibold text-primary-dark hover:underline">
-                Browse Problems
-              </button>
+            <Link
+              href="/problems"
+              className="text-sm font-semibold text-indigo-400 transition-all duration-150 hover:text-indigo-300"
+            >
+              Browse Problems →
             </Link>
           </div>
 
-          <div className="rounded-lg bg-white p-8 shadow-lg">
-            <h3 className="mb-4 text-2xl font-bold text-primary-dark">Compete with Others</h3>
-            <p className="mb-4 text-lg text-gray-700">
-              Climb the leaderboard by solving problems and competing against other users in
-              real-time rankings.
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl transition-all duration-150 hover:bg-slate-700/50">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-amber-800/50">
+              <FaTrophy className="h-6 w-6 text-amber-200" />
+            </div>
+            <h3 className="mb-3 text-xl font-bold text-slate-100">Track Progress</h3>
+            <p className="mb-4 text-sm text-slate-300">
+              Monitor your submissions and see your improvement over time
             </p>
-            <Link href="/ranking">
-              <button className="font-semibold text-primary-dark hover:underline">
-                View Rankings
-              </button>
+            <Link
+              href="/submissions"
+              className="text-sm font-semibold text-indigo-400 transition-all duration-150 hover:text-indigo-300"
+            >
+              View Submissions →
             </Link>
           </div>
 
-          <div className="rounded-lg bg-white p-8 shadow-lg">
-            <h3 className="mb-4 text-2xl font-bold text-primary-dark">Learn and Grow</h3>
-            <p className="mb-4 text-lg text-gray-700">
-              Access detailed problem explanations and solutions to enhance your understanding and
-              skills.
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl transition-all duration-150 hover:bg-slate-700/50">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-800/50">
+              <FaRocket className="h-6 w-6 text-emerald-200" />
+            </div>
+            <h3 className="mb-3 text-xl font-bold text-slate-100">Compete</h3>
+            <p className="mb-4 text-sm text-slate-300">
+              Challenge yourself in contests and climb the rankings
             </p>
-            <Link href="/about">
-              <button className="font-semibold text-primary-dark hover:underline">
-                Learn More
-              </button>
+            <Link
+              href="/users"
+              className="text-sm font-semibold text-indigo-400 transition-all duration-150 hover:text-indigo-300"
+            >
+              View Users →
             </Link>
           </div>
-        </section>
-
-        {/* Call to Action Section */}
-        <section className="py-20">
-          <h2 className="mb-6 text-4xl font-bold text-foreground">
-            Ready to take on the challenge?
-          </h2>
-          <p className="mb-8 text-xl text-gray-700">
-            Sign up and start solving problems today. Build your skills, earn points, and join a
-            community of passionate coders.
-          </p>
-          <Link href="/signup">
-            <button className="rounded-xl bg-primary-dark px-8 py-3 text-white transition hover:bg-primary">
-              Join Now
-            </button>
-          </Link>
         </section>
       </div>
     </div>
