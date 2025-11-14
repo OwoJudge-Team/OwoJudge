@@ -1,0 +1,317 @@
+# OwoJudge Frontend Design Style Guide
+
+## Design Philosophy
+Dark-only modern interface with vibrant colored accents. Focus on clear visual hierarchy, smooth interactions, and desktop-first design. No mobile responsiveness - this is a desktop-only application.
+
+## Core Principles
+- **Dark Mode Only**: No light mode support
+- **Desktop Only**: No mobile/tablet responsive design
+- **Colored Components**: Use vibrant backgrounds for data badges and status indicators
+- **Smooth Interactions**: 150ms transitions for all hover states
+- **Clear Hierarchy**: Use color, size, and spacing to establish visual importance
+
+## Color Palette
+
+### Base Colors (Slate Scale)
+- **Page Background**: `bg-background` (defined in CSS variables, typically slate-950)
+- **Card/Container Background**: `bg-slate-800`
+- **Card Border**: `border-slate-700`
+- **Dividers**: `divide-slate-700/50` or `border-slate-700`
+- **Table Header Background**: `bg-slate-800/50`
+- **Hover Background**: `hover:bg-slate-700/50`
+
+### Text Colors
+- **Primary Text**: `text-slate-100` (bright, for main content)
+- **Secondary Text**: `text-slate-300` (slightly dimmed)
+- **Tertiary Text**: `text-slate-400` (table headers, labels)
+
+### Interactive Elements
+- **Links**: `text-slate-100` → `hover:text-indigo-400`
+- **ID Badges**: `bg-slate-700/60` + `text-slate-300`
+
+### Semantic Colors (Status & Data)
+
+#### Quota (Blue)
+- Background: `bg-blue-800/50`
+- Text: `text-blue-200`
+- Icon: FaChartPie
+
+#### Score (Amber/Gold)
+- Background: `bg-amber-800/50`
+- Text: `text-amber-200`
+- Icon: FaStar
+
+#### Status Badges
+1. **Correct/Solved (Green)**
+   - Background: `bg-emerald-600/90`
+   - Text: `text-green-50`
+   - Icon: FaCircleCheck
+   - Label: "Solved"
+
+2. **Wrong/Failed (Red)**
+   - Background: `bg-rose-600/90`
+   - Text: `text-red-50`
+   - Icon: FaCircleXmark
+   - Label: "{count} Try/Tries"
+
+3. **Unseen/Not Attempted (Gray)**
+   - Background: `bg-slate-600/90`
+   - Text: `text-slate-200`
+   - Icon: FaCircleDot
+   - Label: "Unseen"
+
+## Typography
+
+### Font Stack
+- System default: Arial, Helvetica, sans-serif
+- Use React Icons (react-icons/fa6) for all icons
+
+### Hierarchy
+
+**Table Headers**
+- Size: `text-xs`
+- Weight: `font-semibold`
+- Transform: `uppercase`
+- Spacing: `tracking-wider`
+- Color: `text-slate-400`
+
+**Problem Titles (Links)**
+- Size: `text-base`
+- Weight: `font-semibold`
+- Color: `text-slate-100` → `hover:text-indigo-400`
+
+**Data Badges (Quota, Score)**
+- Size: `text-sm`
+- Weight: `font-medium` (quota) / `font-semibold` (score)
+- Color: Semantic colors (blue-200, amber-200)
+
+**Status Pills**
+- Size: `text-xs`
+- Weight: `font-bold`
+- Transform: `uppercase`
+- Spacing: `tracking-wide`
+- Color: 50-shade of semantic color (green-50, red-50, slate-200)
+
+**AC Count**
+- Size: `text-sm`
+- Weight: `font-medium`
+- Color: `text-slate-300`
+
+## Components
+
+### Page Layout
+```
+min-h-screen bg-background px-8 py-12
+└── max-w-6xl mx-auto
+```
+
+### Cards & Containers
+- **Rounded**: `rounded-2xl` (1rem)
+- **Border**: `border border-slate-700`
+- **Background**: `bg-slate-800`
+- **Shadow**: `shadow-xl`
+
+### Tables
+
+**Container**
+```
+rounded-2xl border border-slate-700 bg-slate-800 shadow-xl
+```
+
+**Header Row**
+```
+border-b border-slate-700 bg-slate-800/50
+px-6 py-4
+```
+
+**Body Rows**
+```
+divide-y divide-slate-700/50
+px-6 py-4
+transition-all duration-150 hover:bg-slate-700/50
+```
+
+**Cells Padding**: `px-6 py-4` (consistent across all cells)
+
+### Badges & Pills
+
+**ID Badge**
+```
+h-8 w-8 rounded-lg bg-slate-700/60
+flex items-center justify-center
+text-sm font-semibold text-slate-300
+```
+
+**Data Pills (Quota, Score)**
+```
+inline-flex items-center gap-1.5
+rounded-lg
+px-3 py-1.5 (quota) / h-8 px-3 (score)
+bg-{color}-800/50
+text-{color}-200
+```
+
+**Status Pills**
+```
+inline-flex items-center gap-1.5
+rounded-full
+px-3.5 py-1.5
+bg-{semantic}-600/90
+text-{semantic}-50
+shadow-sm
+```
+
+### Interactive Elements
+
+**Links**
+```
+group/link inline-flex items-center gap-2
+text-base font-semibold text-slate-100
+transition-all hover:text-indigo-400
+```
+
+**Arrow Animation on Hover**
+```
+Icon: -translate-x-2 opacity-0
+Hover: translate-x-0 opacity-100
+Transition: duration-150
+```
+
+**Title Slide**
+```
+transition-transform duration-150
+group-hover/link:translate-x-1
+```
+
+### Icons
+- **Library**: react-icons/fa6
+- **Size**: `h-4 w-4` (standard) or `h-3.5 w-3.5` (small badges)
+- **Always pair with text** in badges using `gap-1` or `gap-1.5`
+- Import pattern: `FaIconName` from "react-icons/fa6"
+
+Common icons:
+- FaAngleRight (link arrow)
+- FaChartPie (quota)
+- FaStar (score)
+- FaUserGroup (AC count)
+- FaCircleCheck (correct)
+- FaCircleXmark (wrong)
+- FaCircleDot (unseen)
+
+## Layout
+
+### Spacing
+- **Page padding**: `px-8 py-12` (fixed, no responsive variants)
+- **Max width**: `max-w-6xl` (centered with `mx-auto`)
+- **Table cell padding**: `px-6 py-4` (uniform)
+- **Badge padding**: `px-3 py-1.5` (data) or `px-3.5 py-1.5` (status)
+- **Icon gaps**: `gap-1.5` (standard) or `gap-2` (larger)
+
+### Responsive Design
+**NONE** - Desktop only, no md:, sm:, lg: breakpoints
+
+## Animation Principles
+- **Duration**: `duration-150` for all transitions
+- **Easing**: Default (ease) - don't specify unless needed
+- **Hover states**: Always include `transition-all` or `transition-{property}`
+- **Group interactions**: Use `group` and `group/link` for coordinated animations
+
+Examples:
+- Row hover: `hover:bg-slate-700/50`
+- Link hover: `hover:text-indigo-400`
+- Arrow reveal: opacity 0→100 + translateX -8px→0
+- Title slide: translateX 0→4px
+
+## Do's ✓
+- Use slate-800 for card backgrounds
+- Use colored backgrounds for all data badges (blue, amber, green, red)
+- Use /50 or /60 opacity for subtle backgrounds
+- Use /90 opacity for status pills
+- Include icons in all badges using react-icons/fa6
+- Keep hover transitions at 150ms
+- Use rounded-lg for small components, rounded-2xl for containers
+- Use rounded-full for status pills
+- Always use uppercase + tracking-wide for status text
+
+## Don'ts ✗
+- No light mode variants (no `dark:` prefixes needed)
+- No mobile responsive classes (no `sm:`, `md:`, `lg:`)
+- No pure white or pure black text (use slate-50/100/200)
+- No flat gray badges for data - use colored backgrounds
+- No animations over 200ms
+- No gradients (keep backgrounds solid with opacity)
+- Don't mix rounded styles (lg for small, 2xl for large, full for pills)
+
+## Example Component Patterns
+
+### Table Row
+```tsx
+<tr className="group transition-all duration-150 hover:bg-slate-700/50">
+```
+
+### Link with Animated Arrow
+```tsx
+<Link
+  href={`/problems/${id}`}
+  className="group/link inline-flex items-center gap-2 text-base font-semibold text-slate-100 transition-all hover:text-indigo-400"
+>
+  <span className="transition-transform duration-150 group-hover/link:translate-x-1">
+    {title}
+  </span>
+  <FaAngleRight className="h-4 w-4 -translate-x-2 opacity-0 transition-all duration-150 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
+</Link>
+```
+
+### Data Badge (Quota)
+```tsx
+<span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
+  <FaChartPie />
+  {quota}
+</span>
+```
+
+### Status Pill (Correct)
+```tsx
+<span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
+  <FaCircleCheck />
+  Solved
+</span>
+```
+
+### Status Pill (Wrong with Try Count)
+```tsx
+<span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
+  <FaCircleXmark />
+  {tryCount} {tryCount === 1 ? "Try" : "Tries"}
+</span>
+```
+
+### ID Badge
+```tsx
+<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
+  {id}
+</div>
+```
+
+## Color Reference Quick Guide
+
+| Element | Background | Text | Icon |
+|---------|-----------|------|------|
+| Page | bg-background | - | - |
+| Card | bg-slate-800 | - | - |
+| Border | border-slate-700 | - | - |
+| Table Header | bg-slate-800/50 | text-slate-400 | - |
+| Row Hover | hover:bg-slate-700/50 | - | - |
+| ID Badge | bg-slate-700/60 | text-slate-300 | - |
+| Link | - | text-slate-100 → hover:text-indigo-400 | FaAngleRight |
+| Quota | bg-blue-800/50 | text-blue-200 | FaChartPie |
+| Score | bg-amber-800/50 | text-amber-200 | FaStar |
+| AC Count | - | text-slate-300 | FaUserGroup |
+| Solved | bg-emerald-600/90 | text-green-50 | FaCircleCheck |
+| Wrong | bg-rose-600/90 | text-red-50 | FaCircleXmark |
+| Unseen | bg-slate-600/90 | text-slate-200 | FaCircleDot |
+
+---
+
+This design system creates a professional, desktop-focused interface with vibrant colored accents on a dark slate background. All interactive elements have smooth transitions and clear visual feedback.
+
