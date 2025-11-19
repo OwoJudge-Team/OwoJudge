@@ -1,17 +1,46 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { FaUser, FaLock } from "react-icons/fa6";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log("Login attempt:", { username, password });
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const response = await fetch(`${apiUrl}/api/auth`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      });
+
+      console.log("Response:", response);
+
+      if (response.ok) {
+        router.push("/");
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setError(data.message || "Invalid username or password");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -71,12 +100,20 @@ export default function LoginPage() {
             {/* Separator */}
             <div className="border-t border-slate-700/50"></div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="rounded-lg border border-rose-600/50 bg-rose-600/20 px-4 py-3 text-sm text-rose-200">
+                {error}
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full rounded-lg bg-indigo-600 px-6 py-3 font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40"
+              disabled={isLoading}
+              className="w-full rounded-lg bg-indigo-600 px-6 py-3 font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600"
             >
-              Sign In
+              {isLoading ? "Signing In..." : "Sign In"}
             </button>
           </form>
         </div>
