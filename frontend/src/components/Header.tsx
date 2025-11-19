@@ -15,11 +15,11 @@ const Header: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-700/50 bg-slate-900/60 shadow-xl backdrop-blur-lg">
-      <div className="mx-auto flex max-w-6xl items-center px-8 py-4">
+      <div className="mx-auto flex max-w-6xl items-center py-4">
         {/* Logo */}
         <Link
           href="/"
-          className="text-2xl font-bold text-slate-100 transition-all duration-150 hover:text-indigo-400"
+          className="text-3xl font-bold text-slate-100 transition-all duration-150 hover:text-indigo-400"
         >
           OwoJudge
         </Link>
@@ -33,13 +33,13 @@ const Header: React.FC = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`group/nav inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150 ${
+                className={`group/nav inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-base font-semibold transition-all duration-150 ${
                   isActive
                     ? "bg-slate-700/80 text-slate-100"
                     : "text-slate-300 hover:bg-slate-700/60 hover:text-slate-100"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
                 {item.name}
               </Link>
             );
@@ -50,9 +50,9 @@ const Header: React.FC = () => {
         <div className="ml-auto">
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-800/80 px-5 py-2 text-sm font-bold text-indigo-100 shadow-sm transition-all duration-150 hover:bg-indigo-700/80"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-base font-bold text-slate-100 transition-all duration-150 hover:bg-slate-700/60"
           >
-            <FaUser className="h-4 w-4" />
+            <FaUser className="h-5 w-5" />
             Login
           </Link>
         </div>
