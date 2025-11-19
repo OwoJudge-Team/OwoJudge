@@ -2,13 +2,13 @@
 export const getStatusColor = (status: string) => {
   switch (status) {
     case "AC":
-      return "text-green-600";
+      return "green-600/50";
     case "WA":
-      return "text-red-600";
+      return "red-600/50";
     case "TLE":
-      return "text-blue-600";
+      return "blue-600/50";
     case "MLE":
-      return "text-purple-600";
+      return "purple-600/50";
     default:
       return "";
   }

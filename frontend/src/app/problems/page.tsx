@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { problems } from "@/constants/problems";
 import {
-  FaAngleRight,
   FaChartPie,
   FaCircleCheck,
   FaCircleDot,
@@ -11,6 +9,7 @@ import {
   FaStar,
   FaUserGroup,
 } from "react-icons/fa6";
+import CoolLink from "@/components/cool-link";
 
 const ProblemPage: React.FC = () => {
   return (
@@ -49,15 +48,7 @@ const ProblemPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/problems/${p.id}`}
-                      className="group/link inline-flex items-center gap-2 text-base font-semibold text-slate-100 transition-all hover:text-indigo-400"
-                    >
-                      <span className="transition-transform duration-150 group-hover/link:translate-x-1">
-                        {p.title}
-                      </span>
-                      <FaAngleRight className="h-4 w-4 -translate-x-2 opacity-0 transition-all duration-150 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
-                    </Link>
+                    <CoolLink href={`/problems/${p.id}`} text={p.title}/>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">

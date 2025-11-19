@@ -16,6 +16,8 @@ interface Result {
 interface Submission {
   id: number;
   user: string;
+  userID: number;
+  problemID: number;
   problem: string;
   language: string;
   status: Status;
@@ -31,6 +33,8 @@ export const submissions: Submission[] = [
   {
     id: 1,
     user: "alice",
+    userID: 1,
+    problemID: 1,
     problem: "Binary Search",
     language: "Python",
     score: 100,
@@ -62,6 +66,8 @@ export const submissions: Submission[] = [
   {
     id: 2,
     user: "bob",
+    userID: 2,
+    problemID: 4,
     problem: "Merge Sort",
     language: "C++",
     score: 50,
@@ -93,6 +99,8 @@ export const submissions: Submission[] = [
   {
     id: 3,
     user: "alice",
+    userID: 1,
+    problemID: 2,
     problem: "Two Sum",
     language: "JavaScript",
     score: 100,
@@ -132,6 +140,8 @@ export const submissions: Submission[] = [
   {
     id: 4,
     user: "charlie",
+    userID: 11,
+    problemID: 8,
     problem: "Dynamic Programming",
     language: "Java",
     score: 0,
@@ -171,6 +181,8 @@ export const submissions: Submission[] = [
   {
     id: 5,
     user: "dave",
+    userID: 13,
+    problemID: 5,
     problem: "Quick Sort",
     language: "C++",
     score: 100,
@@ -210,6 +222,8 @@ export const submissions: Submission[] = [
   {
     id: 6,
     user: "eve",
+    userID: 17,
+    problemID: 0,
     problem: "Graph Traversal",
     language: "Python",
     score: 30,
@@ -241,6 +255,8 @@ export const submissions: Submission[] = [
   {
     id: 7,
     user: "frank",
+    userID: 19,
+    problemID: 0,
     problem: "Heap Sort",
     language: "Java",
     score: 70,
@@ -272,6 +288,8 @@ export const submissions: Submission[] = [
   {
     id: 8,
     user: "alice",
+    userID: 1,
+    problemID: 0,
     problem: "Shortest Path",
     language: "C++",
     score: 100,
@@ -303,6 +321,8 @@ export const submissions: Submission[] = [
   {
     id: 9,
     user: "bob",
+    userID: 2,
+    problemID: 10,
     problem: "Knapsack Problem",
     language: "Python",
     score: 0,
@@ -342,6 +362,8 @@ export const submissions: Submission[] = [
   {
     id: 10,
     user: "charlie",
+    userID: 11,
+    problemID: 0,
     problem: "Longest Common Subsequence",
     language: "JavaScript",
     score: 60,
@@ -373,6 +395,8 @@ export const submissions: Submission[] = [
   {
     id: 11,
     user: "dave",
+    userID: 13,
+    problemID: 0,
     problem: "Binary Tree Traversal",
     language: "Java",
     score: 100,
@@ -404,6 +428,8 @@ export const submissions: Submission[] = [
   {
     id: 12,
     user: "eve",
+    userID: 17,
+    problemID: 0,
     problem: "Fibonacci Sequence",
     language: "C++",
     score: 100,
@@ -435,6 +461,8 @@ export const submissions: Submission[] = [
   {
     id: 13,
     user: "frank",
+    userID: 19,
+    problemID: 0,
     problem: "Palindrome Check",
     language: "Python",
     score: 100,
@@ -466,6 +494,8 @@ export const submissions: Submission[] = [
   {
     id: 14,
     user: "alice",
+    userID: 1,
+    problemID: 0,
     problem: "Prime Factorization",
     language: "JavaScript",
     score: 0,
@@ -505,6 +535,8 @@ export const submissions: Submission[] = [
   {
     id: 15,
     user: "bob",
+    userID: 2,
+    problemID: 13,
     problem: "Dijkstra's Algorithm",
     language: "Java",
     score: 10,
@@ -536,6 +568,8 @@ export const submissions: Submission[] = [
   {
     id: 16,
     user: "charlie",
+    userID: 11,
+    problemID: 0,
     problem: "String Matching",
     language: "Python",
     score: 100,
@@ -567,6 +601,8 @@ export const submissions: Submission[] = [
   {
     id: 17,
     user: "dave",
+    userID: 13,
+    problemID: 0,
     problem: "Matrix Multiplication",
     language: "C++",
     score: 20,
@@ -598,6 +634,8 @@ export const submissions: Submission[] = [
   {
     id: 18,
     user: "eve",
+    userID: 17,
+    problemID: 0,
     problem: "Number of Islands",
     language: "JavaScript",
     score: 100,
@@ -629,6 +667,8 @@ export const submissions: Submission[] = [
   {
     id: 19,
     user: "frank",
+    userID: 19,
+    problemID: 15,
     problem: "Topological Sort",
     language: "Python",
     score: 80,
@@ -660,6 +700,8 @@ export const submissions: Submission[] = [
   {
     id: 20,
     user: "alice",
+    userID: 1,
+    problemID: 3,
     problem: "Traveling Salesman",
     language: "C++",
     score: 100,
