@@ -44,7 +44,8 @@ export const submissions: Submission[] = [
     memory: "12MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -77,7 +78,8 @@ export const submissions: Submission[] = [
     memory: "8MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -90,7 +92,7 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "WA",
-        time: 0.70,
+        time: 0.7,
         memory: 8,
         message: "HELL NAH",
       },
@@ -110,7 +112,8 @@ export const submissions: Submission[] = [
     memory: "5MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -123,15 +126,15 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "AC",
-        time: 0.30,
+        time: 0.3,
         memory: 5,
         message: "Passed",
       },
-      
+
       {
         testcase: "0-02",
         status: "AC",
-        time: 0.30,
+        time: 0.3,
         memory: 5,
         message: "Passed",
       },
@@ -151,7 +154,8 @@ export const submissions: Submission[] = [
     memory: "20MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -168,7 +172,7 @@ export const submissions: Submission[] = [
         memory: 20,
         message: "Too slow",
       },
-      
+
       {
         testcase: "0-02",
         status: "TLE",
@@ -192,7 +196,8 @@ export const submissions: Submission[] = [
     memory: "10MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -205,15 +210,15 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "AC",
-        time: 0.30,
+        time: 0.3,
         memory: 5,
         message: "Passed",
       },
-      
+
       {
         testcase: "0-02",
         status: "AC",
-        time: 0.30,
+        time: 0.3,
         memory: 5,
         message: "Passed",
       },
@@ -233,7 +238,8 @@ export const submissions: Submission[] = [
     memory: "15MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -246,7 +252,7 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "WA",
-        time: 0.70,
+        time: 0.7,
         memory: 8,
         message: "HELL NAH",
       },
@@ -266,7 +272,8 @@ export const submissions: Submission[] = [
     memory: "25MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -279,7 +286,7 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "MLE",
-        time: 0.70,
+        time: 0.7,
         memory: 25,
         message: "HELL NAH",
       },
@@ -299,7 +306,8 @@ export const submissions: Submission[] = [
     memory: "7MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -332,7 +340,8 @@ export const submissions: Submission[] = [
     memory: "18MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -349,7 +358,7 @@ export const submissions: Submission[] = [
         memory: 20,
         message: "Too slow",
       },
-      
+
       {
         testcase: "0-02",
         status: "TLE",
@@ -373,7 +382,8 @@ export const submissions: Submission[] = [
     memory: "9MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -386,7 +396,7 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "WA",
-        time: 0.70,
+        time: 0.7,
         memory: 8,
         message: "HELL NAH",
       },
@@ -406,7 +416,8 @@ export const submissions: Submission[] = [
     memory: "11MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -439,7 +450,8 @@ export const submissions: Submission[] = [
     memory: "6MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -472,7 +484,8 @@ export const submissions: Submission[] = [
     memory: "4MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -505,7 +518,8 @@ export const submissions: Submission[] = [
     memory: "17MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -522,7 +536,7 @@ export const submissions: Submission[] = [
         memory: 20,
         message: "Too slow",
       },
-      
+
       {
         testcase: "0-02",
         status: "TLE",
@@ -546,7 +560,8 @@ export const submissions: Submission[] = [
     memory: "10MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -579,7 +594,8 @@ export const submissions: Submission[] = [
     memory: "8MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -612,7 +628,8 @@ export const submissions: Submission[] = [
     memory: "30MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -625,7 +642,7 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "MLE",
-        time: 0.70,
+        time: 0.7,
         memory: 25,
         message: "HELL NAH",
       },
@@ -645,7 +662,8 @@ export const submissions: Submission[] = [
     memory: "6MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -678,7 +696,8 @@ export const submissions: Submission[] = [
     memory: "12MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {
@@ -711,7 +730,8 @@ export const submissions: Submission[] = [
     memory: "5MB",
     userSolution: {
       filename: "main.cpp",
-      content: "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content:
+        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
     },
     results: [
       {

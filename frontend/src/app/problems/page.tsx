@@ -48,7 +48,7 @@ const ProblemPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/problems/${p.id}`} text={p.title}/>
+                    <CoolLink href={`/problems/${p.id}`} text={p.title} />
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">

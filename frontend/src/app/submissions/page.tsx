@@ -29,7 +29,6 @@ const SubmissionPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-neutral-light p-8">
       <div className="mx-auto max-w-6xl">
-
         {/* View Switch (Global/User Submissions) */}
         <div className="mb-4 flex items-center">
           <button
@@ -57,7 +56,7 @@ const SubmissionPage: React.FC = () => {
             <input
               type="text"
               placeholder="Search by User"
-              className="w-full rounded-lg border p-2 bg-slate-800 text-slate-100 border-slate-700"
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
               value={searchUser}
               onChange={(e) => setSearchUser(e.target.value)}
             />
@@ -65,13 +64,13 @@ const SubmissionPage: React.FC = () => {
             <input
               type="text"
               placeholder="Search by Problem"
-              className="w-full rounded-lg border p-2 bg-slate-800 text-slate-100 border-slate-700"
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
               value={searchProblem}
               onChange={(e) => setSearchProblem(e.target.value)}
             />
             {/* Language Filter */}
             <select
-              className="w-full rounded-lg border p-2 bg-slate-800 text-slate-100 border-slate-700"
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
               value={filterLanguage}
               onChange={(e) => setFilterLanguage(e.target.value)}
             >
@@ -83,7 +82,7 @@ const SubmissionPage: React.FC = () => {
             </select>
             {/* Status Filter */}
             <select
-              className="w-full rounded-lg border p-2 bg-slate-800 text-slate-100 border-slate-700"
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -114,30 +113,38 @@ const SubmissionPage: React.FC = () => {
               {filteredSubmissions.map((submission) => (
                 <tr key={submission.id} className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
-                    <Link href={`/submissions/${submission.id}`} className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300 hover:text-indigo-400 hover:bg-slate-700/80 transition">
+                    <Link
+                      href={`/submissions/${submission.id}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300 transition hover:bg-slate-700/80 hover:text-indigo-400"
+                    >
                       {submission.id}
                     </Link>
                   </td>
                   <td className="px-6 py-4 text-slate-100">{submission.createdTime}</td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/users/${submission.userID}`} text={submission.user}/>
+                    <CoolLink href={`/users/${submission.userID}`} text={submission.user} />
                   </td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/problems/${submission.problemID}`} text={submission.problem}/>
+                    <CoolLink
+                      href={`/problems/${submission.problemID}`}
+                      text={submission.problem}
+                    />
                   </td>
                   <td className="px-6 py-4">
-                    <div className={`bg-${getStatusColor(submission.status)} rounded-md text-slate-100 text-center w-[5ch] p-1`}>
+                    <div
+                      className={`bg-${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                    >
                       {submission.status}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="rounded-xl p-1 flex items-center justify-around bg-slate-600/50">
+                    <div className="flex items-center justify-around rounded-xl bg-slate-600/50 p-1">
                       <FaClock />
                       {submission.time}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="rounded-xl p-1 flex items-center justify-around bg-slate-600/50">
+                    <div className="flex items-center justify-around rounded-xl bg-slate-600/50 p-1">
                       <FaFloppyDisk />
                       {submission.memory}
                     </div>
