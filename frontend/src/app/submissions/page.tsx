@@ -3,10 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { submissions } from "@/constants/submissions";
-import { getStatusColor } from "@/utils/submission-status";
 import { FaClock } from "react-icons/fa";
 import { FaFloppyDisk } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
+
+const getStatusColor = {
+  AC: "bg-green-600/50",
+  WA: "bg-red-600/50",
+  TLE: "bg-blue-600/50",
+  MLE: "bg-purple-600/50",
+};
 
 const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<"global" | "user">("global"); // Switch between global/user submissions
@@ -132,7 +138,7 @@ const SubmissionPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div
-                      className={`bg-${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                      className={`${getStatusColor[submission.status]} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                     >
                       {submission.status}
                     </div>

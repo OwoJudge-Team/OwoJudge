@@ -3,9 +3,15 @@
 import React from "react";
 import { submissions } from "@/constants/submissions";
 import { useParams } from "next/navigation";
-import { getStatusColor } from "@/utils/submission-status";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
+
+const getStatusColor = {
+  AC: "bg-green-600/50",
+  WA: "bg-red-600/50",
+  TLE: "bg-blue-600/50",
+  MLE: "bg-purple-600/50",
+};
 
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
@@ -61,7 +67,7 @@ export default function SubmissionPage() {
           <div className="text-s mb-4 text-slate-400">Score</div>
 
           <div
-            className={`text-5xl font-semibold bg-${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
+            className={`text-5xl font-semibold ${getStatusColor[status]} rounded-lg p-3 text-slate-100`}
           >
             {status}
           </div>
@@ -130,7 +136,7 @@ export default function SubmissionPage() {
                     <td className="px-4 py-3 text-sm">{r.memory} MB</td>
                     <td className={`px-4 py-3 text-sm font-medium`}>
                       <div
-                        className={`bg-${getStatusColor(r.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                        className={`${getStatusColor[r.status]} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                       >
                         {r.status}
                       </div>
