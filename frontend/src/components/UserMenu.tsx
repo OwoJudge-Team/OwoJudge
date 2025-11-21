@@ -39,7 +39,7 @@ const UserMenu: React.FC = () => {
     return (
       <Link
         href="/login"
-        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-base font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40"
+        className="inline-flex h-[42px] items-center gap-2 rounded-lg bg-indigo-600 px-6 text-base font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40"
       >
         <FaUser className="h-5 w-5" />
         Login
@@ -52,11 +52,11 @@ const UserMenu: React.FC = () => {
       {/* User Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-3 rounded-lg bg-slate-700/60 px-4 py-2.5 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50"
+        className="inline-flex h-[42px] items-center gap-3 rounded-lg bg-slate-700/60 px-4 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50"
       >
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600">
-            <FaUser className="h-4 w-4 text-white" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600">
+            <FaUser className="h-3.5 w-3.5 text-white" />
           </div>
           <span>{user.displayName}</span>
         </div>
