@@ -111,6 +111,71 @@ min-h-screen bg-background px-8 py-12
 - **Background**: `bg-slate-800`
 - **Shadow**: `shadow-xl`
 
+### User Menu & Dropdown
+
+**Login Button (Not Logged In)**
+```tsx
+<Link
+  href="/login"
+  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-base font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40"
+>
+  <FaUser className="h-5 w-5" />
+  Login
+</Link>
+```
+
+**User Button (Logged In)**
+```tsx
+<button className="inline-flex items-center gap-3 rounded-lg bg-slate-700/60 px-4 py-2.5 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-2">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600">
+      <FaUser className="h-4 w-4 text-white" />
+    </div>
+    <span>{displayName}</span>
+  </div>
+  <FaChevronDown className="h-4 w-4 transition-transform duration-150" />
+</button>
+```
+
+**Dropdown Container**
+```tsx
+<div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+```
+
+**Dropdown Header (User Info)**
+```tsx
+<div className="border-b border-slate-700 bg-slate-800/50 px-6 py-4">
+  <p className="text-base font-bold text-slate-100">{displayName}</p>
+  <p className="text-sm text-slate-400">@{username}</p>
+  <div className="mt-3 flex flex-wrap items-center gap-2">
+    {/* User stat badges */}
+  </div>
+</div>
+```
+
+**User Stat Badges**
+- Rating: `bg-amber-800/50` + `text-amber-200` + `FaStar`
+- Solved: `bg-emerald-800/50` + `text-emerald-200`
+- Admin: `bg-indigo-800/50` + `text-indigo-200`
+
+**Dropdown Menu Items**
+```tsx
+<div className="divide-y divide-slate-700/50">
+  <Link className="flex items-center gap-3 px-6 py-4 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50 hover:text-indigo-400">
+    <Icon className="h-4 w-4" />
+    Menu Item
+  </Link>
+</div>
+```
+
+**Logout Button**
+```tsx
+<button className="flex w-full items-center gap-3 px-6 py-4 text-base font-semibold text-rose-400 transition-all duration-150 hover:bg-slate-700/50 hover:text-rose-300">
+  <FaArrowRightFromBracket className="h-4 w-4" />
+  Logout
+</button>
+```
+
 ### Tables
 
 **Container**
@@ -192,11 +257,15 @@ group-hover/link:translate-x-1
 Common icons:
 - FaAngleRight (link arrow)
 - FaChartPie (quota)
-- FaStar (score)
+- FaStar (score/rating)
 - FaUserGroup (AC count)
 - FaCircleCheck (correct)
 - FaCircleXmark (wrong)
 - FaCircleDot (unseen)
+- FaUser (user profile)
+- FaGear (settings)
+- FaArrowRightFromBracket (logout)
+- FaChevronDown (dropdown indicator)
 
 ## Layout
 
