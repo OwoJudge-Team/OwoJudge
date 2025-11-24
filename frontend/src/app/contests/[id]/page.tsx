@@ -60,11 +60,11 @@ export default function ContestPage() {
           <div className="text-s mb-4 text-slate-400">Rank</div>
 
           <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">{user?.score}</div>
-          <div className="text-6xl font-light text-slate-400">\</div>
+          <div className="text-6xl font-light text-slate-400">/</div>
           <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">
             {user?.solvedProblems}
           </div>
-          <div className="text-6xl font-light text-slate-400">\</div>
+          <div className="text-6xl font-light text-slate-400">/</div>
           <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">{rank}</div>
         </div>
       </div>

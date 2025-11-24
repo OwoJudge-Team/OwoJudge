@@ -99,7 +99,7 @@ const SubmissionPage: React.FC = () => {
         <div className="overflow-hidden rounded-lg border-slate-700 bg-slate-800 shadow-lg">
           <table className="w-full text-left">
             <thead className="bg-primary-light text-slate-400">
-              <tr className="border-b border-slate-700">
+              <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 <th className="px-6 py-4">#</th>
                 <th className="px-6 py-4">Timestamp</th>
                 <th className="px-6 py-4">User</th>
