@@ -108,11 +108,11 @@ export default function SubmissionPage() {
         <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800 shadow-lg">
           <table className="min-w-full table-auto text-left">
             <thead className="text-slate-400">
-              <tr>
-                <th className="px-4 py-3 text-sm">#</th>
-                <th className="px-4 py-3 text-sm">Time</th>
-                <th className="px-4 py-3 text-sm">Memory</th>
-                <th className="px-4 py-3 text-sm">Result</th>
+              <tr className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3">#</th>
+                <th className="px-4 py-3">Time</th>
+                <th className="px-4 py-3">Memory</th>
+                <th className="px-4 py-3">Result</th>
               </tr>
             </thead>
             <tbody>
