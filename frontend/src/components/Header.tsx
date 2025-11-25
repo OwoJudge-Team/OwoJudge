@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaCode, FaFile, FaTrophy, FaUser } from "react-icons/fa6";
+import { FaCode, FaFile, FaTrophy } from "react-icons/fa6";
+import UserMenu from "./UserMenu";
 
 const navItems = [
   { name: "Problems", href: "/problems", icon: FaCode },
@@ -46,15 +47,9 @@ const Header: React.FC = () => {
           })}
         </nav>
 
-        {/* Login Button */}
+        {/* User Menu */}
         <div className="ml-auto">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-base font-bold text-slate-100 transition-all duration-150 hover:bg-slate-700/60"
-          >
-            <FaUser className="h-5 w-5" />
-            Login
-          </Link>
+          <UserMenu />
         </div>
       </div>
     </header>
