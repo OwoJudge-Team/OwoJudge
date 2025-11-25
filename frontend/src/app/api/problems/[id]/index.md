@@ -14,6 +14,10 @@ The first line of the input contains integer $ n $ ( $ 3<=n<=1000 $ ). The next 
 
 In case there exists no solution, output -1. Otherwise, in the first line output integer $ c $ $ (0<=c<=10^{6}) $ , representing number of moves in your solution. Each of the next $ c $ lines should contain two integers $ i $ and $ j $ $ (1<=i,j<=n,i≠j) $ : integers $ i $ , $ j $ in the $ k $ th line mean that at the $ k $ -th move you will move candies from the $ j $ -th box to the $ i $ -th one.
 
+this is a test line -> `test inline code` haha.
+
+`another inline code test`
+
 ## 输入输出样例 #1
 
 ### 输入 #1
@@ -35,7 +39,7 @@ In case there exists no solution, output -1. Otherwise, in the first line output
 
 ### 输入 #2
 
-```
+```text
 3
 0 1 0
 ```
@@ -43,7 +47,7 @@ In case there exists no solution, output -1. Otherwise, in the first line output
 ### 输出 #2
 
 ```
--1
+-1asdfasdfasdf
 ```
 
 ## 输入输出样例 #3
