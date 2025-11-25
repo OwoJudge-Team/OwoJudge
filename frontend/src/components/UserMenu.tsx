@@ -61,9 +61,7 @@ const UserMenu: React.FC = () => {
           <span>{user.displayName}</span>
         </div>
         <FaChevronDown
-          className={`h-4 w-4 transition-transform duration-150 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`h-4 w-4 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
