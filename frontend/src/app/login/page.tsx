@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { FaUser, FaLock } from "react-icons/fa6";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { authApi } from "@/utils/api";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -26,15 +27,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const response = await fetch(`${apiUrl}/api/auth`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-        credentials: "include",
-      });
+      const response = await authApi.login(username, password);
 
       if (response.ok) {
         // Update auth context with user data

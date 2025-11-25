@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { authApi } from "@/utils/api";
 
 interface User {
   id: string;
@@ -27,10 +28,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchUser = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const response = await fetch(`${apiUrl}/api/auth/status`, {
-        credentials: "include",
-      });
+      const response = await authApi.getStatus();
 
       if (response.ok) {
         const userData = await response.json();
@@ -52,11 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      await fetch(`${apiUrl}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      await authApi.logout();
       setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
