@@ -180,6 +180,7 @@ Retrieves a list of all problems.
       "attempted": 0
     },
     "_id": "68fb738f149ff1b7927a14a6",
+    "serialNumber": 0,
     "problemID": "tps-example",
     "createdTime": "2025-10-24T12:39:43.750Z",
     "title": "Problem Title",
@@ -218,6 +219,7 @@ Retrieves a single problem by its ID, including its description and sample test 
     "attempted": 0
   },
   "_id": "68fb738f149ff1b7927a14a6",
+  "serialNumber": 0,
   "problemID": "tps-example",
   "createdTime": "2025-10-24T12:39:43.750Z",
   "title": "Problem Title",
@@ -325,43 +327,86 @@ Endpoints for managing code submissions.
 
 ### `GET /api/submissions`
 
-Retrieves a list of submissions.
+Retrieves a list of submissions. Non-admin users can only view their own submissions unless they specify their own username/userID in filters. Admins can view all submissions.
 
 -   **Authentication:** Required.
 -   **Query Parameters (optional):**
-    -   `username` (string): Filter submissions by username.
+    -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username.
+    -   `userID` (string): Filter submissions by user MongoDB ObjectId. Non-admins can only filter by their own userID.
     -   `problemID` (string): Filter submissions by problem ID.
-    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`).
--   **Example:** `GET /api/submissions?username=admin&problemID=tps-example`
+    -   `problemSerialNumber` (number): Filter submissions by problem serial number (display ID).
+    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`).
+    -   `minScore` (number): Filter submissions with score greater than or equal to this value.
+    -   `maxScore` (number): Filter submissions with score less than or equal to this value.
+-   **Examples:** 
+    -   `GET /api/submissions?username=admin&problemID=tps-example`
+    -   `GET /api/submissions?status=AC&minScore=50`
+    -   `GET /api/submissions?problemSerialNumber=0&maxScore=100`
 -   **Response Example:**
     ```json
     [
       {
         "_id": "68fb7890a1b2c3d4e5f67890",
+        "serialNumber": 1000000,
         "username": "admin",
+        "userHandle": "Admin Administrator",
+        "userID": "68fb6d6e6deaffa916ced917",
         "problemID": "tps-example",
+        "problemSerialNumber": 0,
+        "problemTitle": "Problem Title",
         "language": "g++ c++17",
         "status": "AC",
         "score": 100,
-        "createdTime": "2025-10-24T13:00:00.000Z",
-        "userSolution": [
-          {
-            "filename": "main.cpp",
-            "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
-          }
-        ],
-        "results": [
-          {
-            "testcase": "0-01",
-            "status": "AC",
-            "time": 0.01,
-            "memory": 1024,
-            "message": "ok"
-          }
-        ]
+        "createdTime": "2025-10-24T13:00:00.000Z"
       }
     ]
     ```
+-   **Note:** The response only includes summary fields. Use `GET /api/submission/:serialNumber` to get full submission details including source code and test results.
+
+### `GET /api/submission/:serialNumber`
+
+Retrieves a single submission by its serial number. Non-admin users can only view their own submissions.
+
+-   **Authentication:** Required.
+-   **Parameters:**
+    -   `serialNumber` (number): The unique serial number of the submission (starts from 1000000).
+-   **Response Example:**
+    ```json
+    {
+      "_id": "68fb7890a1b2c3d4e5f67890",
+      "serialNumber": 1000000,
+      "username": "admin",
+      "userHandle": "Admin Administrator",
+      "userID": "68fb6d6e6deaffa916ced917",
+      "problemID": "tps-example",
+      "problemSerialNumber": 0,
+      "problemTitle": "Problem Title",
+      "language": "g++ c++17",
+      "status": "AC",
+      "score": 100,
+      "createdTime": "2025-10-24T13:00:00.000Z",
+      "userSolution": [
+        {
+          "filename": "main.cpp",
+          "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
+        }
+      ],
+      "results": [
+        {
+          "testcase": "0-01",
+          "status": "AC",
+          "time": 0.01,
+          "memory": 1024,
+          "message": "ok"
+        }
+      ]
+    }
+    ```
+-   **Status Codes:**
+    -   `200 OK`: Submission retrieved successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not authorized to view this submission.
+    -   `404 Not Found`: Submission does not exist.
 
 ### `POST /api/submissions`
 
@@ -390,8 +435,13 @@ Creates a new code submission for a problem.
     ```json
     {
       "_id": "68fb7890a1b2c3d4e5f67890",
+      "serialNumber": 1000000,
       "username": "admin",
+      "userHandle": "Admin Administrator",
+      "userID": "68fb6d6e6deaffa916ced917",
       "problemID": "tps-example",
+      "problemSerialNumber": 0,
+      "problemTitle": "Problem Title",
       "language": "g++ c++17",
       "status": "PD",
       "score": 0,
