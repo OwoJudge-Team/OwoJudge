@@ -1,4 +1,5 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import passport from 'passport';
@@ -33,6 +34,12 @@ export const createApp = (): Application => {
     .catch((error: Error) => console.log(`Error: ${error.message}`));
 
   const app: Application = express();
+  
+  app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true,
+  }));
+
   const oneMinute: number = 60000;
   const oneHour: number = oneMinute * 60;
   
