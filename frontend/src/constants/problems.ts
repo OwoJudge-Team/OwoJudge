@@ -1,131 +1,50 @@
-interface Problem {
+export interface Problem {
   id: number;
-  title: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  description: string;
-  submissions: number;
-  accuracy: string;
+  title: string; // problem name
+  quota: number; // e.g., remaining submissions or attempt quota
+  score: number; // points awarded
+  acNum: number; // number of ACs
+  status: "unseen" | "wrong" | "correct"; // user's submission status
+  tryCount?: number; // number of attempts (only for wrong status)
 }
 
 export const problems: Problem[] = [
-  {
-    id: 1,
-    title: "Binary Search",
-    difficulty: "Easy",
-    description: "Implement binary search algorithm.",
-    submissions: 450,
-    accuracy: "85%",
-  },
-  {
-    id: 2,
-    title: "Two Sum",
-    difficulty: "Medium",
-    description: "Find two numbers that add up to a target value.",
-    submissions: 1200,
-    accuracy: "67%",
-  },
-  {
-    id: 3,
-    title: "Travelling Salesman",
-    difficulty: "Hard",
-    description: "Find the shortest possible route visiting all cities.",
-    submissions: 350,
-    accuracy: "45%",
-  },
-  {
-    id: 4,
-    title: "Merge Sort",
-    difficulty: "Easy",
-    description: "Implement merge sort algorithm.",
-    submissions: 550,
-    accuracy: "90%",
-  },
-  {
-    id: 5,
-    title: "Quick Sort",
-    difficulty: "Medium",
-    description: "Implement quicksort algorithm.",
-    submissions: 1100,
-    accuracy: "78%",
-  },
-  {
-    id: 6,
-    title: "Depth-First Search",
-    difficulty: "Medium",
-    description: "Perform depth-first search on a graph.",
-    submissions: 900,
-    accuracy: "72%",
-  },
-  {
-    id: 7,
-    title: "Breadth-First Search",
-    difficulty: "Medium",
-    description: "Perform breadth-first search on a graph.",
-    submissions: 950,
-    accuracy: "80%",
-  },
+  { id: 1, title: "Binary Search", quota: 5, score: 100, acNum: 320, status: "correct" },
+  { id: 2, title: "Two Sum", quota: 3, score: 100, acNum: 540, status: "wrong", tryCount: 3 },
+  { id: 3, title: "Travelling Salesman", quota: 2, score: 300, acNum: 45, status: "unseen" },
+  { id: 4, title: "Merge Sort", quota: 5, score: 100, acNum: 410, status: "correct" },
+  { id: 5, title: "Quick Sort", quota: 4, score: 150, acNum: 280, status: "correct" },
+  { id: 6, title: "Depth-First Search", quota: 3, score: 120, acNum: 260, status: "unseen" },
+  { id: 7, title: "Breadth-First Search", quota: 3, score: 120, acNum: 275, status: "correct" },
   {
     id: 8,
     title: "Dynamic Programming",
-    difficulty: "Hard",
-    description: "Solve problems using dynamic programming techniques.",
-    submissions: 600,
-    accuracy: "60%",
+    quota: 2,
+    score: 250,
+    acNum: 95,
+    status: "wrong",
+    tryCount: 2,
   },
-  {
-    id: 9,
-    title: "Linked List Reversal",
-    difficulty: "Easy",
-    description: "Reverse a singly linked list.",
-    submissions: 700,
-    accuracy: "92%",
-  },
-  {
-    id: 10,
-    title: "Knapsack Problem",
-    difficulty: "Hard",
-    description: "Solve the knapsack problem using dynamic programming.",
-    submissions: 400,
-    accuracy: "55%",
-  },
-  {
-    id: 11,
-    title: "Maximum Subarray Sum",
-    difficulty: "Easy",
-    description: "Find the maximum sum of a contiguous subarray.",
-    submissions: 600,
-    accuracy: "88%",
-  },
+  { id: 9, title: "Linked List Reversal", quota: 5, score: 80, acNum: 520, status: "correct" },
+  { id: 10, title: "Knapsack Problem", quota: 2, score: 300, acNum: 60, status: "unseen" },
+  { id: 11, title: "Maximum Subarray Sum", quota: 5, score: 90, acNum: 430, status: "correct" },
   {
     id: 12,
     title: "Floyd-Warshall Algorithm",
-    difficulty: "Hard",
-    description: "Implement the Floyd-Warshall algorithm.",
-    submissions: 250,
-    accuracy: "48%",
+    quota: 1,
+    score: 280,
+    acNum: 38,
+    status: "wrong",
+    tryCount: 1,
   },
-  {
-    id: 13,
-    title: "Dijkstra's Algorithm",
-    difficulty: "Medium",
-    description: "Find the shortest path in a graph using Dijkstra's algorithm.",
-    submissions: 850,
-    accuracy: "70%",
-  },
+  { id: 13, title: "Dijkstra's Algorithm", quota: 2, score: 200, acNum: 190, status: "unseen" },
   {
     id: 14,
     title: "Prim's Algorithm",
-    difficulty: "Medium",
-    description: "Find the minimum spanning tree of a graph.",
-    submissions: 780,
-    accuracy: "77%",
+    quota: 2,
+    score: 200,
+    acNum: 170,
+    status: "correct",
   },
-  {
-    id: 15,
-    title: "Topological Sorting",
-    difficulty: "Hard",
-    description: "Perform topological sorting on a directed acyclic graph.",
-    submissions: 300,
-    accuracy: "52%",
-  },
+  { id: 15, title: "Topological Sorting", quota: 2, score: 220, acNum: 120, status: "unseen" },
 ];

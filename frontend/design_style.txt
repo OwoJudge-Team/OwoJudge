@@ -1,0 +1,711 @@
+# OwoJudge Frontend Design Style Guide
+
+## Design Philosophy
+Dark-only modern interface with vibrant colored accents. Focus on clear visual hierarchy, smooth interactions, and desktop-first design. No mobile responsiveness - this is a desktop-only application.
+
+## Core Principles
+- **Dark Mode Only**: No light mode support
+- **Desktop Only**: No mobile/tablet responsive design
+- **Colored Components**: Use vibrant backgrounds for data badges and status indicators
+- **Smooth Interactions**: 150ms transitions for all hover states
+- **Clear Hierarchy**: Use color, size, and spacing to establish visual importance
+
+## Color Palette
+
+### Base Colors (Slate Scale)
+- **Page Background**: `bg-background` (defined in CSS variables, typically slate-950)
+- **Card/Container Background**: `bg-slate-800`
+- **Card Border**: `border-slate-700`
+- **Dividers**: `divide-slate-700/50` or `border-slate-700`
+- **Table Header Background**: `bg-slate-800/50`
+- **Hover Background**: `hover:bg-slate-700/50`
+
+### Text Colors
+- **Primary Text**: `text-slate-100` (bright, for main content)
+- **Secondary Text**: `text-slate-300` (slightly dimmed)
+- **Tertiary Text**: `text-slate-400` (table headers, labels)
+
+### Interactive Elements
+- **Links**: `text-slate-100` → `hover:text-indigo-400`
+- **ID Badges**: `bg-slate-700/60` + `text-slate-300`
+
+### Semantic Colors (Status & Data)
+
+#### Quota (Blue)
+- Background: `bg-blue-800/50`
+- Text: `text-blue-200`
+- Icon: FaChartPie
+
+#### Score (Amber/Gold)
+- Background: `bg-amber-800/50`
+- Text: `text-amber-200`
+- Icon: FaStar
+
+#### Status Badges
+1. **Correct/Solved (Green)**
+   - Background: `bg-emerald-600/90`
+   - Text: `text-green-50`
+   - Icon: FaCircleCheck
+   - Label: "Solved"
+
+2. **Wrong/Failed (Red)**
+   - Background: `bg-rose-600/90`
+   - Text: `text-red-50`
+   - Icon: FaCircleXmark
+   - Label: "{count} Try/Tries"
+
+3. **Unseen/Not Attempted (Gray)**
+   - Background: `bg-slate-600/90`
+   - Text: `text-slate-200`
+   - Icon: FaCircleDot
+   - Label: "Unseen"
+
+## Typography
+
+### Font Stack
+- System default: Arial, Helvetica, sans-serif
+- Use React Icons (react-icons/fa6) for all icons
+
+### Hierarchy
+
+**Table Headers**
+- Size: `text-xs`
+- Weight: `font-semibold`
+- Transform: `uppercase`
+- Spacing: `tracking-wider`
+- Color: `text-slate-400`
+
+**Problem Titles (Links)**
+- Size: `text-base`
+- Weight: `font-semibold`
+- Color: `text-slate-100` → `hover:text-indigo-400`
+
+**Data Badges (Quota, Score)**
+- Size: `text-sm`
+- Weight: `font-medium` (quota) / `font-semibold` (score)
+- Color: Semantic colors (blue-200, amber-200)
+
+**Status Pills**
+- Size: `text-xs`
+- Weight: `font-bold`
+- Transform: `uppercase`
+- Spacing: `tracking-wide`
+- Color: 50-shade of semantic color (green-50, red-50, slate-200)
+
+**AC Count**
+- Size: `text-sm`
+- Weight: `font-medium`
+- Color: `text-slate-300`
+
+## Components
+
+### Page Layout
+```
+min-h-screen bg-background px-8 py-12
+└── max-w-6xl mx-auto
+```
+
+### Cards & Containers
+- **Rounded**: `rounded-2xl` (1rem)
+- **Border**: `border border-slate-700`
+- **Background**: `bg-slate-800`
+- **Shadow**: `shadow-xl`
+
+### User Menu & Dropdown
+
+**Login Button (Not Logged In)**
+```tsx
+<Link
+  href="/login"
+  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-base font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40"
+>
+  <FaUser className="h-5 w-5" />
+  Login
+</Link>
+```
+
+**User Button (Logged In)**
+```tsx
+<button className="inline-flex items-center gap-3 rounded-lg bg-slate-700/60 px-4 py-2.5 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-2">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600">
+      <FaUser className="h-4 w-4 text-white" />
+    </div>
+    <span>{displayName}</span>
+  </div>
+  <FaChevronDown className="h-4 w-4 transition-transform duration-150" />
+</button>
+```
+
+**Dropdown Container**
+```tsx
+<div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+```
+
+**Dropdown Header (User Info)**
+```tsx
+<div className="border-b border-slate-700 bg-slate-800/50 px-6 py-4">
+  <p className="text-base font-bold text-slate-100">{displayName}</p>
+  <p className="text-sm text-slate-400">@{username}</p>
+  <div className="mt-3 flex flex-wrap items-center gap-2">
+    {/* User stat badges */}
+  </div>
+</div>
+```
+
+**User Stat Badges**
+- Rating: `bg-amber-800/50` + `text-amber-200` + `FaStar`
+- Solved: `bg-emerald-800/50` + `text-emerald-200`
+- Admin: `bg-indigo-800/50` + `text-indigo-200`
+
+**Dropdown Menu Items**
+```tsx
+<div className="divide-y divide-slate-700/50">
+  <Link className="flex items-center gap-3 px-6 py-4 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50 hover:text-indigo-400">
+    <Icon className="h-4 w-4" />
+    Menu Item
+  </Link>
+</div>
+```
+
+**Logout Button**
+```tsx
+<button className="flex w-full items-center gap-3 px-6 py-4 text-base font-semibold text-rose-400 transition-all duration-150 hover:bg-slate-700/50 hover:text-rose-300">
+  <FaArrowRightFromBracket className="h-4 w-4" />
+  Logout
+</button>
+```
+
+### Tables
+
+**Container**
+```
+rounded-2xl border border-slate-700 bg-slate-800 shadow-xl
+```
+
+**Header Row**
+```
+border-b border-slate-700 bg-slate-800/50
+px-6 py-4
+```
+
+**Body Rows**
+```
+divide-y divide-slate-700/50
+px-6 py-4
+transition-all duration-150 hover:bg-slate-700/50
+```
+
+**Cells Padding**: `px-6 py-4` (consistent across all cells)
+
+### Badges & Pills
+
+**ID Badge**
+```
+h-8 w-8 rounded-lg bg-slate-700/60
+flex items-center justify-center
+text-sm font-semibold text-slate-300
+```
+
+**Data Pills (Quota, Score)**
+```
+inline-flex items-center gap-1.5
+rounded-lg
+px-3 py-1.5 (quota) / h-8 px-3 (score)
+bg-{color}-800/50
+text-{color}-200
+```
+
+**Status Pills**
+```
+inline-flex items-center gap-1.5
+rounded-full
+px-3.5 py-1.5
+bg-{semantic}-600/90
+text-{semantic}-50
+shadow-sm
+```
+
+### Interactive Elements
+
+**Links**
+```
+group/link inline-flex items-center gap-2
+text-base font-semibold text-slate-100
+transition-all hover:text-indigo-400
+```
+
+**Arrow Animation on Hover**
+```
+Icon: -translate-x-2 opacity-0
+Hover: translate-x-0 opacity-100
+Transition: duration-150
+```
+
+**Title Slide**
+```
+transition-transform duration-150
+group-hover/link:translate-x-1
+```
+
+### Icons
+- **Library**: react-icons/fa6
+- **Size**: `h-4 w-4` (standard) or `h-3.5 w-3.5` (small badges)
+- **Always pair with text** in badges using `gap-1` or `gap-1.5`
+- Import pattern: `FaIconName` from "react-icons/fa6"
+
+Common icons:
+- FaAngleRight (link arrow)
+- FaChartPie (quota)
+- FaStar (score/rating)
+- FaUserGroup (AC count)
+- FaCircleCheck (correct)
+- FaCircleXmark (wrong)
+- FaCircleDot (unseen)
+- FaUser (user profile)
+- FaGear (settings)
+- FaArrowRightFromBracket (logout)
+- FaChevronDown (dropdown indicator)
+
+## Layout
+
+### Spacing
+- **Page padding**: `px-8 py-12` (fixed, no responsive variants)
+- **Max width**: `max-w-6xl` (centered with `mx-auto`)
+- **Table cell padding**: `px-6 py-4` (uniform)
+- **Badge padding**: `px-3 py-1.5` (data) or `px-3.5 py-1.5` (status)
+- **Icon gaps**: `gap-1.5` (standard) or `gap-2` (larger)
+
+### Responsive Design
+**NONE** - Desktop only, no md:, sm:, lg: breakpoints
+
+## Animation Principles
+- **Duration**: `duration-150` for all transitions
+- **Easing**: Default (ease) - don't specify unless needed
+- **Hover states**: Always include `transition-all` or `transition-{property}`
+- **Group interactions**: Use `group` and `group/link` for coordinated animations
+
+Examples:
+- Row hover: `hover:bg-slate-700/50`
+- Link hover: `hover:text-indigo-400`
+- Arrow reveal: opacity 0→100 + translateX -8px→0
+- Title slide: translateX 0→4px
+
+## Do's ✓
+- Use slate-800 for card backgrounds
+- Use colored backgrounds for all data badges (blue, amber, green, red)
+- Use /50 or /60 opacity for subtle backgrounds
+- Use /90 opacity for status pills
+- Include icons in all badges using react-icons/fa6
+- Keep hover transitions at 150ms
+- Use rounded-lg for small components, rounded-2xl for containers
+- Use rounded-full for status pills
+- Always use uppercase + tracking-wide for status text
+
+## Don'ts ✗
+- No light mode variants (no `dark:` prefixes needed)
+- No mobile responsive classes (no `sm:`, `md:`, `lg:`)
+- No pure white or pure black text (use slate-50/100/200)
+- No flat gray badges for data - use colored backgrounds
+- No animations over 200ms
+- No gradients (keep backgrounds solid with opacity)
+- Don't mix rounded styles (lg for small, 2xl for large, full for pills)
+
+## Example Component Patterns
+
+### Table Row
+```tsx
+<tr className="group transition-all duration-150 hover:bg-slate-700/50">
+```
+
+### Link with Animated Arrow
+```tsx
+<Link
+  href={`/problems/${id}`}
+  className="group/link inline-flex items-center gap-2 text-base font-semibold text-slate-100 transition-all hover:text-indigo-400"
+>
+  <span className="transition-transform duration-150 group-hover/link:translate-x-1">
+    {title}
+  </span>
+  <FaAngleRight className="h-4 w-4 -translate-x-2 opacity-0 transition-all duration-150 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
+</Link>
+```
+
+### Data Badge (Quota)
+```tsx
+<span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
+  <FaChartPie />
+  {quota}
+</span>
+```
+
+### Status Pill (Correct)
+```tsx
+<span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
+  <FaCircleCheck />
+  Solved
+</span>
+```
+
+### Status Pill (Wrong with Try Count)
+```tsx
+<span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
+  <FaCircleXmark />
+  {tryCount} {tryCount === 1 ? "Try" : "Tries"}
+</span>
+```
+
+### ID Badge
+```tsx
+<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
+  {id}
+</div>
+```
+
+## Color Reference Quick Guide
+
+| Element | Background | Text | Icon |
+|---------|-----------|------|------|
+| Page | bg-background | - | - |
+| Card | bg-slate-800 | - | - |
+| Border | border-slate-700 | - | - |
+| Table Header | bg-slate-800/50 | text-slate-400 | - |
+| Row Hover | hover:bg-slate-700/50 | - | - |
+| ID Badge | bg-slate-700/60 | text-slate-300 | - |
+| Link | - | text-slate-100 → hover:text-indigo-400 | FaAngleRight |
+| Quota | bg-blue-800/50 | text-blue-200 | FaChartPie |
+| Score | bg-amber-800/50 | text-amber-200 | FaStar |
+| AC Count | - | text-slate-300 | FaUserGroup |
+| Solved | bg-emerald-600/90 | text-green-50 | FaCircleCheck |
+| Wrong | bg-rose-600/90 | text-red-50 | FaCircleXmark |
+| Unseen | bg-slate-600/90 | text-slate-200 | FaCircleDot |
+
+---
+
+## Form Components
+
+### Form Inputs
+
+**Text Input / Email Input / Password Input**
+```tsx
+<input
+  type="text" // or "email", "password"
+  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+  placeholder="Enter value"
+  required
+/>
+```
+
+**Textarea**
+```tsx
+<textarea
+  rows={4}
+  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+  placeholder="Enter value"
+/>
+```
+
+**Select Dropdown**
+```tsx
+<select
+  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-3 text-sm text-slate-100 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+>
+  <option value="option1">Option 1</option>
+  <option value="option2">Option 2</option>
+</select>
+```
+
+**Form Label with Icon**
+```tsx
+<label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300">
+  <FaIcon className="h-3.5 w-3.5 text-slate-400" />
+  Label Text
+</label>
+```
+
+**Form Label with Helper Text**
+```tsx
+<label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300">
+  <FaIcon className="h-3.5 w-3.5 text-slate-400" />
+  Label Text
+  <span className="ml-auto text-xs text-rose-400">* Required info</span>
+</label>
+```
+
+### Form Cards
+
+**Section Card with Header**
+```tsx
+<div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+  <div className="border-b border-slate-700 bg-slate-800/50 px-6 py-4">
+    <h2 className="text-lg font-bold text-slate-100">Section Title</h2>
+  </div>
+  <div className="space-y-6 p-6">
+    {/* Form fields */}
+  </div>
+</div>
+```
+
+### Buttons
+
+**Primary Button (Submit)**
+```tsx
+<button
+  type="submit"
+  className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-all duration-150 hover:bg-indigo-500"
+>
+  Save Changes
+</button>
+```
+
+**Secondary Button**
+```tsx
+<button
+  type="button"
+  className="rounded-lg border border-slate-600 bg-slate-800 px-6 py-3 text-sm font-bold text-slate-100 transition-all duration-150 hover:bg-slate-700/50"
+>
+  Cancel
+</button>
+```
+
+### Form Patterns
+
+**Input Field Pattern**
+- Background: `bg-slate-900/50`
+- Border: `border-slate-600`
+- Text: `text-slate-100`
+- Placeholder: `placeholder-slate-500`
+- Padding: `px-4 py-3`
+- Font: `text-sm`
+- Rounded: `rounded-lg`
+- Focus: `focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50`
+
+**Form Layout**
+- Container: `max-w-4xl mx-auto` (narrower than table layouts)
+- Spacing: `space-y-6` between cards and fields
+- Card padding: `p-6` for content area
+- Header padding: `px-6 py-4`
+
+---
+
+## Problem Detail Page Components
+
+### Problem Header
+
+**Problem ID Badge**
+```tsx
+<span className="inline-flex items-center rounded-lg bg-slate-700/60 px-4 py-1.5 text-sm font-semibold text-slate-300">
+  Problem {id}
+</span>
+```
+
+**Problem Title**
+```tsx
+<h1 className="text-3xl font-bold text-slate-100">{title}</h1>
+```
+
+### Info Stat Cards
+
+**Container (3-column grid)**
+```tsx
+<div className="grid grid-cols-3 gap-4 p-6">
+```
+
+**Time Limit Card**
+```tsx
+<div className="group rounded-lg border border-slate-700 bg-slate-700/30 p-4 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-800/50 transition-all duration-150 group-hover:bg-blue-800/70">
+      <FaClock className="h-5 w-5 text-blue-200" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Time Limit
+      </p>
+      <p className="text-xl font-bold text-slate-100">
+        {value} <span className="text-sm font-medium text-slate-400">ms</span>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
+**Memory Limit Card**
+```tsx
+<div className="group rounded-lg border border-slate-700 bg-slate-700/30 p-4 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-800/50 transition-all duration-150 group-hover:bg-purple-800/70">
+      <FaMemory className="h-5 w-5 text-purple-200" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Memory Limit
+      </p>
+      <p className="text-xl font-bold text-slate-100">
+        {value} <span className="text-sm font-medium text-slate-400">KB</span>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
+**Score Policy Card**
+```tsx
+<div className="group rounded-lg border border-slate-700 bg-slate-700/30 p-4 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-800/50 transition-all duration-150 group-hover:bg-amber-800/70">
+      <FaTrophy className="h-5 w-5 text-amber-200" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Score Policy
+      </p>
+      <p className="text-xl font-bold capitalize text-slate-100">{policy}</p>
+    </div>
+  </div>
+</div>
+```
+
+### Info Stat Card Pattern
+- Border: `border border-slate-700`
+- Background: `bg-slate-700/30`
+- Hover: `hover:bg-slate-700/50`
+- Transition: `transition-all duration-150`
+- Icon container: `h-10 w-10` + colored background with /50 opacity
+- Icon hover: increase opacity to /70
+- Label: `text-xs font-semibold uppercase tracking-wider text-slate-400`
+- Value: `text-xl font-bold text-slate-100`
+- Unit: `text-sm font-medium text-slate-400`
+
+Color mapping:
+- Time Limit: Blue (`bg-blue-800/50`, `text-blue-200`, FaClock)
+- Memory Limit: Purple (`bg-purple-800/50`, `text-purple-200`, FaMemory)
+- Score Policy: Amber (`bg-amber-800/50`, `text-amber-200`, FaTrophy)
+
+### Tag Pills
+
+**Tag Container**
+```tsx
+<div className="border-t border-slate-700/50 px-6 py-4">
+  <div className="flex flex-wrap items-center gap-2">
+    <FaTag className="h-3.5 w-3.5 text-slate-400" />
+    {tags.map((tag) => (
+      <span className="inline-flex items-center rounded-lg bg-indigo-800/50 px-3 py-1.5 text-xs font-semibold text-indigo-200">
+        {tag}
+      </span>
+    ))}
+  </div>
+</div>
+```
+
+**Tag Pill Style**
+- Background: `bg-indigo-800/50`
+- Text: `text-indigo-200`
+- Rounded: `rounded-lg`
+- Padding: `px-3 py-1.5`
+- Font: `text-xs font-semibold`
+
+### Problem Statement Section
+
+**Markdown Container with Prose**
+```tsx
+<div className="prose prose-invert prose-slate max-w-none p-8 prose-headings:text-slate-100 prose-p:text-slate-300 prose-strong:text-slate-200 prose-code:text-indigo-300 prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-slate-700">
+  <ReactMarkdown>{content}</ReactMarkdown>
+</div>
+```
+
+**Prose Styling Guidelines**
+- Base: `prose-invert prose-slate`
+- Headings: `prose-headings:text-slate-100`
+- Paragraphs: `prose-p:text-slate-300`
+- Strong text: `prose-strong:text-slate-200`
+- Inline code: `prose-code:text-indigo-300`
+- Code blocks: `prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-slate-700`
+
+**Code Block Syntax Highlighting**
+```tsx
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+<SyntaxHighlighter
+  style={vscDarkPlus}
+  language={lang}
+  customStyle={{
+    backgroundColor: "rgb(15 23 42 / 0.5)",
+    padding: "1rem",
+    margin: 0,
+    borderRadius: "0.5rem",
+    border: "1px solid rgb(51 65 85)",
+  }}
+>
+  {code}
+</SyntaxHighlighter>
+```
+
+### Submit Solution Section
+
+**Code Textarea**
+```tsx
+<textarea
+  className="min-h-[320px] w-full rounded-lg border border-slate-600 bg-slate-900/50 p-4 font-mono text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+  placeholder="// Write your solution here..."
+/>
+```
+
+**Submit Button**
+```tsx
+<button className="group inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600 disabled:hover:shadow-indigo-600/30">
+  <FaPaperPlane className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+  Submit Solution
+</button>
+```
+
+### Status Message Alerts
+
+**Success Alert**
+```tsx
+<div className="flex items-center gap-2 rounded-lg bg-emerald-800/50 px-4 py-3 text-sm font-semibold text-emerald-200">
+  <FaCircleCheck className="h-4 w-4" />
+  {message}
+</div>
+```
+
+**Error Alert**
+```tsx
+<div className="flex items-center gap-2 rounded-lg bg-rose-800/50 px-4 py-3 text-sm font-semibold text-rose-200">
+  <FaCircleExclamation className="h-4 w-4" />
+  {error}
+</div>
+```
+
+### Loading State
+
+**Centered Loading Spinner**
+```tsx
+<div className="flex min-h-screen items-center justify-center bg-background">
+  <div className="text-center">
+    <FaSpinner className="mb-4 inline-block h-12 w-12 animate-spin text-indigo-500" />
+    <p className="text-lg text-slate-300">Loading problem...</p>
+  </div>
+</div>
+```
+
+### Section Headers
+
+**Section Title with Icon**
+```tsx
+<h2 className="flex items-center gap-2 text-xl font-bold text-slate-100">
+  <FaFileLines className="h-5 w-5 text-indigo-400" />
+  Section Title
+</h2>
+```
+
+Common section icons:
+- Problem Statement: FaFileLines
+- Submit Solution: FaPaperPlane
+- Test Cases: FaListCheck
+- Editorial: FaLightbulb
+
+---
+
+This design system creates a professional, desktop-focused interface with vibrant colored accents on a dark slate background. All interactive elements have smooth transitions and clear visual feedback.
+

@@ -6,6 +6,7 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  safelist: ["bg-green-600/50", "bg-red-600/50", "bg-blue-600/50", "bg-purple-600/50"],
   theme: {
     extend: {
       colors: {
@@ -34,5 +35,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/typography")],
 } satisfies Config;

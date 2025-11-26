@@ -1,47 +1,55 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { FaCode, FaFile, FaTrophy } from "react-icons/fa6";
+import UserMenu from "./UserMenu";
 
 const navItems = [
-  { name: "Problems", href: "/problems" },
-  { name: "Submissions", href: "/submissions" },
-  { name: "Contests", href: "/contests" },
-  { name: "Ranking", href: "/ranking" },
-  { name: "About", href: "/about" },
+  { name: "Problems", href: "/problems", icon: FaCode },
+  { name: "Submissions", href: "/submissions", icon: FaFile },
+  { name: "Contests", href: "/contests", icon: FaTrophy },
 ];
 
 const Header: React.FC = () => {
+  const pathname = usePathname();
+
   return (
-    <header className="bg-primary p-4 shadow-lg">
-      <div className="mx-auto flex max-w-6xl items-center">
+    <header className="sticky top-0 z-50 border-b border-slate-700/50 bg-slate-900/60 shadow-xl backdrop-blur-lg">
+      <div className="mx-auto flex max-w-6xl items-center py-4">
         {/* Logo */}
         <Link
           href="/"
-          className="transform text-3xl font-bold text-white transition duration-300 hover:scale-105 hover:text-gray-200"
+          className="text-3xl font-bold text-slate-100 transition-all duration-150 hover:text-indigo-400"
         >
           OwoJudge
         </Link>
 
-        {/* Navigation + Login */}
-        <div className="ml-auto flex items-center space-x-8">
-          <nav className="flex space-x-8">
-            {navItems.map((item) => (
+        {/* Navigation */}
+        <nav className="ml-12 flex gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-lg text-white transition duration-300 hover:text-gray-200"
+                className={`group/nav inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-base font-semibold transition-all duration-150 ${
+                  isActive
+                    ? "bg-slate-700/80 text-slate-100"
+                    : "text-slate-300 hover:bg-slate-700/60 hover:text-slate-100"
+                }`}
               >
+                <Icon className="h-5 w-5" />
                 {item.name}
               </Link>
-            ))}
-          </nav>
+            );
+          })}
+        </nav>
 
-          <Link
-            href="/login"
-            className="rounded-full bg-white px-5 py-2 font-semibold text-primary-dark shadow transition duration-300 hover:bg-gray-200"
-          >
-            Login
-          </Link>
+        {/* User Menu */}
+        <div className="ml-auto">
+          <UserMenu />
         </div>
       </div>
     </header>
