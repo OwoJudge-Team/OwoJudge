@@ -11,14 +11,12 @@ test_problem_upload() {
 
 test_isolate_cg_functionality() {
     isolate --cg --init --box-id=0
-
     isolate --cg --processes=20 --box-id=0 --run -- /bin/bash -c "echo 'first'; sleep 1; echo 'second'"
     isolate --cg --processes=20 --box-id=0 --time=1 --mem=512000 --run -- /bin/bash -c "echo 'first'; sleep 1; echo 'second'"
 }
 
-
-docker-compose up -d
-
+# Start backend with predefined admin password
+ADMIN_PASSWD="adminpassword" docker compose up --build -d
 # Run tests
 test_problem_upload
 test_isolate_cg_functionality

@@ -47,7 +47,7 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
     return;
   }
   if (!request.isAuthenticated() || !request.user) {
-    response.status(403).send('Please login first');
+    response.status(401).send('Please login first');
     return;
   }
   try {
