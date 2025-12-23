@@ -280,6 +280,21 @@ Deletes a problem and its associated files.
 
 -   **Authentication:** Admin only.
 
+### `POST /api/problems/:problemID/rejudge`
+
+Triggers a rejudge for all submissions associated with the problem.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `problemSerialNumber` (string): The serial number of the problem.
+-   **Response Example:**
+    `Rejudge triggered for X submissions.`
+-   **Status Codes:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Problem does not exist.
+
 ### `GET /api/problems/:problemID/allowed-languages`
 
 Retrieves the list of programming languages allowed for submissions to a specific problem.
@@ -460,6 +475,22 @@ Creates a new code submission for a problem.
     -   `400 Bad Request`: Invalid submission data.
     -   `401 Unauthorized`: User not authenticated.
     -   `404 Not Found`: Problem does not exist.
+-   `500 Internal Server Error`: Failed to creating submission.
+
+### `POST /api/submissions/:serialNumber/rejudge`
+
+Triggers a rejudge for a specific submission. The submission status will be reset to `PD`, score to `0`, and results cleared.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The unique serial number of the submission.
+-   **Response Example:**
+    Returns the updated submission object.
+-   **Status Codes:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Submission does not exist.
 
 **Note:** The submission status will initially be `PD` (Pending) or `QU` (Queued), and will be updated asynchronously by the judger system. Poll the GET endpoint to check the final status.
 

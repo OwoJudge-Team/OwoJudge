@@ -18,34 +18,58 @@ The `User` schema stores information about registered users.
 
 The `Problem` schema stores all data related to a specific programming problem.
 
-- `problemID` (String, required, unique): A unique identifier for the problem.
-- `createdTime` (Date, required): The timestamp when the problem was created.
+- `serialNumber` (Number, unique): An auto-incremented serial number for the problem.
+- `problemID` (String, required): A unique identifier for the problem (user-defined).
+- `createdTime` (Date, required, default: now): The timestamp when the problem was created.
 - `title` (String, required): The title of the problem.
 - `timeLimit` (Number, required): The time limit for execution, in seconds.
 - `memoryLimit` (Number, required): The memory limit for execution, in kilobytes.
 - `processes` (Number, required, default: 1): The number of processes allowed.
 - `fullScore` (Number, required): The total score for the problem.
-- `description` (String, required): A detailed description of the problem.
-- `inputDescription` (String, required): A description of the input format.
-- `scorePolicy` (String, required, enum: `sum`, `max`): The policy for calculating scores from subtasks.
-- `testcase` (Array): An array of test case objects.
+- `scorePolicy` (String, required, enum: `sum`, `max`, `min`): The policy for calculating scores from subtasks.
+- `testcase` (Array of Objects): An array of test case objects.
+    - `filename` (String): The filename of the test case.
+    - `point` (Number): The points awarded for passing this test case.
+    - `subtask` (String): The subtask this test case belongs to.
 - `tags` (Array of Strings): Tags for categorizing the problem.
+- `problemRelatedTags` (Array of Strings): Related tags for the problem.
 - `submissionDetail` (Object): Statistics about submissions for this problem.
+    - `accepted` (Number, default: 0)
+    - `submitted` (Number, default: 0)
+    - `timeLimitExceeded` (Number, default: 0)
+    - `memoryLimitExceeded` (Number, default: 0)
+    - `wrongAnswer` (Number, default: 0)
+    - `runtimeError` (Number, default: 0)
+    - `compilationError` (Number, default: 0)
+    - `processLimitExceeded` (Number, default: 0)
 - `userDetail` (Object): Statistics about user performance on this problem.
+    - `solved` (Number, default: 0)
+    - `attempted` (Number, default: 0)
 
 ## Submission Schema
 
 The `Submission` schema records each code submission made by a user.
 
-- `serialNumber` (Number, unique, auto-increment): A unique serial number for the submission.
+- `serialNumber` (Number, unique, auto-increment): A unique serial number for the submission (starts from 1,000,000).
 - `problemID` (String, required): The ID of the problem being submitted.
+- `problemSerialNumber` (Number, required): The serial number of the problem.
+- `problemTitle` (String, required): The title of the problem.
 - `username` (String, required): The username of the user who made the submission.
+- `userHandle` (String, required): The handle/display name of the user.
+- `userID` (ObjectId, required, ref: `User`): The ID of the user.
 - `language` (String, required): The programming language of the submission.
-- `userSolution` (Array): An array of objects containing the solution's filename and content.
-- `status` (String, enum, default: `Pending`): The current status of the submission.
+- `userSolution` (Array of Objects): An array of objects containing the solution's filename and content.
+    - `filename` (String, required)
+    - `content` (String, required)
+- `status` (String, enum, default: `Pending`): The current status of the submission. Values conform to `SubmissionStatus` enum.
 - `createdTime` (Date, default: now): The timestamp of the submission.
 - `score` (Number, default: 0): The score awarded to the submission.
-- `results` (Array): An array of results for each test case.
+- `results` (Array of Objects): An array of results for each test case.
+    - `testcase` (String, required): The name of the test case.
+    - `status` (String, required): The status for this specific test case.
+    - `time` (Number, required): Time used.
+    - `memory` (Number, required): Memory used.
+    - `message` (String): Optional message.
 
 ## Contest Schema
 
@@ -56,4 +80,15 @@ The `Contest` schema defines a programming contest.
 - `description` (String, required): A description of the contest.
 - `startTime` (Date, required): The start time of the contest.
 - `endTime` (Date, required): The end time of the contest.
-- `problems` (Array): An array of problem objects included in the contest.
+- `problems` (Array of Objects): An array of problem objects included in the contest.
+    - `name` (String): The problem name/ID.
+    - `score` (Number): The score assigned to the problem in this contest.
+- `standings` (Array of Objects): The current standings of the contest.
+    - `username` (String, required)
+    - `totalScore` (Number, default: 0)
+    - `solvedCount` (Number, default: 0)
+    - `lastSubmissionTime` (Date)
+    - `problemScores` (Array of Objects):
+        - `problemID` (String)
+        - `score` (Number)
+        - `lastSubmissionTime` (Date)
