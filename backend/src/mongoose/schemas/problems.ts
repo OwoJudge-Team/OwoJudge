@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { Counter } from './counters';
 
 enum ScorePolicy {
   Sum = 'sum',
@@ -70,27 +71,41 @@ const problemSchema = new Schema<IProblem>({
 });
 
 // Auto-increment serialNumber using pre-save hook
-problemSchema.pre('save', async function(next) {
-  if (this.isNew && !this.serialNumber) {
-    try {
+problemSchema.pre('save', async function() {
+  if (this.isNew && this.serialNumber === undefined) {
+    // Check if counter exists to handle existing data
+    const counterExists = await Counter.exists({ _id: 'problemSerialNumber' });
+    
+    if (!counterExists) {
       // Find the highest existing serialNumber
       const lastProblem = await mongoose.model('Problem').findOne(
         {}, 
         { serialNumber: 1 }, 
         { sort: { serialNumber: -1 } }
       );
+      const maxSerial = lastProblem?.serialNumber ?? -1;
       
-      // Set serialNumber starting from 0
-      this.serialNumber = lastProblem?.serialNumber !== undefined
-        ? lastProblem.serialNumber + 1 
-        : 0;
-      
-      next();
-    } catch (error) {
-      next(error as Error);
+      try {
+        // Initialize counter so the next increment gives maxSerial + 1
+        // We set seq to maxSerial + 1. 
+        // The update below will increment it to maxSerial + 2.
+        // Then we subtract 1 to get maxSerial + 1.
+        await Counter.create({
+          _id: 'problemSerialNumber',
+          seq: maxSerial + 1
+        });
+      } catch (error) {
+        // Ignore duplicate key error if another process initialized it concurrently
+      }
     }
-  } else {
-    next();
+
+    const counter = await Counter.findByIdAndUpdate(
+      { _id: 'problemSerialNumber' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    // We want to start from 0, so we subtract 1 from the sequence
+    this.serialNumber = counter.seq - 1;
   }
 });
 

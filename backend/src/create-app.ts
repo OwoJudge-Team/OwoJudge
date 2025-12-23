@@ -56,7 +56,7 @@ export const createApp = (): Application => {
         maxAge: oneHour * 24 // One Day
       },
       store: MongoStore.create({
-        client: mongoose.connection.getClient()
+        client: mongoose.connection.getClient() as any
       })
     })
   );

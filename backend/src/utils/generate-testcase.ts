@@ -80,7 +80,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
         metaFile: compileMetaFile,
         stderr: 'compile.error',
         fullEnv: true,
-        dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+        dirs: ['/usr/bin', '/bin', '/lib', '/etc'],
         cwd: '/box'
       }, 65000);
     } catch (error) {
@@ -100,7 +100,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
         stdout: 'gen.output',
         stderr: 'gen.error',
         fullEnv: true,
-        dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+        dirs: ['/usr/bin', '/bin', '/lib', '/etc'],
         cwd: '/box'
       }, 65000);
 

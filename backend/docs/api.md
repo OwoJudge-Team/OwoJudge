@@ -267,6 +267,11 @@ Updates an existing problem by uploading a new `.tar.gz` file.
 -   **Authentication:** Admin only.
 -   **Request:** `multipart/form-data` with a single file field named `problem`.
 
+Responses:
+-   `201 Created`: Problem updated successfully.
+-   `400 Bad Request`: Invalid problem data.
+-   `401 Unauthorized`: If the requester is not an admin.
+
 ### `PATCH /api/problems/:problemID`
 
 Updates specific fields of a problem.
@@ -274,11 +279,22 @@ Updates specific fields of a problem.
 -   **Authentication:** Admin only.
 -   **Request Body:** Partial `IProblem` object.
 
+Responses:
+-   `201 Created`: Problem updated successfully.
+-   `400 Bad Request`: Invalid update data.
+-   `401 Unauthorized`: If the requester is not an admin.
+-   `404 Not Found`: If the problem does not exist.
+
 ### `DELETE /api/problems/:problemID`
 
 Deletes a problem and its associated files.
 
 -   **Authentication:** Admin only.
+
+Responses:
+-   `201 Created`: Problem deleted successfully.
+-   `401 Unauthorized`: If the requester is not an admin.
+-   `404 Not Found`: If the problem does not exist.
 
 ### `GET /api/problems/:problemID/allowed-languages`
 

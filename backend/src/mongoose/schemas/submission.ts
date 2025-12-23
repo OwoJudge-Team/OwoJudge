@@ -60,27 +60,19 @@ const submissionSchema = new Schema<ISubmission>({
 });
 
 // Auto-increment serialNumber using pre-save hook
-submissionSchema.pre('save', async function(next) {
+submissionSchema.pre('save', async function() {
   if (this.isNew && !this.serialNumber) {
-    try {
-      // Find the highest existing serialNumber
-      const lastSubmission = await mongoose.model('Submission').findOne(
-        {}, 
-        { serialNumber: 1 }, 
-        { sort: { serialNumber: -1 } }
-      );
-      
-      // Set serialNumber starting from 1000000
-      this.serialNumber = lastSubmission?.serialNumber 
-        ? lastSubmission.serialNumber + 1 
-        : 1000000;
-      
-      next();
-    } catch (error) {
-      next(error as Error);
-    }
-  } else {
-    next();
+    // Find the highest existing serialNumber
+    const lastSubmission = await mongoose.model('Submission').findOne(
+      {}, 
+      { serialNumber: 1 }, 
+      { sort: { serialNumber: -1 } }
+    );
+    
+    // Set serialNumber starting from 1000000
+    this.serialNumber = lastSubmission?.serialNumber 
+      ? lastSubmission.serialNumber + 1 
+      : 1000000;
   }
 });
 
