@@ -439,63 +439,63 @@ async fn test_delete_problem() {
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-// #[tokio::test]
-// async fn test_allowed_languages() {
-//     let client = ClientBuilder::new()
-//         .cookie_store(true)
-//         .build()
-//         .expect("Failed to build client");
+#[tokio::test]
+async fn test_allowed_languages() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
 
-//     let problem_id = create_temp_problem(&client).await;
+    let problem_id = create_temp_problem(&client).await;
 
-//     // 1. Unauthenticated access
-//     let unauth_client = Client::new();
-//     let response = unauth_client
-//         .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", problem_id))
-//         .send()
-//         .await
-//         .expect("Failed to get allowed languages unauth");
-//     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    // 1. Unauthenticated access
+    let unauth_client = Client::new();
+    let response = unauth_client
+        .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", problem_id))
+        .send()
+        .await
+        .expect("Failed to get allowed languages unauth");
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
-//     // 2. Authenticated access
-//     let response = client
-//         .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", problem_id))
-//         .send()
-//         .await
-//         .expect("Failed to get allowed languages");
+    // 2. Authenticated access
+    let response = client
+        .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", problem_id))
+        .send()
+        .await
+        .expect("Failed to get allowed languages");
     
-//     assert_eq!(response.status(), StatusCode::OK);
-//     let languages: Vec<String> = response.json().await.expect("Failed to parse JSON");
-//     assert!(!languages.is_empty(), "Allowed languages should not be empty");
-// }
+    assert_eq!(response.status(), StatusCode::OK);
+    let languages: Vec<String> = response.json().await.expect("Failed to parse JSON");
+    assert!(!languages.is_empty(), "Allowed languages should not be empty");
+}
 
-// #[tokio::test]
-// async fn test_get_testcase() {
-//     let client = ClientBuilder::new()
-//         .cookie_store(true)
-//         .build()
-//         .expect("Failed to build client");
+#[tokio::test]
+async fn test_get_testcase() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
 
-//     let problem_id = create_temp_problem(&client).await;
+    let problem_id = create_temp_problem(&client).await;
 
-//     // 1. Unauthenticated access
-//     let unauth_client = Client::new();
-//     let response = unauth_client
-//         .get(&format!("http://localhost:8787/api/problems/{}/testcases/0-01", problem_id))
-//         .send()
-//         .await
-//         .expect("Failed to get testcase unauth");
-//     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    // 1. Unauthenticated access
+    let unauth_client = Client::new();
+    let response = unauth_client
+        .get(&format!("http://localhost:8787/api/problems/{}/testcases/full-01", problem_id))
+        .send()
+        .await
+        .expect("Failed to get testcase unauth");
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
-//     // 2. Authenticated access
-//     // Get testcase "0-01" (assuming it exists in tps-example)
-//     let response = client
-//         .get(&format!("http://localhost:8787/api/problems/{}/testcases/0-01", problem_id))
-//         .send()
-//         .await
-//         .expect("Failed to get testcase");
+    // 2. Authenticated access
+    // Get testcase "full-01" (assuming it exists in tps-example)
+    let response = client
+        .get(&format!("http://localhost:8787/api/problems/{}/testcases/full-01", problem_id))
+        .send()
+        .await
+        .expect("Failed to get testcase");
     
-//     assert_eq!(response.status(), StatusCode::OK);
-//     let content = response.text().await.expect("Failed to get text");
-//     assert!(!content.is_empty(), "Testcase content should not be empty");
-// }
+    assert_eq!(response.status(), StatusCode::OK);
+    let content = response.text().await.expect("Failed to get text");
+    assert!(!content.is_empty(), "Testcase content should not be empty");
+}
