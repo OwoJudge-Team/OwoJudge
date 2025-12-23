@@ -56,12 +56,12 @@ async function deleteUser() {
     const result = await User.deleteOne({ username });
     
     if (result.deletedCount === 0) {
-      console.log(`❌ User '${username}' not found!`);
+      console.log(`Error: User '${username}' not found!`);
     } else {
-      console.log(`✅ User '${username}' deleted successfully!`);
+      console.log(`Info: User '${username}' deleted successfully!`);
     }
   } catch (error) {
-    console.error('❌ Error deleting user:', error);
+    console.error('Error: deleting user:', error);
     process.exit(1);
   } finally {
     await mongoose.disconnect();
