@@ -17,6 +17,37 @@ import * as path from 'path';
 
 const execAsync = promisify(exec);
 
+// Simple mutex to prevent race conditions on problem directories
+class ProblemLock {
+  private static locks = new Map<string, Promise<void>>();
+
+  static async acquire(id: string): Promise<() => void> {
+    const previousLock = this.locks.get(id) || Promise.resolve();
+    let release: () => void = () => {};
+    const newLock = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    // Chain the new lock to the previous one
+    // We want the next acquirer to wait for this newLock to resolve
+    // Use .catch() to ensure the chain continues even if previousLock rejected
+    const nextPromise = previousLock.catch(() => {}).then(() => newLock);
+    
+    // Update the map with the promise that resolves when WE are done
+    this.locks.set(id, nextPromise);
+
+    // Wait for our turn
+    await previousLock.catch(() => {}); // Ignore errors from previous
+    
+    return () => {
+      release();
+      if (this.locks.get(id) === nextPromise) {
+        this.locks.delete(id);
+      }
+    };
+  }
+}
+
 const problemsRouter = Router();
 const userRequestCounts = new Map<string, Map<string, number>>();
 const generatedTestcasesPath = 'generated_testcases';
@@ -32,7 +63,8 @@ const storage = multer.diskStorage({
     next(null, 'uploads/');
   },
   filename: (request: Request, file: Express.Multer.File, next: (error: Error | null, filename: string) => void) => {
-    next(null, `${file.originalname}`);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    next(null, `${uniqueSuffix}-${file.originalname}`);
   }
 });
 
@@ -170,6 +202,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
   const fileName = (filePath as string).split('/').reverse()[0];
   const targetPath = 'problems/' + fileName;
   try {
+    // Check if problem with same fileName exists (unlikely with unique filenames, but good for sanity)
     const problem = await Problem.findOne({ fileName });
     if (problem) {
       response.status(403).send('Problem with this filename already exists');
@@ -179,12 +212,24 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
     console.log(targetPath);
     
     spawnSync('mv', [filePath as string, targetPath]);
+    
+    const stats = fs.statSync(targetPath);
+    console.log(`File size at ${targetPath}: ${stats.size}`);
+    
+    // Create a directory for this specific upload to avoid conflicts
+    const extractDir = 'problems/' + fileName.replace('.tar.gz', '');
+    fs.mkdirSync(extractDir, { recursive: true });
+
     await tar.x({
       file: targetPath,
-      cwd: 'problems/'
+      cwd: extractDir,
+      strip: 1 // Strip the top-level directory from the tarball
     });
 
-    const problemDir = 'problems/' + fileName.replace('.tar.gz', '');
+    const problemDir = extractDir;
+    // Cleanup macOS metadata files that might cause issues with cp
+    spawnSync('find', [problemDir, '-name', '._*', '-delete']);
+
     const metadataPath = `${problemDir}/problem.json`;
     try {
       const metadataContent = readFileSync(metadataPath, 'utf8');
@@ -225,75 +270,114 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
         await newProblem.save();
       } catch (dupError) {
         console.error('Error creating problem:', dupError);
+        // Cleanup extracted files on error
+        fs.rmSync(problemDir, { recursive: true, force: true });
         response.status(403).send('Error creating problem');
         return;
       }
-      console.log(`Problem ${metadata.code} saved to database`);
+
+      // Move extracted directory to final location
+      const finalProblemDir = 'problems/' + metadata.code;
       
-      // Generate test cases asynchronously using tps gen in isolated environment
-      // This runs in the background and doesn't block the response
-      (async () => {
-        try {
-          console.log(`Starting async test generation for ${metadata.code} in isolated environment`);
-          
-          await IsolateManager.withBox(async (box) => {
-            const genBoxDir = box.getBoxDir();
-            const workDir = path.join('judging', 'tps-gen-' + metadata.code);
-            
-            // Ensure work directory exists
-            fs.mkdirSync(workDir, { recursive: true });
-            
-            try {
-              // Copy entire problem directory to isolated box
-              await box.copyToBox(`${problemDir}/*`);
-
-              const genMetaFile = path.join(workDir, 'tps-gen.meta');
-
-              // Run tps gen inside isolate with generous limits
-              await box.run('tps gen', {
-                processes: 50,
-                timeLimit: 600,
-                wallTimeLimit: 3600,
-                memoryLimit: 2048000,
-                metaFile: genMetaFile,
-                stderr: 'tps-gen.error',
-                fullEnv: true,
-                dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
-                cwd: '/box'
-              }, 4000000);
-
-              // Copy generated tests directory back to problem directory
-              const generatedTestsDir = path.join(genBoxDir, 'tests');
-              const targetTestsDir = path.join(problemDir, 'tests');
-
-              if (fs.existsSync(generatedTestsDir)) {
-                // Remove old tests directory if exists and copy new one
-                if (fs.existsSync(targetTestsDir)) {
-                  fs.rmSync(targetTestsDir, { recursive: true, force: true });
-                }
-                await execAsync(`cp -r ${generatedTestsDir} ${targetTestsDir}`);
-                console.log(`Test cases generated and copied successfully for ${metadata.code}`);
-              } else {
-                throw new Error('Tests directory not generated by tps gen');
-              }
-            } finally {
-              // Clean up work directory
-              if (fs.existsSync(workDir)) {
-                fs.rmSync(workDir, { recursive: true, force: true });
-              }
-            }
-          });
-        } catch (genError) {
-          console.error(`Failed to generate test cases for ${metadata.code}:`, genError);
+      // Acquire lock for this problem ID to prevent race conditions
+      const releaseLock = await ProblemLock.acquire(metadata.code);
+      
+      try {
+        if (fs.existsSync(finalProblemDir)) {
+          fs.rmSync(finalProblemDir, { recursive: true, force: true });
         }
-      })();
+        fs.renameSync(problemDir, finalProblemDir);
+
+        console.log(`Problem ${metadata.code} saved to database`);
+        
+        // Generate test cases asynchronously using tps gen in isolated environment
+        // This runs in the background and doesn't block the response
+        // We keep the lock held during this process to prevent other requests from modifying the directory
+        (async () => {
+          try {
+            console.log(`Starting async test generation for ${metadata.code} in isolated environment`);
+            
+            await IsolateManager.withBox(async (box) => {
+              const genBoxDir = box.getBoxDir();
+              const workDir = path.join('judging', 'tps-gen-' + metadata.code);
+              
+              // Ensure work directory exists
+              fs.mkdirSync(workDir, { recursive: true });
+              
+              try {
+                // Copy entire problem directory to isolated box
+                await box.copyToBox(finalProblemDir);
+
+                const genMetaFile = path.join(workDir, 'tps-gen.meta');
+
+                // Run tps gen inside isolate with generous limits
+                await box.run('tps gen', {
+                  processes: 50,
+                  timeLimit: 600,
+                  wallTimeLimit: 3600,
+                  memoryLimit: 2048000,
+                  metaFile: genMetaFile,
+                  stderr: 'tps-gen.error',
+                  fullEnv: true,
+                  dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+                  cwd: '/box'
+                }, 4000000);
+
+                // Copy generated tests directory back to problem directory
+                const generatedTestsDir = path.join(genBoxDir, 'tests');
+                const targetTestsDir = path.join(finalProblemDir, 'tests');
+
+                if (fs.existsSync(generatedTestsDir)) {
+                  // Remove old tests directory if exists and copy new one
+                  if (fs.existsSync(targetTestsDir)) {
+                    fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                  }
+                  
+                  // Ensure parent directory exists and is writable
+                  if (fs.existsSync(finalProblemDir)) {
+                    try {
+                      fs.chmodSync(finalProblemDir, 0o755);
+                    } catch (e) {
+                      console.warn(`Failed to chmod ${finalProblemDir}:`, e);
+                    }
+                  } else {
+                    // This should not happen as we are holding the lock, but just in case
+                    fs.mkdirSync(finalProblemDir, { recursive: true });
+                  }
+
+                  await fs.promises.cp(generatedTestsDir, targetTestsDir, { recursive: true });
+                  console.log(`Test cases generated and copied successfully for ${metadata.code}`);
+                } else {
+                  throw new Error('Tests directory not generated by tps gen');
+                }
+              } finally {
+                // Clean up work directory
+                if (fs.existsSync(workDir)) {
+                  fs.rmSync(workDir, { recursive: true, force: true });
+                }
+              }
+            });
+          } catch (genError) {
+            console.error(`Failed to generate test cases for ${metadata.code}:`, genError);
+          } finally {
+            releaseLock();
+          }
+        })();
+      } catch (error) {
+        releaseLock();
+        throw error;
+      }
       
     } catch (error) {
       console.error('Error reading or parsing metadata.json:', error);
+      // Cleanup extracted files on error
+      if (fs.existsSync(problemDir)) {
+        fs.rmSync(problemDir, { recursive: true, force: true });
+      }
       throw error;
     }
 
-    response.status(200).send('File uploaded and extracted successfully');
+    response.status(201).send('File uploaded and extracted successfully');
     return;
   } catch (error) {
     console.log(error);
@@ -320,6 +404,10 @@ const deleteProblem = async (request: IRequest, response: Response) => {
     return;
   }
   const { problemID } = request.params;
+  
+  // Acquire lock to ensure no other operations (like async test generation) are running
+  const releaseLock = await ProblemLock.acquire(problemID);
+  
   try {
     const problem: IProblem | null = await Problem.findOne({ problemID });
     if (!problem) {
@@ -341,15 +429,17 @@ const deleteProblem = async (request: IRequest, response: Response) => {
       console.error('Error deleting problem files:', fsError);
     }
     await Problem.findOneAndDelete({ problemID });
-    response.status(200).send(problem);
+    response.status(201).send(problem);
   } catch (error) {
     console.log(error);
     response.status(400).send(error);
+  } finally {
+    releaseLock();
   }
 };
 
 const updateProblem = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
+  if (!request.isAuthenticated() || !request.user || !request.user.isAdmin) {
     response.status(401).send('Please login first');
     return;
   }
@@ -408,25 +498,22 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
       return;
     }
 
-    // Clean up old files
-    const oldProblemDir = 'problems/' + existingProblem.problemID;
-    const oldTarFilePath = 'problems/' + existingProblem.problemID + '.tar.gz';
-    const problemsBaseDir = path.resolve('problems');
-    const resolvedOldProblemDir = path.resolve(oldProblemDir);
-    const resolvedOldTarFilePath = path.resolve(oldTarFilePath);
-    if (
-      resolvedOldProblemDir.startsWith(problemsBaseDir + path.sep) &&
-      resolvedOldTarFilePath.startsWith(problemsBaseDir + path.sep)
-    ) {
-      spawnSync('rm', ['-rf', oldProblemDir]);
-      spawnSync('rm', ['-f', oldTarFilePath]);
-    }
-
     spawnSync('mv', [filePath, targetPath]);
+    
+    // Create a directory for this specific upload to avoid conflicts
+    const extractDir = 'problems/' + fileName.replace('.tar.gz', '');
+    fs.mkdirSync(extractDir, { recursive: true });
+
     await tar.x({
       file: targetPath,
-      cwd: 'problems/'
+      cwd: extractDir,
+      strip: 1
     });
+
+    const newProblemDir = extractDir;
+
+    // Cleanup macOS metadata files that might cause issues with cp
+    spawnSync('find', [newProblemDir, '-name', '._*', '-delete']);
 
     const metadataPath = `${newProblemDir}/problem.json`;
     try {
@@ -437,90 +524,142 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
         throw new Error(`Problem code in metadata (${metadata.code}) does not match URL parameter (${problemID}).`);
       }
 
-      const updateData = {
-        problemID: metadata.code,
-        createdTime: metadata.createdTime || new Date(),
-        title: metadata.title,
-        fileName: fileName,
-        timeLimit: metadata.time_limit,
-        memoryLimit: metadata.memory_limit,
-        scorePolicy: metadata.score_policy,
-        fullScore: metadata.full_score,
-        tags: metadata.tags || [],
-        testcase: metadata.testcase,
-        problemRelatedTags: metadata.problemRelatedTags || [],
-        submissionDetail: {
-          ...existingProblem.submissionDetail,
-          ...(metadata.submissionDetail || {})
-        },
-        userDetail: {
-          ...existingProblem.userDetail,
-          ...(metadata.userDetail || {})
-        }
-      };
+      // Clean up old files
+      const oldProblemDir = 'problems/' + existingProblem.problemID;
+      const oldTarFilePath = 'problems/' + existingProblem.problemID + '.tar.gz';
+      const problemsBaseDir = path.resolve('problems');
+      const resolvedOldProblemDir = path.resolve(oldProblemDir);
+      const resolvedOldTarFilePath = path.resolve(oldTarFilePath);
+      if (
+        resolvedOldProblemDir.startsWith(problemsBaseDir + path.sep) &&
+        resolvedOldTarFilePath.startsWith(problemsBaseDir + path.sep)
+      ) {
+        spawnSync('rm', ['-rf', oldProblemDir]);
+        spawnSync('rm', ['-f', oldTarFilePath]);
+      }
 
-      await Problem.findOneAndUpdate({ problemID }, updateData, { new: true, runValidators: true });
-      console.log(`Problem ${problemID} updated successfully`);
+      // Move new dir to final location
+      const finalProblemDir = 'problems/' + metadata.code;
       
-      // Generate test cases asynchronously using tps gen in isolated environment
-      // This runs in the background and doesn't block the response
-      (async () => {
-        try {
-          console.log(`Starting async test generation for ${problemID} in isolated environment`);
-          
-          await IsolateManager.withBox(async (box) => {
-            const genBoxDir = box.getBoxDir();
-            const workDir = path.join('judging', 'tps-gen-' + problemID);
+      // Acquire lock for this problem ID
+      const releaseLock = await ProblemLock.acquire(metadata.code);
+      
+      try {
+        if (fs.existsSync(finalProblemDir)) {
+          fs.rmSync(finalProblemDir, { recursive: true, force: true });
+        }
+        
+        // Ensure parent directory exists (should be 'problems/')
+        const parentDir = path.dirname(finalProblemDir);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+
+        fs.renameSync(newProblemDir, finalProblemDir);
+
+        const updateData = {
+          problemID: metadata.code,
+          createdTime: metadata.createdTime || new Date(),
+          title: metadata.title,
+          fileName: fileName,
+          timeLimit: metadata.time_limit,
+          memoryLimit: metadata.memory_limit,
+          scorePolicy: metadata.score_policy,
+          fullScore: metadata.full_score,
+          tags: metadata.tags || [],
+          testcase: metadata.testcase,
+          problemRelatedTags: metadata.problemRelatedTags || [],
+          submissionDetail: {
+            ...existingProblem.submissionDetail,
+            ...(metadata.submissionDetail || {})
+          },
+          userDetail: {
+            ...existingProblem.userDetail,
+            ...(metadata.userDetail || {})
+          }
+        };
+
+        await Problem.findOneAndUpdate({ problemID }, updateData, { new: true, runValidators: true });
+        console.log(`Problem ${problemID} updated successfully`);
+        
+        // Generate test cases asynchronously using tps gen in isolated environment
+        // This runs in the background and doesn't block the response
+        (async () => {
+          try {
+            console.log(`Starting async test generation for ${problemID} in isolated environment`);
             
-            // Ensure work directory exists
-            fs.mkdirSync(workDir, { recursive: true });
-            
-            try {
-              // Copy entire problem directory to isolated box
-              await box.copyToBox(`${newProblemDir}/*`);
+            await IsolateManager.withBox(async (box) => {
+              const genBoxDir = box.getBoxDir();
+              const workDir = path.join('judging', 'tps-gen-' + problemID);
+              
+              // Ensure work directory exists
+              fs.mkdirSync(workDir, { recursive: true });
+              
+              try {
+                // Copy entire problem directory to isolated box
+                await box.copyToBox(finalProblemDir);
 
-              const genMetaFile = path.join(workDir, 'tps-gen.meta');
+                const genMetaFile = path.join(workDir, 'tps-gen.meta');
 
-              // Run tps gen inside isolate with generous limits
-              await box.run('tps gen', {
-                processes: 50,
-                timeLimit: 600,
-                wallTimeLimit: 3600,
-                memoryLimit: 2048000,
-                metaFile: genMetaFile,
-                stderr: 'tps-gen.error',
-                fullEnv: true,
-                dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
-                cwd: '/box'
-              }, 4000000);
+                // Run tps gen inside isolate with generous limits
+                await box.run('tps gen', {
+                  processes: 50,
+                  timeLimit: 600,
+                  wallTimeLimit: 3600,
+                  memoryLimit: 2048000,
+                  metaFile: genMetaFile,
+                  stderr: 'tps-gen.error',
+                  fullEnv: true,
+                  dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+                  cwd: '/box'
+                }, 4000000);
 
-              // Copy generated tests directory back to problem directory
-              const generatedTestsDir = path.join(genBoxDir, 'tests');
-              const targetTestsDir = path.join(newProblemDir, 'tests');
+                // Copy generated tests directory back to problem directory
+                const generatedTestsDir = path.join(genBoxDir, 'tests');
+                const targetTestsDir = path.join(finalProblemDir, 'tests');
 
-              if (fs.existsSync(generatedTestsDir)) {
-                // Remove old tests directory if exists and copy new one
-                if (fs.existsSync(targetTestsDir)) {
-                  fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                if (fs.existsSync(generatedTestsDir)) {
+                  // Remove old tests directory if exists and copy new one
+                  if (fs.existsSync(targetTestsDir)) {
+                    fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                  }
+
+                  // Ensure parent directory exists and is writable
+                  if (fs.existsSync(finalProblemDir)) {
+                    try {
+                      fs.chmodSync(finalProblemDir, 0o755);
+                    } catch (e) {
+                      console.warn(`Failed to chmod ${finalProblemDir}:`, e);
+                    }
+                  } else {
+                    // This should not happen as we are holding the lock, but just in case
+                    fs.mkdirSync(finalProblemDir, { recursive: true });
+                  }
+
+                  await fs.promises.cp(generatedTestsDir, targetTestsDir, { recursive: true });
+                  console.log(`Test cases generated and copied successfully for ${problemID}`);
+                } else {
+                  throw new Error('Tests directory not generated by tps gen');
                 }
-                await execAsync(`cp -r ${generatedTestsDir} ${targetTestsDir}`);
-                console.log(`Test cases generated and copied successfully for ${problemID}`);
-              } else {
-                throw new Error('Tests directory not generated by tps gen');
+              } finally {
+                // Clean up work directory
+                if (fs.existsSync(workDir)) {
+                  fs.rmSync(workDir, { recursive: true, force: true });
+                }
               }
-            } finally {
-              // Clean up work directory
-              if (fs.existsSync(workDir)) {
-                fs.rmSync(workDir, { recursive: true, force: true });
-              }
-            }
-          });
-        } catch (genError) {
-          console.error(`Failed to generate test cases for ${problemID}:`, genError);
-        }
-      })();
+            });
+          } catch (genError) {
+            console.error(`Failed to generate test cases for ${problemID}:`, genError);
+          } finally {
+            releaseLock();
+          }
+        })();
+      } catch (error) {
+        releaseLock();
+        throw error;
+      }
       
-      response.status(200).send('Problem updated successfully');
+      response.status(201).send('Problem updated successfully');
     } catch (error) {
       console.error('Error processing metadata or updating database:', error);
       throw error; // Re-throw to be caught by the outer catch block for cleanup

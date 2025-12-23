@@ -182,7 +182,20 @@ export class IsolateManager {
     }
 
     const targetPath = destPath ? `${this.boxDir}/${destPath}` : `${this.boxDir}/`;
-    await execAsync(`cp -r ${sourcePath} ${targetPath}`);
+    
+    // Check if sourcePath is a directory
+    try {
+        const stats = fs.statSync(sourcePath);
+        if (stats.isDirectory()) {
+             // If it's a directory, copy its contents using /. suffix
+             await execAsync(`cp -r ${sourcePath}/. ${targetPath}`);
+        } else {
+             await execAsync(`cp -r ${sourcePath} ${targetPath}`);
+        }
+    } catch (e) {
+        // If stat fails (e.g. wildcard), fall back to direct copy
+        await execAsync(`cp -r ${sourcePath} ${targetPath}`);
+    }
   }
 
   /**

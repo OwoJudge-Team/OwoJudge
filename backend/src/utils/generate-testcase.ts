@@ -80,7 +80,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
         metaFile: compileMetaFile,
         stderr: 'compile.error',
         fullEnv: true,
-        dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+        dirs: ['/usr/bin', '/bin', '/lib', '/etc'],
         cwd: '/box'
       }, 65000);
     } catch (error) {
@@ -88,10 +88,36 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
       throw new Error('Failed to compile generator with make in isolated environment');
     }
 
+    // Check if the executable exists, if not try with .exe extension (common in some Makefiles)
+    let finalCommand = command;
+    const cmdParts = command.split(' ');
+    const exeName = cmdParts[0];
+
+    try {
+      await box.run('ls', {
+        processes: 5,
+        timeLimit: 2,
+        wallTimeLimit: 5,
+        memoryLimit: 10240,
+        stdout: 'ls.out',
+        cwd: '/box'
+      });
+      
+      const lsOutput = fs.readFileSync(path.join(boxDir, 'ls.out'), 'utf-8');
+      const files = lsOutput.split('\n').map(f => f.trim());
+      
+      if (!files.includes(exeName) && files.includes(`${exeName}.exe`)) {
+        cmdParts[0] = `${exeName}.exe`;
+        finalCommand = cmdParts.join(' ');
+      }
+    } catch (lsError) {
+      console.warn('Failed to list files in box, proceeding with original command', lsError);
+    }
+
     // Run the generator command inside isolate
     const genMetaFile = `/tmp/gen-run-${boxID}.meta`;
     try {
-      await box.run(`./${command}`, {
+      await box.run(`./${finalCommand}`, {
         processes: 20,
         timeLimit: 10,
         wallTimeLimit: 60,
@@ -100,7 +126,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
         stdout: 'gen.output',
         stderr: 'gen.error',
         fullEnv: true,
-        dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+        dirs: ['/usr/bin', '/bin', '/lib', '/etc'],
         cwd: '/box'
       }, 65000);
 
