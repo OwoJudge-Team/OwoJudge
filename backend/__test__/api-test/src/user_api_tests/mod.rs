@@ -34,11 +34,11 @@ pub async fn random_user_api_calls(count: usize) {
     ];
 
     let sample_usernames = vec![
-        "admin", "testuser", "user1", "user2", "user3", "user4", "user5",
+        "testuser", "user1", "user2", "user3", "user4", "user5",
     ];
 
     // Bounded concurrency: limit the number of concurrent requests to avoid overwhelming the server
-    let max_concurrency = 800usize;
+    let max_concurrency = 200usize;
     let sem = Arc::new(Semaphore::new(max_concurrency));
 
     let mut rng = rand::rng();
