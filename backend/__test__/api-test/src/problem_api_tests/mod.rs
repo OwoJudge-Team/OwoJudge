@@ -6,6 +6,10 @@ use crate::user_api_tests::temp_user::TempUser;
 use rand::Rng;
 use std::process::Command;
 use std::fs as std_fs;
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::task;
+use tokio::sync::Semaphore;
 
 // Helper to get the path to the example problem
 #[allow(dead_code)]
@@ -501,4 +505,90 @@ async fn test_get_testcase() {
     assert_eq!(response.status(), StatusCode::OK);
     let content = response.text().await.expect("Failed to get text");
     assert!(!content.is_empty(), "Testcase content should not be empty");
+}
+
+pub async fn random_problem_api_calls(count: usize) {
+    println!("Starting problem API stress test with {} requests...", count);
+    
+    // Setup: Login as admin to create a sample problem
+    let client = ClientBuilder::new().cookie_store(true).build().unwrap();
+    
+    client.post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": "admin",
+            "password": "adminpassword"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as admin");
+    
+    // Create a problem to read
+    let problem_id = format!("stress-prob-{}", rand::rng().random_range(1000..9999));
+    let tarball = create_tarball_with_id(&problem_id);
+    let part = multipart::Part::bytes(tarball).file_name("problem.tar.gz");
+    let form = multipart::Form::new().part("problem", part);
+    
+    let res = client.post("http://localhost:8787/api/problems")
+        .multipart(form)
+        .send()
+        .await
+        .expect("Failed to create setup problem");
+    
+    if res.status() != StatusCode::CREATED {
+        let status = res.status();
+        let text = res.text().await.unwrap_or_default();
+        println!("Warning: Failed to create setup problem: {} - {}", status, text);
+    }
+
+    let actions = vec![
+        "get_problems",
+        "get_problem_detail",
+        "get_problem_detail_invalid",
+    ];
+
+    let max_concurrency = 500usize;
+    let sem = Arc::new(Semaphore::new(max_concurrency));
+    let start_time = Instant::now();
+    let mut handles = Vec::with_capacity(count);
+    
+    let public_client = Client::new();
+    let problem_id_arc = Arc::new(problem_id);
+
+    for _ in 0..count {
+        let action = actions[rand::rng().random_range(0..actions.len())];
+        let client = public_client.clone();
+        let sem = sem.clone();
+        let pid = problem_id_arc.clone();
+
+        let handle = task::spawn(async move {
+            let _permit = sem.acquire().await.unwrap();
+            match action {
+                "get_problems" => {
+                    client.get("http://localhost:8787/api/problems").send().await
+                },
+                "get_problem_detail" => {
+                    client.get(&format!("http://localhost:8787/api/problems/{}", pid)).send().await
+                },
+                "get_problem_detail_invalid" => {
+                    client.get("http://localhost:8787/api/problems/invalid-id").send().await
+                },
+                _ => unreachable!(),
+            }
+        });
+        handles.push(handle);
+    }
+
+    let mut successes = 0;
+    for handle in handles {
+        if let Ok(Ok(res)) = handle.await {
+            if res.status().is_success() || res.status() == StatusCode::NOT_FOUND {
+                successes += 1;
+            }
+        }
+    }
+
+    let duration = start_time.elapsed();
+    println!("Completed {} problem requests in {:.3} seconds", count, duration.as_secs_f64());
+    println!("Successes: {}", successes);
+    println!("Throughput: {:.2} requests/second", count as f64 / duration.as_secs_f64());
 }

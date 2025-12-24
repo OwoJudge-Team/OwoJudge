@@ -4,6 +4,11 @@ use rand::Rng;
 use std::path::PathBuf;
 use std::process::Command;
 use std::fs as std_fs;
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::task;
+use tokio::sync::Semaphore;
+use crate::user_api_tests::temp_user::TempUser;
 
 // --- Helpers copied/adapted from problem_api_tests ---
 
@@ -260,6 +265,94 @@ async fn test_create_contest_unauthorized() {
         .expect("Failed to send request");
     
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+pub async fn random_contest_api_calls(count: usize) {
+    println!("Starting contest API stress test with {} requests...", count);
+    
+    let client = ClientBuilder::new().cookie_store(true).build().unwrap();
+    
+    client.post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": "admin",
+            "password": "adminpassword"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as admin");
+    
+    // Create a contest
+    let contest_id = format!("stress-contest-{}", rand::rng().random_range(1000..9999));
+    let contest_data = json!({
+        "contestID": contest_id,
+        "title": "Stress Test Contest",
+        "description": "A contest for stress testing",
+        "startTime": chrono::Utc::now().to_rfc3339(),
+        "endTime": (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339(),
+        "problems": []
+    });
+    
+    let res = client.post("http://localhost:8787/api/contests")
+        .json(&contest_data)
+        .send()
+        .await
+        .expect("Failed to create setup contest");
+        
+    if res.status() != StatusCode::CREATED {
+        println!("Warning: Failed to create setup contest: {}", res.status());
+    }
+
+    let actions = vec![
+        "get_contests",
+        "get_contest_detail",
+        "get_contest_detail_invalid",
+    ];
+
+    let max_concurrency = 500usize;
+    let sem = Arc::new(Semaphore::new(max_concurrency));
+    let start_time = Instant::now();
+    let mut handles = Vec::with_capacity(count);
+    
+    let public_client = Client::new();
+    let contest_id_arc = Arc::new(contest_id);
+
+    for _ in 0..count {
+        let action = actions[rand::rng().random_range(0..actions.len())];
+        let client = public_client.clone();
+        let sem = sem.clone();
+        let cid = contest_id_arc.clone();
+
+        let handle = task::spawn(async move {
+            let _permit = sem.acquire().await.unwrap();
+            match action {
+                "get_contests" => {
+                    client.get("http://localhost:8787/api/contests").send().await
+                },
+                "get_contest_detail" => {
+                    client.get(&format!("http://localhost:8787/api/contests/{}", cid)).send().await
+                },
+                "get_contest_detail_invalid" => {
+                    client.get("http://localhost:8787/api/contests/invalid-id").send().await
+                },
+                _ => unreachable!(),
+            }
+        });
+        handles.push(handle);
+    }
+
+    let mut successes = 0;
+    for handle in handles {
+        if let Ok(Ok(res)) = handle.await {
+            if res.status().is_success() || res.status() == StatusCode::NOT_FOUND {
+                successes += 1;
+            }
+        }
+    }
+
+    let duration = start_time.elapsed();
+    println!("Completed {} contest requests in {:.3} seconds", count, duration.as_secs_f64());
+    println!("Successes: {}", successes);
+    println!("Throughput: {:.2} requests/second", count as f64 / duration.as_secs_f64());
 }
 
 

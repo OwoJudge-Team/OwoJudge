@@ -4,6 +4,11 @@ use rand::Rng;
 use std::path::PathBuf;
 use std::process::Command;
 use std::fs as std_fs;
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::task;
+use tokio::sync::Semaphore;
+use crate::user_api_tests::temp_user::TempUser;
 
 // --- Helpers ---
 
@@ -332,4 +337,115 @@ async fn test_invalid_submission() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+pub async fn random_submission_api_calls(count: usize) {
+    println!("Starting submission API stress test with {} requests...", count);
+    
+    // Setup: Login as admin to create problem and submission
+    let client = ClientBuilder::new().cookie_store(true).build().unwrap();
+    
+    client.post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": "admin",
+            "password": "adminpassword"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as admin");
+    
+    // Create problem
+    let problem_id = format!("sub-prob-{}", rand::rng().random_range(1000..9999));
+    let tarball = create_tarball_with_id(&problem_id);
+    let part = multipart::Part::bytes(tarball).file_name("problem.tar.gz");
+    let form = multipart::Form::new().part("problem", part);
+    
+    let res = client.post("http://localhost:8787/api/problems")
+        .multipart(form)
+        .send()
+        .await
+        .expect("Failed to create setup problem");
+
+    if res.status() != StatusCode::CREATED {
+        let status = res.status();
+        let text = res.text().await.unwrap_or_default();
+        println!("Warning: Failed to create setup problem in submission test: {} - {}", status, text);
+    }
+
+    // Create a submission
+    let submission_body = json!({
+        "problemID": problem_id,
+        "language": "C++17",
+        "userSolution": [{
+            "filename": "main.cpp",
+            "content": "#include <iostream>\nint main() { std::cout << \"Hello\"; return 0; }"
+        }]
+    });
+    
+    let res = client.post("http://localhost:8787/api/submissions")
+        .json(&submission_body)
+        .send()
+        .await
+        .expect("Failed to create setup submission");
+        
+    let submission_id = if res.status() == StatusCode::CREATED {
+        let json: Value = res.json().await.unwrap();
+        json["serialNumber"].as_i64().unwrap().to_string()
+    } else {
+        let status = res.status();
+        let text = res.text().await.unwrap_or_default();
+        println!("Warning: Failed to create setup submission: {} - {}", status, text);
+        "0".to_string()
+    };
+
+    let actions = vec![
+        "get_submissions",
+        "get_submission_detail",
+        "get_submission_detail_invalid",
+    ];
+
+    let max_concurrency = 500usize;
+    let sem = Arc::new(Semaphore::new(max_concurrency));
+    let start_time = Instant::now();
+    let mut handles = Vec::with_capacity(count);
+    
+    let submission_id_arc = Arc::new(submission_id);
+
+    for _ in 0..count {
+        let action = actions[rand::rng().random_range(0..actions.len())];
+        let client = client.clone(); // Use authenticated client
+        let sem = sem.clone();
+        let sid = submission_id_arc.clone();
+
+        let handle = task::spawn(async move {
+            let _permit = sem.acquire().await.unwrap();
+            match action {
+                "get_submissions" => {
+                    client.get("http://localhost:8787/api/submissions").send().await
+                },
+                "get_submission_detail" => {
+                    client.get(&format!("http://localhost:8787/api/submission/{}", sid)).send().await
+                },
+                "get_submission_detail_invalid" => {
+                    client.get("http://localhost:8787/api/submission/0").send().await
+                },
+                _ => unreachable!(),
+            }
+        });
+        handles.push(handle);
+    }
+
+    let mut successes = 0;
+    for handle in handles {
+        if let Ok(Ok(res)) = handle.await {
+            if res.status().is_success() || res.status() == StatusCode::NOT_FOUND {
+                successes += 1;
+            }
+        }
+    }
+
+    let duration = start_time.elapsed();
+    println!("Completed {} submission requests in {:.3} seconds", count, duration.as_secs_f64());
+    println!("Successes: {}", successes);
+    println!("Throughput: {:.2} requests/second", count as f64 / duration.as_secs_f64());
 }
