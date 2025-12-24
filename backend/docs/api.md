@@ -267,6 +267,11 @@ Updates an existing problem by uploading a new `.tar.gz` file.
 -   **Authentication:** Admin only.
 -   **Request:** `multipart/form-data` with a single file field named `problem`.
 
+Responses:
+-   `201 Created`: Problem updated successfully.
+-   `400 Bad Request`: Invalid problem data.
+-   `401 Unauthorized`: If the requester is not an admin.
+
 ### `PATCH /api/problems/:problemID`
 
 Updates specific fields of a problem.
@@ -274,11 +279,37 @@ Updates specific fields of a problem.
 -   **Authentication:** Admin only.
 -   **Request Body:** Partial `IProblem` object.
 
+Responses:
+-   `201 Created`: Problem updated successfully.
+-   `400 Bad Request`: Invalid update data.
+-   `401 Unauthorized`: If the requester is not an admin.
+-   `404 Not Found`: If the problem does not exist.
+
 ### `DELETE /api/problems/:problemID`
 
 Deletes a problem and its associated files.
 
 -   **Authentication:** Admin only.
+
+Responses:
+-   `201 Created`: Problem deleted successfully.
+-   `401 Unauthorized`: If the requester is not an admin.
+-   `404 Not Found`: If the problem does not exist.
+
+### `POST /api/problems/:problemID/rejudge`
+
+Triggers a rejudge for all submissions associated with the problem.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `problemSerialNumber` (string): The serial number of the problem.
+-   **Response Example:**
+    `Rejudge triggered for X submissions.`
+-   **Status Codes:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Problem does not exist.
 
 ### `GET /api/problems/:problemID/allowed-languages`
 
@@ -460,6 +491,22 @@ Creates a new code submission for a problem.
     -   `400 Bad Request`: Invalid submission data.
     -   `401 Unauthorized`: User not authenticated.
     -   `404 Not Found`: Problem does not exist.
+-   `500 Internal Server Error`: Failed to creating submission.
+
+### `POST /api/submissions/:serialNumber/rejudge`
+
+Triggers a rejudge for a specific submission. The submission status will be reset to `PD`, score to `0`, and results cleared.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The unique serial number of the submission.
+-   **Response Example:**
+    Returns the updated submission object.
+-   **Status Codes:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Submission does not exist.
 
 **Note:** The submission status will initially be `PD` (Pending) or `QU` (Queued), and will be updated asynchronously by the judger system. Poll the GET endpoint to check the final status.
 
@@ -548,7 +595,12 @@ Creates a new contest.
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
-      "problems": ["tps-example", "problem-2", "problem-3"],
+      "problems": [
+        {
+          "name": "tps-example",
+          "score": 100
+        }
+      ],
       "visibility": "public"
     }
     ```

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
+import { SubmissionStatus } from '../utils/submission-status';
 import { Problem } from '../mongoose/schemas/problems';
 import { User, IUser } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
@@ -14,10 +15,10 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
     response.status(401).send('Please login first');
     return;
   }
-  
+
   const user = request.user as IUser;
   const query: any = user.isAdmin ? {} : { username: user.username };
-  
+
   // Add filters from query parameters
   const { username, userID, problemID, problemSerialNumber, status, minScore, maxScore } = request.query;
   if (username && (user.isAdmin || username === user.username)) {
@@ -44,7 +45,7 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
       query.score.$lte = parseInt(maxScore as string);
     }
   }
-  
+
   try {
     const submissions: ISubmission[] = await Submission.find(query)
       .select('serialNumber problemID problemSerialNumber problemTitle username userHandle userID status language createdTime score')
@@ -62,23 +63,23 @@ const getSubmissionByID = async (request: IRequest, response: Response): Promise
     response.status(401).send('Please login first');
     return;
   }
-  
+
   const user = request.user as IUser;
   const { serialNumber } = request.params;
-  
+
   try {
     const submission: ISubmission | null = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
     if (!submission) {
       response.status(404).send('Submission not found');
       return;
     }
-    
+
     // Check if user is authorized to view this submission
     if (!user.isAdmin && submission.username !== user.username) {
       response.status(403).send('You are not authorized to view this submission');
       return;
     }
-    
+
     response.status(200).send(submission);
   } catch (error: unknown) {
     console.log(`Error: ${error}`);
@@ -97,7 +98,7 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     return;
   }
   const data: Partial<ISubmission> = matchedData(request);
-  
+
   try {
     // Fetch user details
     const user = await User.findOne({ username: request.user.username });
@@ -114,8 +115,9 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     }
 
     // Add the additional fields
+    data.username = user.username;
     data.userHandle = user.displayName;
-    data.userID = user.id;
+    data.userID = user.id as any;
     data.problemSerialNumber = problem.serialNumber;
     data.problemTitle = problem.title;
 
@@ -129,8 +131,44 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
   }
 };
 
+export const rejudgeSubmission = async (request: IRequest, response: Response): Promise<void> => {
+  if (!request.isAuthenticated() || !request.user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+
+  const user = request.user as IUser;
+  if (!user.isAdmin) {
+    response.status(403).send('You are not authorized to rejudge submissions');
+    return;
+  }
+
+  const { serialNumber } = request.params;
+
+  try {
+    const submission: ISubmission | null = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
+    if (!submission) {
+      response.status(404).send('Submission not found');
+      return;
+    }
+
+    submission.status = SubmissionStatus.PD;
+    submission.score = 0;
+    submission.results = [];
+    await submission.save();
+
+    submitUserSubmission(submission);
+
+    response.status(200).send(submission);
+  } catch (error: unknown) {
+    console.log(`Error: ${error}`);
+    response.status(400).send(error);
+  }
+};
+
 submissionRouter.get('/api/submissions', getSubmissions);
 submissionRouter.get('/api/submission/:serialNumber', getSubmissionByID);
 submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
+submissionRouter.post('/api/submissions/:serialNumber/rejudge', rejudgeSubmission);
 
 export default submissionRouter;

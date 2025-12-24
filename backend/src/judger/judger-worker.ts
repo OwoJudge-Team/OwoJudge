@@ -14,6 +14,13 @@ import mongoose from 'mongoose';
 
 const execAsync = promisify(exec);
 
+if (workerData && typeof workerData.workerId === 'number') {
+    const start = workerData.workerId * 100;
+    const end = start + 100;
+    IsolateManager.setBoxIdRange(start, end);
+    console.log(`Worker ${workerData.workerId} initialized with box range ${start}-${end}`);
+}
+
 interface TestCaseResult {
   testcase: string;
   status: SubmissionStatus;
@@ -56,7 +63,7 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
 
     try {
       // Copy checker directory to isolated box
-      await box.copyToBox(`${checkerDir}/*`);
+      await box.copyToBox(checkerDir);
 
       const metaFile = path.join(workDir, 'checker-compile.meta');
 
@@ -68,7 +75,8 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
         memoryLimit: 512000,
         metaFile,
         stderr: 'checker-compile.error',
-        fullEnv: true
+        fullEnv: true,
+        dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
       }, 25000);
 
       // Copy error file and executable back
@@ -317,7 +325,7 @@ const runAllTests = async (
           metaFile: genMetaFile,
           stderr: 'tps-gen.error',
           fullEnv: true,
-          dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
+          dirs: ['/usr/bin', '/bin', '/lib', '/etc'],
           cwd: '/box'
         }, 4000000);
 

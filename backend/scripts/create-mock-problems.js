@@ -1,60 +1,12 @@
-const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const tar = require('tar');
+const os = require('os');
 
-// Define the Problem schema
-const problemSchema = new mongoose.Schema({
-  serialNumber: { type: Number, unique: true },
-  problemID: { type: String, required: true },
-  createdTime: { type: Date, required: true, default: Date.now },
-  title: { type: String, required: true },
-  timeLimit: { type: Number, required: true },
-  memoryLimit: { type: Number, required: true },
-  processes: { type: Number, required: true, default: 1 },
-  fullScore: { type: Number, required: true },
-  scorePolicy: { type: String, required: true, enum: ['sum', 'max', 'min'] },
-  tags: [String],
-  problemRelatedTags: [String],
-  submissionDetail: {
-    accepted: { type: Number, default: 0 },
-    submitted: { type: Number, default: 0 },
-    timeLimitExceeded: { type: Number, default: 0 },
-    memoryLimitExceeded: { type: Number, default: 0 },
-    wrongAnswer: { type: Number, default: 0 },
-    runtimeError: { type: Number, default: 0 },
-    compilationError: { type: Number, default: 0 },
-    processLimitExceeded: { type: Number, default: 0 }
-  },
-  userDetail: {
-    solved: { type: Number, default: 0 },
-    attempted: { type: Number, default: 0 }
-  }
-});
-
-// Auto-increment serialNumber using pre-save hook
-problemSchema.pre('save', async function(next) {
-  if (this.isNew && !this.serialNumber) {
-    try {
-      const lastProblem = await mongoose.model('Problem').findOne(
-        {}, 
-        { serialNumber: 1 }, 
-        { sort: { serialNumber: -1 } }
-      );
-      
-      this.serialNumber = lastProblem?.serialNumber !== undefined
-        ? lastProblem.serialNumber + 1 
-        : 0;
-      
-      next();
-    } catch (error) {
-      next(error);
-    }
-  } else {
-    next();
-  }
-});
-
-const Problem = mongoose.model('Problem', problemSchema);
+// Configuration
+const API_URL = process.env.API_URL || 'http://localhost:8787/api';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
 
 // Problem templates with various themes
 const problemTitles = [
@@ -121,37 +73,6 @@ function generateProblemID(title) {
     .replace(/^-+|-+$/g, '');
 }
 
-function generateSubmissionStats() {
-  const attempted = Math.floor(Math.random() * 1000);
-  const solved = Math.floor(attempted * (0.2 + Math.random() * 0.5)); // 20-70% solve rate
-  
-  const submitted = attempted * 2 + Math.floor(Math.random() * 500);
-  const accepted = solved + Math.floor(Math.random() * submitted * 0.1);
-  const wrongAnswer = Math.floor(submitted * (0.3 + Math.random() * 0.3));
-  const timeLimitExceeded = Math.floor(submitted * (0.1 + Math.random() * 0.2));
-  const memoryLimitExceeded = Math.floor(submitted * (0.05 + Math.random() * 0.1));
-  const runtimeError = Math.floor(submitted * (0.05 + Math.random() * 0.1));
-  const compilationError = Math.floor(submitted * (0.05 + Math.random() * 0.1));
-  const processLimitExceeded = Math.floor(submitted * (0.01 + Math.random() * 0.05));
-  
-  return {
-    submissionDetail: {
-      submitted,
-      accepted,
-      wrongAnswer,
-      timeLimitExceeded,
-      memoryLimitExceeded,
-      runtimeError,
-      compilationError,
-      processLimitExceeded
-    },
-    userDetail: {
-      attempted,
-      solved
-    }
-  };
-}
-
 function generateRandomProblem(index) {
   const title = generateRandomTitle(index);
   const problemID = generateProblemID(title);
@@ -161,7 +82,6 @@ function generateRandomProblem(index) {
   const scorePolicy = ['sum', 'max'][Math.floor(Math.random() * 2)];
   const tags = getRandomElements(tagOptions.flat(), Math.floor(Math.random() * 3) + 2);
   const problemRelatedTags = getRandomElements(difficulties, 1);
-  const stats = generateSubmissionStats();
   
   return {
     problemID,
@@ -173,7 +93,6 @@ function generateRandomProblem(index) {
     scorePolicy,
     tags,
     problemRelatedTags,
-    ...stats,
     createdTime: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)) // Random date in last year
   };
 }
@@ -182,12 +101,8 @@ function generateRandomProblem(index) {
 const args = process.argv.slice(2);
 const count = parseInt(args[0]) || 10;
 
-// MongoDB URI
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
-
 // Paths
 const TEMPLATE_PATH = path.join(__dirname, '../docs/example/tps-example');
-const PROBLEMS_DIR = path.join(__dirname, '../problems');
 
 // Helper to copy directory recursively
 function copyDir(src, dest) {
@@ -209,87 +124,123 @@ function copyDir(src, dest) {
   }
 }
 
+async function login() {
+  try {
+    const response = await fetch(`${API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+    }
+    
+    // Get cookies
+    const cookies = response.headers.get('set-cookie');
+    return cookies;
+  } catch (error) {
+    console.error('Login error:', error.message);
+    throw error;
+  }
+}
+
 async function createMockProblems() {
   try {
-    console.log(`Creating ${count} mock problems...`);
+    console.log(`Creating ${count} mock problems via API...`);
     
-    // Connect to MongoDB
-    await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
+    const cookie = await login();
+    console.log('Logged in successfully');
 
     const createdProblems = [];
     const failedProblems = [];
 
     for (let i = 0; i < count; i++) {
+      let tempDir = null;
       try {
         const problemData = generateRandomProblem(i);
         
-        // Check if problem already exists
-        const existingProblem = await Problem.findOne({ problemID: problemData.problemID });
-        
-        if (existingProblem) {
-          failedProblems.push({ problemID: problemData.problemID, reason: 'Already exists' });
-          continue;
-        }
-
-        const mockProblem = new Problem(problemData);
-        await mockProblem.save();
-        
-        // Create problem directory structure
-        const problemDir = path.join(PROBLEMS_DIR, mockProblem.problemID);
+        // Create temp dir
+        tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-problem-'));
+        const problemDir = path.join(tempDir, problemData.problemID);
         
         if (fs.existsSync(TEMPLATE_PATH)) {
-          try {
-            // Copy template
-            copyDir(TEMPLATE_PATH, problemDir);
+          // Copy template
+          copyDir(TEMPLATE_PATH, problemDir);
+          
+          // Update problem.json
+          const problemJsonPath = path.join(problemDir, 'problem.json');
+          if (fs.existsSync(problemJsonPath)) {
+            const problemJson = JSON.parse(fs.readFileSync(problemJsonPath, 'utf-8'));
             
-            // Update problem.json
-            const problemJsonPath = path.join(problemDir, 'problem.json');
-            if (fs.existsSync(problemJsonPath)) {
-              const problemJson = JSON.parse(fs.readFileSync(problemJsonPath, 'utf-8'));
-              
-              problemJson.code = mockProblem.problemID;
-              problemJson.title = mockProblem.title;
-              problemJson.score_policy = mockProblem.scorePolicy;
-              problemJson.tags = mockProblem.tags;
-              problemJson.problemRelatedTags = mockProblem.problemRelatedTags;
-              problemJson.time_limit = mockProblem.timeLimit / 1000; // Convert ms to s
-              problemJson.memory_limit = mockProblem.memoryLimit;
-              problemJson.process_limit = mockProblem.processes;
-              
-              fs.writeFileSync(problemJsonPath, JSON.stringify(problemJson, null, 4));
-            }
+            problemJson.code = problemData.problemID;
+            problemJson.title = problemData.title;
+            problemJson.score_policy = problemData.scorePolicy;
+            problemJson.tags = problemData.tags;
+            problemJson.problemRelatedTags = problemData.problemRelatedTags;
+            problemJson.time_limit = problemData.timeLimit / 1000; // Convert ms to s
+            problemJson.memory_limit = problemData.memoryLimit;
+            problemJson.process_limit = problemData.processes;
             
-            // Update description.md
-            const descPath = path.join(problemDir, 'statement/description.md');
-            if (fs.existsSync(descPath)) {
-              let descContent = fs.readFileSync(descPath, 'utf-8');
-              // Replace title if it exists in the markdown, or prepend it
-              // Assuming standard markdown title format like "# Title"
-              descContent = `# ${mockProblem.title}\n\n` + descContent.replace(/^# .*\n/, '');
-              fs.writeFileSync(descPath, descContent);
-            }
-            
-          } catch (err) {
-            console.error(`Warning: Failed to setup problem directory for ${mockProblem.problemID}: ${err.message}`);
+            fs.writeFileSync(problemJsonPath, JSON.stringify(problemJson, null, 4));
           }
-        } else {
-          console.warn(`Warning: Template path not found at ${TEMPLATE_PATH}`);
-        }
+          
+          // Update description.md
+          const descPath = path.join(problemDir, 'statement/description.md');
+          if (fs.existsSync(descPath)) {
+            let descContent = fs.readFileSync(descPath, 'utf-8');
+            descContent = `# ${problemData.title}\n\n` + descContent.replace(/^# .*\n/, '');
+            fs.writeFileSync(descPath, descContent);
+          }
+          
+          // Create tarball
+          const tarballPath = path.join(tempDir, `${problemData.problemID}.tar.gz`);
+          await tar.c(
+            {
+              gzip: true,
+              file: tarballPath,
+              cwd: tempDir
+            },
+            [problemData.problemID]
+          );
+          
+          // Upload
+          const formData = new FormData();
+          const fileContent = fs.readFileSync(tarballPath);
+          const blob = new Blob([fileContent], { type: 'application/gzip' });
+          formData.append('problem', blob, `${problemData.problemID}.tar.gz`);
+          
+          const uploadResp = await fetch(`${API_URL}/problems`, {
+            method: 'POST',
+            headers: {
+              'Cookie': cookie
+            },
+            body: formData
+          });
+          
+          if (!uploadResp.ok) {
+            const text = await uploadResp.text();
+            throw new Error(`API Error: ${uploadResp.status} - ${text}`);
+          }
 
-        createdProblems.push({
-          serialNumber: mockProblem.serialNumber,
-          problemID: mockProblem.problemID,
-          title: mockProblem.title,
-          difficulty: mockProblem.problemRelatedTags[0] || 'N/A',
-          solved: mockProblem.userDetail.solved,
-          attempted: mockProblem.userDetail.attempted
-        });
-        
-        console.log(`Info: Created problem ${i + 1}/${count}: ${mockProblem.title}`);
+          createdProblems.push({
+            problemID: problemData.problemID,
+            title: problemData.title,
+            difficulty: problemData.problemRelatedTags[0] || 'N/A'
+          });
+          
+          console.log(`Info: Created problem ${i + 1}/${count}: ${problemData.title}`);
+        } else {
+          throw new Error(`Template path not found at ${TEMPLATE_PATH}`);
+        }
       } catch (error) {
-        failedProblems.push({ problemID: `problem_${i}`, reason: error.message });
+        failedProblems.push({ index: i, reason: error.message });
         console.log(`Error: Failed to create problem ${i + 1}/${count}: ${error.message}`);
+      } finally {
+        // Cleanup
+        if (tempDir && fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        }
       }
     }
 
@@ -305,10 +256,7 @@ async function createMockProblems() {
       console.log('Created Problems:');
       console.log('----------------------------');
       createdProblems.forEach(problem => {
-        const solveRate = problem.attempted > 0 
-          ? ((problem.solved / problem.attempted) * 100).toFixed(1) 
-          : '0.0';
-        console.log(`#${problem.serialNumber.toString().padStart(4, '0')} ${problem.title.padEnd(35)} [${problem.difficulty.padEnd(6)}] ${problem.solved}/${problem.attempted} (${solveRate}%)`);
+        console.log(`${problem.problemID.padEnd(35)} ${problem.title.padEnd(35)} [${problem.difficulty.padEnd(6)}]`);
       });
     }
 
@@ -316,16 +264,13 @@ async function createMockProblems() {
       console.log('\nFailed Problems:');
       console.log('----------------------------');
       failedProblems.forEach(problem => {
-        console.log(`ProblemID: ${problem.problemID} - Reason: ${problem.reason}`);
+        console.log(`Index: ${problem.index} - Reason: ${problem.reason}`);
       });
     }
 
   } catch (error) {
     console.error('Error creating mock problems:', error);
     process.exit(1);
-  } finally {
-    await mongoose.disconnect();
-    console.log('\nDisconnected from MongoDB');
   }
 }
 

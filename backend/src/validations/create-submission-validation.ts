@@ -14,21 +14,6 @@ export const createSubmissionValidation = {
       errorMessage: 'ProblemID should be a string'
     }
   },
-  username: {
-    isLength: {
-      options: {
-        min: 4,
-        max: 32
-      },
-      errorMessage: 'Length of username must between 4 to 32 characters'
-    },
-    notEmpty: {
-      errorMessage: 'Username should not be empty'
-    },
-    isString: {
-      errorMessage: 'Username should be a string'
-    }
-  },
   language: {
     isLength: {
       options: {
