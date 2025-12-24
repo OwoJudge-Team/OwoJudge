@@ -14,6 +14,9 @@ import { generateSingleTestcase } from '../utils/generate-testcase';
 import { IsolateManager } from '../utils/isolate-manager';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Submission, ISubmission } from '../mongoose/schemas/submission';
+import { SubmissionStatus } from '../utils/submission-status';
+import { submitUserSubmission } from '../judger/judger';
 
 const execAsync = promisify(exec);
 
@@ -105,41 +108,41 @@ const getProblemByID = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     const problemDir = 'problems/' + problemID;
-    
+
     try {
       // Read sample testcases from tests/mapping file
       const sampleTestcases: any[] = [];
       const testsDir = path.join(problemDir, 'tests');
       const mappingPath = path.join(testsDir, 'mapping');
-      
+
       if (fs.existsSync(mappingPath)) {
         const mappingContent = fs.readFileSync(mappingPath, 'utf-8');
         const sampleTestcaseNames: string[] = [];
-        
+
         // Parse mapping file to find sample subtask testcases
         for (const line of mappingContent.split('\n')) {
           const trimmedLine = line.trim();
           if (!trimmedLine) continue;
-          
+
           const parts = trimmedLine.split(/\s+/);
           if (parts.length < 2) continue;
-          
+
           const subtaskName = parts[0];
           const testcaseName = parts[1];
-          
+
           // Check if this belongs to sample subtask
           if (subtaskName === 'sample' || subtaskName.includes('sample')) {
             sampleTestcaseNames.push(testcaseName);
           }
         }
-        
+
         // Read actual test case files
         for (const testcaseName of sampleTestcaseNames) {
           const inputPath = path.join(testsDir, `${testcaseName}.in`);
           const outputPath = path.join(testsDir, `${testcaseName}.out`);
-          
+
           if (fs.existsSync(inputPath) && fs.existsSync(outputPath)) {
             sampleTestcases.push({
               name: testcaseName,
@@ -157,7 +160,7 @@ const getProblemByID = async (request: IRequest, response: Response) => {
         description: description,
         sampleTestcases: sampleTestcases || []
       };
-      
+
       response.status(200).send(fullProblem);
     } catch (metadataErr) {
       console.error('Error reading metadata:', metadataErr);
@@ -191,7 +194,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
     response.status(400).send('No file uploaded');
     return;
   }
-  
+
   console.log(filePath);
   const file = readFileSync(filePath as string);
   if (!isTarGz(file)) {
@@ -208,9 +211,9 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
       response.status(403).send('Problem with this filename already exists');
       return;
     }
-    
+
     console.log(targetPath);
-    
+
     spawnSync('mv', [filePath as string, targetPath]);
     
     const stats = fs.statSync(targetPath);
@@ -238,7 +241,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
       if (metadata.code.includes('.') || metadata.code.includes('/')) {
         throw new Error('Problem ID cannot contain `.` or `/`');
       }
-      
+
       try {
         const newProblem = new Problem({
           problemID: metadata.code,
@@ -414,11 +417,11 @@ const deleteProblem = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     const fileName = problem.problemID;
     const problemDir = 'problems/' + fileName;
     const tarFilePath = 'problems/' + fileName + '.tar.gz';
-    
+
     try {
       if (problemDir.indexOf('..') !== -1 || tarFilePath.indexOf('..') !== -1) {
         throw new Error('Invalid file path');
@@ -753,20 +756,60 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     const problemDir = 'problems/' + problemID;
     const metadataPath = `${problemDir}/problem.json`;
-    
+
     try {
       const metadataContent = readFileSync(metadataPath, 'utf8');
       const metadata = JSON.parse(metadataContent);
       const allowedLanguages = metadata.allowed_languages || [];
-      
+
       response.status(200).send(allowedLanguages);
     } catch (metadataErr) {
       console.error('Error reading metadata:', metadataErr);
       response.status(200).send([]);
     }
+  } catch (error) {
+    console.log(error);
+    response.status(500).send('Internal Server Error');
+  }
+};
+
+export const rejudgeProblem = async (request: IRequest, response: Response) => {
+  if (!request.isAuthenticated() || !request.user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+  const user = request.user as IUser;
+  if (!user.isAdmin) {
+    response.status(403).send('You are not authorized to rejudge problems');
+    return;
+  }
+
+  const { problemID } = request.params;
+  try {
+    const problem: IProblem | null = await Problem.findOne({ problemID });
+    if (!problem) {
+      response.sendStatus(404);
+      return;
+    }
+
+    const submissions: ISubmission[] = await Submission.find({ problemID });
+
+    // Process submissions in chunks to avoid overwhelming the database/judger
+    for (const submission of submissions) {
+      submission.status = SubmissionStatus.PD;
+      submission.score = 0;
+      submission.results = [];
+      await submission.save();
+
+      // We don't await the submission process here to avoid timeout
+      // The judger queue handle it eventually
+      submitUserSubmission(submission);
+    }
+
+    response.status(200).send(`Rejudge triggered for ${submissions.length} submissions.`);
   } catch (error) {
     console.log(error);
     response.status(500).send('Internal Server Error');
@@ -793,6 +836,7 @@ problemsRouter.post('/api/problems', (request: IRequest, response: Response, nex
 
 problemsRouter.delete('/api/problems/:problemID', deleteProblem);
 problemsRouter.patch('/api/problems/:problemID', checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.post('/api/problems/:problemID/rejudge', rejudgeProblem);
 
 problemsRouter.put('/api/problems/:problemID', (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
