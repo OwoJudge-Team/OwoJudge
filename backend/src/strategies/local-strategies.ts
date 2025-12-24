@@ -12,7 +12,7 @@ passport.deserializeUser(async (id: string, done: (err: any, user?: IUser | null
   try {
     const findUser: IUser | null = await User.findById(id);
     if (!findUser) {
-      throw new Error('User not found');
+      return done(null, null);
     }
     done(null, findUser);
   } catch (error) {

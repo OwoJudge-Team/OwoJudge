@@ -38,7 +38,7 @@ pub async fn random_user_api_calls(count: usize) {
     ];
 
     // Bounded concurrency: limit the number of concurrent requests to avoid overwhelming the server
-    let max_concurrency = 8_000usize;
+    let max_concurrency = 800usize;
     let sem = Arc::new(Semaphore::new(max_concurrency));
 
     let mut rng = rand::rng();
