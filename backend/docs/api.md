@@ -595,7 +595,12 @@ Creates a new contest.
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
-      "problems": ["tps-example", "problem-2", "problem-3"],
+      "problems": [
+        {
+          "name": "tps-example",
+          "score": 100
+        }
+      ],
       "visibility": "public"
     }
     ```
