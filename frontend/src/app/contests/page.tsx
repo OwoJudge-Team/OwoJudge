@@ -5,7 +5,12 @@ import { formatISOTime, compareToCurrentTime } from "@/utils/time";
 import { FaClock } from "react-icons/fa";
 import CoolLink from "@/components/cool-link";
 
-const END_TIME_COLOR = ["bg-emerald-600/90", "bg-yellow-400/80", "bg-rose-600/90", "bg-slate-600/50"];
+const END_TIME_COLOR = [
+  "bg-emerald-600/90",
+  "bg-yellow-400/80",
+  "bg-rose-600/90",
+  "bg-slate-600/50",
+];
 
 const ContestPage: React.FC = () => {
   return (
@@ -15,12 +20,37 @@ const ContestPage: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-primary-light text-slate-400">
               <tr className="border-b border-slate-700">
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Name</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Start Time</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">End Time</th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Name
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Start Time
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  End Time
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
+              <tr className="transition hover:bg-neutral">
+                <td className="px-6 py-4">
+                  <CoolLink href="/create-contest" text="Create New Contest" />
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex max-w-60 items-center justify-start gap-3 rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1">
+                    <FaClock />
+                    ??? ?, ????, ?:?? ??
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div
+                    className={`flex max-w-60 items-center justify-start gap-3 rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1`}
+                  >
+                    <FaClock />
+                    ??? ?, ????, ?:?? ??
+                  </div>
+                </td>
+              </tr>
               {contests.map((contest) => (
                 <tr key={contest._id} className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
