@@ -115,6 +115,7 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     }
 
     // Add the additional fields
+    data.username = user.username;
     data.userHandle = user.displayName;
     data.userID = user.id as any;
     data.problemSerialNumber = problem.serialNumber;

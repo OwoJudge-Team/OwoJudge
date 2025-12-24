@@ -14,6 +14,13 @@ import mongoose from 'mongoose';
 
 const execAsync = promisify(exec);
 
+if (workerData && typeof workerData.workerId === 'number') {
+    const start = workerData.workerId * 100;
+    const end = start + 100;
+    IsolateManager.setBoxIdRange(start, end);
+    console.log(`Worker ${workerData.workerId} initialized with box range ${start}-${end}`);
+}
+
 interface TestCaseResult {
   testcase: string;
   status: SubmissionStatus;

@@ -37,7 +37,7 @@ class JudgerManager {
     for (let i = 0; i < this.workerCount; i++) {
       // Use compiled JavaScript files for Workers
       const worker = new Worker(path.join(__dirname, 'judger-worker.js'), {
-        workerData
+        workerData: { ...workerData, workerId: i + 1 } // Start from 1, 0 is for main process
       });
       worker.on('message', (response: WorkerResponse) => {
         this.handleWorkerMessage(worker, response);

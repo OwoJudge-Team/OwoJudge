@@ -23,12 +23,18 @@ export class IsolateManager {
   private static boxLocks = new Map<number, boolean>();
   private static boxIDCounter = 0;
   private static boxIDMutex = false;
-  private static readonly BOX_ID_RANGE_START = 0;
-  private static readonly BOX_ID_RANGE_END = 500;
+  private static BOX_ID_RANGE_START = 0;
+  private static BOX_ID_RANGE_END = 100; // Default range for main process
 
   private boxID: number | null = null;
   private boxDir: string | null = null;
   private locked: boolean = false;
+
+  public static setBoxIdRange(start: number, end: number) {
+    IsolateManager.BOX_ID_RANGE_START = start;
+    IsolateManager.BOX_ID_RANGE_END = end;
+    IsolateManager.boxIDCounter = start;
+  }
 
   /**
    * Sleep utility for mutex waiting
@@ -97,14 +103,17 @@ export class IsolateManager {
 
       do {
         boxID = IsolateManager.boxIDCounter;
-        IsolateManager.boxIDCounter = (IsolateManager.boxIDCounter + 1) % IsolateManager.BOX_ID_RANGE_END;
+        IsolateManager.boxIDCounter++;
+        if (IsolateManager.boxIDCounter >= IsolateManager.BOX_ID_RANGE_END) {
+            IsolateManager.boxIDCounter = IsolateManager.BOX_ID_RANGE_START;
+        }
         attempts++;
 
-        if (attempts > IsolateManager.BOX_ID_RANGE_END) {
+        if (attempts > (IsolateManager.BOX_ID_RANGE_END - IsolateManager.BOX_ID_RANGE_START)) {
           console.warn('All box IDs exhausted, forcing cleanup');
           IsolateManager.usedBoxIDs.clear();
           IsolateManager.boxLocks.clear();
-          IsolateManager.boxIDCounter = Math.floor(Math.random() * 100);
+          IsolateManager.boxIDCounter = IsolateManager.BOX_ID_RANGE_START + Math.floor(Math.random() * 10);
           boxID = IsolateManager.boxIDCounter;
           break;
         }
