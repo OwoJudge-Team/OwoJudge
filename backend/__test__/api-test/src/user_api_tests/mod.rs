@@ -118,7 +118,7 @@ pub async fn random_user_api_calls(count: usize) {
             }
         });
         handles.push(handle);
-        sleep(Duration::from_nanos(1)).await;
+        sleep(Duration::from_millis(1)).await;
     }
 
     // Await all tasks and measure elapsed time

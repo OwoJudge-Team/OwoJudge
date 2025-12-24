@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-reqwest = { version = "0.12", features = ["json", "blocking", "cookies"] }
-serde_json = "1.0.145"
+reqwest = { version = "0.12.28", features = ["json", "blocking", "cookies", "multipart"] }
+serde_json = "1.0.146"
 tokio = { version = "1", features = ["full"] }
 random = "0.14.1"
 futures = "0.3.31"
