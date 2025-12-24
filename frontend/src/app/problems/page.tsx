@@ -8,6 +8,7 @@ import {
   FaCircleXmark,
   FaStar,
   FaUserGroup,
+  FaCircleQuestion,
 } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 
@@ -40,6 +41,39 @@ const ProblemPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
+              {/* TODO: Only show this row if user is TA */}
+              <tr>
+                <td className="px-6 py-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[3px] border-dashed border-slate-700/60 text-sm font-semibold text-slate-300">
+                    +
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <CoolLink href={`/create-problem`} text="Create New Problem" />
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border-[3px] border-dashed border-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
+                    <FaChartPie /> ?
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 items-center gap-1 rounded-lg border-[3px] border-dashed border-amber-800/50 px-3 text-sm font-semibold text-amber-200">
+                      <FaStar /> ?
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <FaUserGroup /> ?
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border-[3px] border-dashed border-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
+                    <FaCircleQuestion /> ???
+                  </span>
+                </td>
+              </tr>
               {problems.map((p) => (
                 <tr key={p.id} className="group transition-all duration-150 hover:bg-slate-700/50">
                   <td className="px-6 py-4">
