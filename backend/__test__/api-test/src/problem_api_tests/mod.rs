@@ -8,6 +8,7 @@ use std::process::Command;
 use std::fs as std_fs;
 
 // Helper to get the path to the example problem
+#[allow(dead_code)]
 fn get_example_problem_path() -> PathBuf {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     // Adjust path based on where the test is running relative to the workspace
@@ -16,6 +17,7 @@ fn get_example_problem_path() -> PathBuf {
     PathBuf::from(manifest_dir).join("../../docs/example/tps-example.tar.gz")
 }
 
+#[allow(dead_code)]
 fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     // Prepare temp directory
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
@@ -71,6 +73,7 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     file_content
 }
 
+#[allow(dead_code)]
 async fn create_temp_problem(client: &Client) -> String {
     // Authenticate as admin first
     let auth_response = client

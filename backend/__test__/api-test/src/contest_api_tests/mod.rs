@@ -7,11 +7,13 @@ use std::fs as std_fs;
 
 // --- Helpers copied/adapted from problem_api_tests ---
 
+#[allow(dead_code)]
 fn get_example_problem_path() -> PathBuf {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     PathBuf::from(manifest_dir).join("../../docs/example/tps-example.tar.gz")
 }
 
+#[allow(dead_code)]
 fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let temp_dir = PathBuf::from(manifest_dir).join("target/temp_problems_contest").join(format!("gen_{}", problem_id));
@@ -58,6 +60,7 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     file_content
 }
 
+#[allow(dead_code)]
 async fn create_temp_problem(client: &Client) -> String {
     let mut rng = rand::rng();
     let suffix: u32 = rng.random_range(1000..999999);
@@ -89,6 +92,7 @@ async fn create_temp_problem(client: &Client) -> String {
 
 // --- Tests ---
 
+#[allow(dead_code)]
 fn generate_contest_id() -> String {
     let mut rng = rand::rng();
     let suffix: u32 = rng.random_range(1000..999999);
