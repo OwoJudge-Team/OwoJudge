@@ -34,7 +34,7 @@ services:
       # Mount cgroup filesystem for isolate
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       # Mount /run for isolate runtime directories
-      - /run:/run:rw
+      - /run:/run:rwz
     privileged: true
     networks:
       - judge-network

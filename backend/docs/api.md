@@ -523,12 +523,16 @@ Retrieves a list of all contests.
     [
       {
         "_id": "68fb7a00b2c3d4e5f6789012",
-        "contestID": "contest-2025-fall",
         "title": "Fall Programming Contest 2025",
         "description": "Annual fall programming contest featuring algorithmic challenges.",
         "startTime": "2025-11-01T09:00:00.000Z",
         "endTime": "2025-11-01T14:00:00.000Z",
-        "problems": ["tps-example", "problem-2", "problem-3"],
+        "problems": [
+          {
+            "serialNumber": 0,
+            "score": 100
+          }
+        ],
         "participants": ["user1", "user2", "admin"],
         "visibility": "public",
         "createdTime": "2025-10-24T13:30:00.000Z"
@@ -536,26 +540,24 @@ Retrieves a list of all contests.
     ]
     ```
 
-### `GET /api/contests/:contestID`
+### `GET /api/contests/:id`
 
 Retrieves a single contest by its ID.
 
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest.
+    -   `id` (string): The unique identifier of the contest.
 -   **Response Example:**
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025",
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
       "problems": [
         {
-          "problemID": "tps-example",
-          "title": "Problem Title",
-          "tags": ["basic"]
+          "serialNumber": 0,
+          "score": 100
         }
       ],
       "participants": ["user1", "user2", "admin"],
@@ -580,24 +582,22 @@ Creates a new contest.
 
 -   **Authentication:** Admin only.
 -   **Request Body:** Contest object with the following fields:
-    -   `contestID` (string, required): Unique identifier for the contest.
     -   `title` (string, required): Contest title.
     -   `description` (string, optional): Contest description.
     -   `startTime` (Date, required): Contest start time.
     -   `endTime` (Date, required): Contest end time.
-    -   `problems` (array of strings, required): Array of problem IDs.
+    -   `problems` (array of objects, required): Array of problem objects with `serialNumber` and `score`.
     -   `visibility` (string, optional): `"public"` or `"private"` (default: `"public"`).
 -   **Request Example:**
     ```json
     {
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025",
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
       "problems": [
         {
-          "name": "tps-example",
+          "serialNumber": 0,
           "score": 100
         }
       ],
@@ -608,12 +608,16 @@ Creates a new contest.
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025",
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
-      "problems": ["tps-example", "problem-2", "problem-3"],
+      "problems": [
+        {
+          "serialNumber": 0,
+          "score": 100
+        }
+      ],
       "participants": [],
       "visibility": "public",
       "createdTime": "2025-10-24T13:30:00.000Z"
@@ -625,13 +629,13 @@ Creates a new contest.
     -   `401 Unauthorized`: User is not an admin.
     -   `403 Forbidden`: Contest with this ID already exists.
 
-### `PATCH /api/contests/:contestID`
+### `PATCH /api/contests/:id`
 
 Updates an existing contest.
 
 -   **Authentication:** Admin only.
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest to update.
+    -   `id` (string): The unique identifier of the contest to update.
 -   **Request Body:** Partial contest object with fields to update.
 -   **Request Example:**
     ```json
@@ -644,7 +648,6 @@ Updates an existing contest.
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025 - Updated",
       "endTime": "2025-11-01T15:00:00.000Z"
     }
@@ -655,18 +658,17 @@ Updates an existing contest.
     -   `401 Unauthorized`: User is not an admin.
     -   `404 Not Found`: Contest does not exist.
 
-### `DELETE /api/contests/:contestID`
+### `DELETE /api/contests/:id`
 
 Deletes a contest.
 
 -   **Authentication:** Admin only.
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest to delete.
+    -   `id` (string): The unique identifier of the contest to delete.
 -   **Response Example (200 OK):**
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025"
     }
     ```
@@ -675,12 +677,12 @@ Deletes a contest.
     -   `401 Unauthorized`: User is not an admin.
     -   `404 Not Found`: Contest does not exist.
 
-### `GET /api/contests/:contestID/standings`
+### `GET /api/contests/:id/standings`
 
 Retrieves the current standings/leaderboard for a contest.
 
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest.
+    -   `id` (string): The unique identifier of the contest.
 -   **Response Example:**
     ```json
     [
@@ -690,17 +692,17 @@ Retrieves the current standings/leaderboard for a contest.
         "solvedCount": 3,
         "problemScores": [
           {
-            "problemID": "tps-example",
+            "serialNumber": 0,
             "score": 100,
             "lastSubmissionTime": "2025-11-01T10:30:00.000Z"
           },
           {
-            "problemID": "problem-2",
+            "serialNumber": 1,
             "score": 100,
             "lastSubmissionTime": "2025-11-01T11:15:00.000Z"
           },
           {
-            "problemID": "problem-3",
+            "serialNumber": 2,
             "score": 100,
             "lastSubmissionTime": "2025-11-01T12:00:00.000Z"
           }
@@ -713,12 +715,12 @@ Retrieves the current standings/leaderboard for a contest.
         "solvedCount": 2,
         "problemScores": [
           {
-            "problemID": "tps-example",
+            "serialNumber": 0,
             "score": 100,
             "lastSubmissionTime": "2025-11-01T10:45:00.000Z"
           },
           {
-            "problemID": "problem-2",
+            "serialNumber": 1,
             "score": 100,
             "lastSubmissionTime": "2025-11-01T11:30:00.000Z"
           }
@@ -734,13 +736,13 @@ Retrieves the current standings/leaderboard for a contest.
 
 **Note:** Standings are sorted by total score (descending), with ties broken by earliest last submission time.
 
-### `POST /api/contests/:contestID/standings/update`
+### `POST /api/contests/:id/standings/update`
 
 Recalculates and updates the standings for a contest based on all submissions within the contest timeframe.
 
 -   **Authentication:** Admin only.
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest.
+    -   `id` (string): The unique identifier of the contest.
 -   **Response Example (200 OK):**
     ```json
     {
@@ -752,7 +754,7 @@ Recalculates and updates the standings for a contest based on all submissions wi
           "solvedCount": 3,
           "problemScores": [
             {
-              "problemID": "tps-example",
+              "serialNumber": 0,
               "score": 100,
               "lastSubmissionTime": "2025-11-01T10:30:00.000Z"
             }

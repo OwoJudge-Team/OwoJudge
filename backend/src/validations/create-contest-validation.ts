@@ -1,12 +1,6 @@
 import { Schema } from 'express-validator';
 
 export const createContestValidation: Schema = {
-  contestID: {
-    in: ['body'],
-    isString: true,
-    notEmpty: true,
-    errorMessage: 'Contest ID is required'
-  },
   title: {
     in: ['body'],
     isString: true,

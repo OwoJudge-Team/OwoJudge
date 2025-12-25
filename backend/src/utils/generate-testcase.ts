@@ -74,8 +74,8 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
     try {
       await box.run('make', {
         processes: 20,
-        timeLimit: 10,
-        wallTimeLimit: 60,
+        timeLimit: 60,
+        wallTimeLimit: 120,
         memoryLimit: 512000,
         metaFile: compileMetaFile,
         stderr: 'compile.error',

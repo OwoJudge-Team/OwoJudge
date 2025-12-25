@@ -1,13 +1,6 @@
 import { Schema } from 'express-validator';
 
 export const updateContestValidation: Schema = {
-  contestID: {
-    in: ['body'],
-    optional: true,
-    isString: true,
-    notEmpty: true,
-    errorMessage: 'Contest ID must be a string'
-  },
   title: {
     in: ['body'],
     optional: true,

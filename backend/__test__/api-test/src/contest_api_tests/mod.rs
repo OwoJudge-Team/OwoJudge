@@ -66,7 +66,7 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-async fn create_temp_problem(client: &Client) -> String {
+async fn create_temp_problem(client: &Client) -> i64 {
     let mut rng = rand::rng();
     let suffix: u32 = rng.random_range(1000..999999);
     let problem_id = format!("contest-prob-{}", suffix);
@@ -92,16 +92,26 @@ async fn create_temp_problem(client: &Client) -> String {
         panic!("Failed to create problem: {}", text);
     }
     
-    problem_id
+    // Fetch the problem to get serialNumber
+    let response = client
+        .get(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .send()
+        .await
+        .expect("Failed to get problem details");
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    let problem_json: Value = response.json().await.expect("Failed to parse problem JSON");
+    
+    problem_json["serialNumber"].as_i64().expect("Problem should have serialNumber")
 }
 
 // --- Tests ---
 
 #[allow(dead_code)]
-fn generate_contest_id() -> String {
+fn generate_contest_title_suffix() -> String {
     let mut rng = rand::rng();
     let suffix: u32 = rng.random_range(1000..999999);
-    format!("contest-test-{}", suffix)
+    format!("Test Contest {}", suffix)
 }
 
 #[tokio::test]
@@ -138,22 +148,21 @@ async fn test_create_contest_flow() {
     assert_eq!(auth_response.status(), StatusCode::CREATED);
 
     // 2. Create a problem to use in the contest
-    let problem_id = create_temp_problem(&client).await;
+    let problem_serial = create_temp_problem(&client).await;
 
     // 3. Create Contest
-    let contest_id = generate_contest_id();
+    let contest_title = generate_contest_title_suffix();
     let start_time = chrono::Utc::now();
     let end_time = start_time + chrono::Duration::hours(2);
 
     let contest_data = json!({
-        "contestID": contest_id,
-        "title": format!("Test Contest {}", contest_id),
+        "title": contest_title,
         "description": "A test contest",
         "startTime": start_time.to_rfc3339(),
         "endTime": end_time.to_rfc3339(),
         "problems": [
             {
-                "name": problem_id,
+                "serialNumber": problem_serial,
                 "score": 100
             }
         ],
@@ -172,6 +181,9 @@ async fn test_create_contest_flow() {
         panic!("Failed to create contest: {}", text);
     }
 
+    let created_contest: Value = response.json().await.expect("Failed to parse created contest");
+    let contest_id = created_contest["_id"].as_str().expect("Contest should have _id").to_string();
+
     // 4. Get Contest
     let response = client
         .get(&format!("http://localhost:8787/api/contests/{}", contest_id))
@@ -180,18 +192,18 @@ async fn test_create_contest_flow() {
         .expect("Failed to get contest");
     assert_eq!(response.status(), StatusCode::OK);
     let fetched_contest: Value = response.json().await.expect("Failed to parse contest JSON");
-    assert_eq!(fetched_contest["contestID"], contest_id);
+    assert_eq!(fetched_contest["_id"], contest_id);
     
     // Verify problem is in the contest
     let problems = fetched_contest["problems"].as_array().expect("Problems should be an array");
     let found = problems.iter().any(|p| {
-        p["name"].as_str() == Some(&problem_id)
+        p["serialNumber"].as_i64() == Some(problem_serial)
     });
     assert!(found, "Created problem not found in contest");
 
     // 5. Update Contest
     let update_data = json!({
-        "title": format!("Updated Title {}", contest_id)
+        "title": format!("Updated {}", contest_title)
     });
     let response = client
         .patch(&format!("http://localhost:8787/api/contests/{}", contest_id))
@@ -208,7 +220,7 @@ async fn test_create_contest_flow() {
         .await
         .expect("Failed to get contest");
     let fetched_contest: Value = response.json().await.expect("Failed to parse contest JSON");
-    assert_eq!(fetched_contest["title"], format!("Updated Title {}", contest_id));
+    assert_eq!(fetched_contest["title"], format!("Updated {}", contest_title));
 
     // 6. Get Standings (Empty initially)
     let response = client
@@ -248,9 +260,7 @@ async fn test_create_contest_flow() {
 #[tokio::test]
 async fn test_create_contest_unauthorized() {
     let client = Client::new(); // No auth cookies
-    let contest_id = generate_contest_id();
     let contest_data = json!({
-        "contestID": contest_id,
         "title": "Unauthorized Contest",
         "startTime": chrono::Utc::now().to_rfc3339(),
         "endTime": chrono::Utc::now().to_rfc3339(),
@@ -282,9 +292,7 @@ pub async fn random_contest_api_calls(count: usize) {
         .expect("Failed to login as admin");
     
     // Create a contest
-    let contest_id = format!("stress-contest-{}", rand::rng().random_range(1000..9999));
     let contest_data = json!({
-        "contestID": contest_id,
         "title": "Stress Test Contest",
         "description": "A contest for stress testing",
         "startTime": chrono::Utc::now().to_rfc3339(),
@@ -301,6 +309,9 @@ pub async fn random_contest_api_calls(count: usize) {
     if res.status() != StatusCode::CREATED {
         println!("Warning: Failed to create setup contest: {}", res.status());
     }
+
+    let created_contest: Value = res.json().await.expect("Failed to parse created contest");
+    let contest_id = created_contest["_id"].as_str().expect("Contest should have _id").to_string();
 
     let actions = vec![
         "get_contests",
