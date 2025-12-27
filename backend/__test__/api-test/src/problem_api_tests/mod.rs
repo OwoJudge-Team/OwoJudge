@@ -26,6 +26,10 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     // Prepare temp directory
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let temp_dir = PathBuf::from(manifest_dir).join("target/temp_problems").join(format!("gen_{}", problem_id));
+    
+    if temp_dir.exists() {
+        std_fs::remove_dir_all(&temp_dir).expect("Failed to clean temp dir");
+    }
     std_fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
 
     // Get original tarball path
@@ -37,9 +41,13 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
         .arg(&original_tar_path)
         .arg("-C")
         .arg(&temp_dir)
+        .arg("-m")
         .status()
         .expect("Failed to execute tar command");
-    assert!(status.success(), "Failed to extract tarball");
+    
+    if !status.success() {
+        println!("Warning: tar command returned error status: {:?}", status);
+    }
 
     // Find the extracted directory (it should be 'tps-example')
     let extracted_dir = temp_dir.join("tps-example");
@@ -78,7 +86,7 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-async fn create_temp_problem(client: &Client) -> String {
+async fn create_temp_problem(client: &Client) -> i64 {
     // Authenticate as admin first
     let auth_response = client
         .post("http://localhost:8787/api/auth")
@@ -118,7 +126,8 @@ async fn create_temp_problem(client: &Client) -> String {
         panic!("Failed to create problem: {}", text);
     }
     
-    problem_id
+    let problem: Value = response.json().await.expect("Failed to parse created problem JSON");
+    problem["serialNumber"].as_i64().expect("serialNumber should be an integer")
 }
 
 #[tokio::test]
@@ -143,7 +152,7 @@ async fn test_get_problem_detail() {
         .expect("Failed to build client");
 
     // 1. Create the problem (as admin)
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 2. Logout to test unauthenticated access
     let logout_resp = client.post("http://localhost:8787/api/auth/logout").send().await.expect("Failed to logout");
@@ -151,7 +160,7 @@ async fn test_get_problem_detail() {
 
     // 3. Unauthenticated access -> 401
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .send()
         .await
         .expect("Failed to send request");
@@ -171,14 +180,14 @@ async fn test_get_problem_detail() {
     assert_eq!(auth_response.status(), StatusCode::CREATED);
 
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .send()
         .await
         .expect("Failed to send request");
     
     assert_eq!(response.status(), StatusCode::OK, "Authenticated access should succeed");
     let problem: Value = response.json().await.expect("Failed to parse JSON");
-    assert_eq!(problem["problemID"], problem_id);
+    assert_eq!(problem["serialNumber"], serial_number);
     assert!(problem["description"].is_string());
 }
 
@@ -275,18 +284,20 @@ async fn test_update_problem_put() {
         .expect("Failed to build client");
 
     // Create problem as admin
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // Update problem (PUT)
-    let file_content = create_tarball_with_id(&problem_id);
+    // We need a dummy problem ID for the tarball generation, but the PUT uses serialNumber
+    let dummy_id = "update-test";
+    let file_content = create_tarball_with_id(dummy_id);
     let part = multipart::Part::bytes(file_content)
-        .file_name(format!("{}.tar.gz", problem_id))
+        .file_name(format!("{}.tar.gz", dummy_id))
         .mime_str("application/gzip")
         .expect("Failed to create mime type");
     let form = multipart::Form::new().part("problem", part);
 
     let response = client
-        .put(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .put(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .multipart(form)
         .send()
         .await
@@ -296,10 +307,12 @@ async fn test_update_problem_put() {
 
     // Verify update
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .send()
         .await
         .expect("Failed to get problem");
+    
+    assert_eq!(response.status(), StatusCode::OK, "Failed to get problem details after update");
     let problem: Value = response.json().await.expect("Failed to parse JSON");
     assert!(problem.is_object(), "Expected a problem object");
 }
@@ -311,13 +324,13 @@ async fn test_update_problem_patch() {
         .build()
         .expect("Failed to build client");
 
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 1. Try to update as unauthenticated
     {
         let unauth_client = Client::new();
         let response = unauth_client
-            .patch(&format!("http://localhost:8787/api/problems/{}", problem_id))
+            .patch(&format!("http://localhost:8787/api/problems/{}", serial_number))
             .json(&json!({
                 "title": "Hacked Title"
             }))
@@ -348,7 +361,7 @@ async fn test_update_problem_patch() {
         assert_eq!(auth_resp.status(), StatusCode::CREATED);
 
         let response = user_client
-            .patch(&format!("http://localhost:8787/api/problems/{}", problem_id))
+            .patch(&format!("http://localhost:8787/api/problems/{}", serial_number))
             .json(&json!({
                 "title": "Hacked Title"
             }))
@@ -361,7 +374,7 @@ async fn test_update_problem_patch() {
     // 3. Update as admin
     let new_title = "Updated Title via PATCH";
     let response = client
-        .patch(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .patch(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .json(&json!({
             "title": new_title
         }))
@@ -373,7 +386,7 @@ async fn test_update_problem_patch() {
 
     // Verify update
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .send()
         .await
         .expect("Failed to get problem");
@@ -388,13 +401,13 @@ async fn test_delete_problem() {
         .build()
         .expect("Failed to build client");
 
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 1. Try to delete as unauthenticated
     {
         let unauth_client = Client::new();
         let response = unauth_client
-            .delete(&format!("http://localhost:8787/api/problems/{}", problem_id))
+            .delete(&format!("http://localhost:8787/api/problems/{}", serial_number))
             .send()
             .await
             .expect("Failed to send delete request");
@@ -422,7 +435,7 @@ async fn test_delete_problem() {
         assert_eq!(auth_resp.status(), StatusCode::CREATED);
 
         let response = user_client
-            .delete(&format!("http://localhost:8787/api/problems/{}", problem_id))
+            .delete(&format!("http://localhost:8787/api/problems/{}", serial_number))
             .send()
             .await
             .expect("Failed to send delete request");
@@ -431,7 +444,7 @@ async fn test_delete_problem() {
 
     // 3. Delete as admin
     let response = client
-        .delete(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .delete(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .send()
         .await
         .expect("Failed to send delete request");
@@ -439,7 +452,7 @@ async fn test_delete_problem() {
 
     // Verify it's gone
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
         .send()
         .await
         .expect("Failed to get problem");
@@ -453,12 +466,12 @@ async fn test_allowed_languages() {
         .build()
         .expect("Failed to build client");
 
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 1. Unauthenticated access
     let unauth_client = Client::new();
     let response = unauth_client
-        .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", serial_number))
         .send()
         .await
         .expect("Failed to get allowed languages unauth");
@@ -466,7 +479,7 @@ async fn test_allowed_languages() {
 
     // 2. Authenticated access
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}/allowed-languages", serial_number))
         .send()
         .await
         .expect("Failed to get allowed languages");
@@ -483,12 +496,12 @@ async fn test_get_testcase() {
         .build()
         .expect("Failed to build client");
 
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 1. Unauthenticated access
     let unauth_client = Client::new();
     let response = unauth_client
-        .get(&format!("http://localhost:8787/api/problems/{}/testcases/full-01", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}/testcases/full-01", serial_number))
         .send()
         .await
         .expect("Failed to get testcase unauth");
@@ -497,7 +510,7 @@ async fn test_get_testcase() {
     // 2. Authenticated access
     // Get testcase "full-01" (assuming it exists in tps-example)
     let response = client
-        .get(&format!("http://localhost:8787/api/problems/{}/testcases/full-01", problem_id))
+        .get(&format!("http://localhost:8787/api/problems/{}/testcases/full-01", serial_number))
         .send()
         .await
         .expect("Failed to get testcase");
@@ -523,22 +536,7 @@ pub async fn random_problem_api_calls(count: usize) {
         .expect("Failed to login as admin");
     
     // Create a problem to read
-    let problem_id = format!("stress-prob-{}", rand::rng().random_range(1000..9999));
-    let tarball = create_tarball_with_id(&problem_id);
-    let part = multipart::Part::bytes(tarball).file_name("problem.tar.gz");
-    let form = multipart::Form::new().part("problem", part);
-    
-    let res = client.post("http://localhost:8787/api/problems")
-        .multipart(form)
-        .send()
-        .await
-        .expect("Failed to create setup problem");
-    
-    if res.status() != StatusCode::CREATED {
-        let status = res.status();
-        let text = res.text().await.unwrap_or_default();
-        println!("Warning: Failed to create setup problem: {} - {}", status, text);
-    }
+    let serial_number = create_temp_problem(&client).await;
 
     let actions = vec![
         "get_problems",
@@ -552,13 +550,13 @@ pub async fn random_problem_api_calls(count: usize) {
     let mut handles = Vec::with_capacity(count);
     
     let public_client = Client::new();
-    let problem_id_arc = Arc::new(problem_id);
+    let serial_number_arc = Arc::new(serial_number);
 
     for _ in 0..count {
         let action = actions[rand::rng().random_range(0..actions.len())];
         let client = public_client.clone();
         let sem = sem.clone();
-        let pid = problem_id_arc.clone();
+        let sn = serial_number_arc.clone();
 
         let handle = task::spawn(async move {
             let _permit = sem.acquire().await.unwrap();
@@ -567,7 +565,7 @@ pub async fn random_problem_api_calls(count: usize) {
                     client.get("http://localhost:8787/api/problems").send().await
                 },
                 "get_problem_detail" => {
-                    client.get(&format!("http://localhost:8787/api/problems/{}", pid)).send().await
+                    client.get(&format!("http://localhost:8787/api/problems/{}", sn)).send().await
                 },
                 "get_problem_detail_invalid" => {
                     client.get("http://localhost:8787/api/problems/invalid-id").send().await

@@ -94,7 +94,7 @@ function generateRandomContest(index, problems) {
     const selectedProblems = getRandomElements(problems, Math.floor(Math.random() * 6) + 3);
     selectedProblems.forEach(p => {
       contestProblems.push({
-        name: p.problemID || p.id, // Adjust based on actual problem object structure
+        serialNumber: p.serialNumber,
         score: Math.floor(Math.random() * 10) * 10 + 100 // 100-190
       });
     });

@@ -2,15 +2,15 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { IsolateManager } from './isolate-manager';
 
-export const generateSingleTestcase = async (problemID: string, testcaseName: string): Promise<string> => {
+export const generateSingleTestcase = async (problemSerialNumber: string, testcaseName: string): Promise<string> => {
   // Sanitize inputs to prevent directory traversal and command injection
   // Whitelist: only allow alphanumeric, hyphens, and underscores
   const validNameRegex = /^[a-zA-Z0-9_-]+$/;
-  if (!validNameRegex.test(problemID) || !validNameRegex.test(testcaseName)) {
-    throw new Error('Invalid characters in problemID or testcaseName. Only alphanumeric characters, hyphens, and underscores are allowed.');
+  if (!validNameRegex.test(problemSerialNumber) || !validNameRegex.test(testcaseName)) {
+    throw new Error('Invalid characters in problemSerialNumber or testcaseName. Only alphanumeric characters, hyphens, and underscores are allowed.');
   }
 
-  const problemDir = path.resolve('problems', problemID);
+  const problemDir = path.resolve('problems', problemSerialNumber);
 
   // Check if problem directory exists
   if (!fs.existsSync(problemDir)) {
@@ -64,7 +64,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
     const boxDir = box.getBoxDir();
     const boxID = box.getBoxID();
     
-    console.log(`Generating testcase ${testcaseName} for ${problemID} in isolated box ${boxID}`);
+    console.log(`Generating testcase ${testcaseName} for ${problemSerialNumber} in isolated box ${boxID}`);
 
     // Copy gen directory to isolated box
     await box.copyToBox(`${genDir}/*`);
@@ -84,7 +84,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
         cwd: '/box'
       }, 65000);
     } catch (error) {
-      console.error(`Error compiling generator for ${problemID}:`, error);
+      console.error(`Error compiling generator for ${problemSerialNumber}:`, error);
       throw new Error('Failed to compile generator with make in isolated environment');
     }
 
@@ -138,7 +138,7 @@ export const generateSingleTestcase = async (problemID: string, testcaseName: st
 
       return fs.readFileSync(outputPath, 'utf8');
     } catch (error) {
-      console.error(`Error generating testcase ${testcaseName} for ${problemID}:`, error);
+      console.error(`Error generating testcase ${testcaseName} for ${problemSerialNumber}:`, error);
       throw new Error(`Failed to generate testcase: ${testcaseName}`);
     }
   });

@@ -20,15 +20,12 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
   const query: any = user.isAdmin ? {} : { username: user.username };
 
   // Add filters from query parameters
-  const { username, userID, problemID, problemSerialNumber, status, minScore, maxScore } = request.query;
+  const { username, userID, problemSerialNumber, status, minScore, maxScore } = request.query;
   if (username && (user.isAdmin || username === user.username)) {
     query.username = username;
   }
   if (userID && (user.isAdmin || userID === user.id.toString())) {
     query.userID = userID;
-  }
-  if (problemID) {
-    query.problemID = problemID;
   }
   if (problemSerialNumber) {
     query.problemSerialNumber = parseInt(problemSerialNumber as string);
@@ -46,10 +43,17 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
     }
   }
 
+  const offset = parseInt(request.query.offset as string) || 0;
+  const limit = parseInt(request.query.limit as string) || 20;
+  const index = parseInt(request.query.index as string);
+  const finalOffset = !isNaN(index) ? index : offset;
+
   try {
     const submissions: ISubmission[] = await Submission.find(query)
-      .select('serialNumber problemID problemSerialNumber problemTitle username userHandle userID status language createdTime score')
-      .sort({ createdTime: -1 });
+      .select('serialNumber problemSerialNumber problemTitle username userHandle userID status language createdTime score')
+      .sort({ createdTime: -1 })
+      .skip(finalOffset)
+      .limit(limit);
     response.status(200).send(submissions);
   } catch (error: unknown) {
     if (error) {
@@ -108,10 +112,27 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     }
 
     // Fetch problem details
-    const problem = await Problem.findOne({ problemID: data.problemID });
+    const problem = await Problem.findOne({ serialNumber: data.problemSerialNumber });
     if (!problem) {
       response.status(404).send('Problem not found');
       return;
+    }
+
+    // Check daily quota
+    if (problem.dailyQuota && problem.dailyQuota > 0) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const submissionCount = await Submission.countDocuments({
+        userID: user.id,
+        problemSerialNumber: problem.serialNumber,
+        createdTime: { $gte: startOfDay }
+      });
+
+      if (submissionCount >= problem.dailyQuota) {
+        response.status(429).send(`Daily submission quota exceeded. Limit: ${problem.dailyQuota}`);
+        return;
+      }
     }
 
     // Add the additional fields

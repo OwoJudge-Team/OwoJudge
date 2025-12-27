@@ -66,16 +66,14 @@ function generateRandomTitle(index) {
   return `${baseTitle} ${difficulty} ${index}`;
 }
 
-function generateProblemID(title) {
-  return title
+function generateRandomProblem(index) {
+  const title = generateRandomTitle(index);
+  // Use a random string for directory name, but it won't be the ID
+  const dirName = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-function generateRandomProblem(index) {
-  const title = generateRandomTitle(index);
-  const problemID = generateProblemID(title);
+    
   const timeLimit = [1000, 2000, 3000, 5000][Math.floor(Math.random() * 4)]; // 1-5 seconds
   const memoryLimit = [256, 512, 1024][Math.floor(Math.random() * 3)]; // 256MB-1GB
   const processes = Math.random() > 0.9 ? 2 : 1; // 10% chance of multi-process
@@ -84,7 +82,7 @@ function generateRandomProblem(index) {
   const problemRelatedTags = getRandomElements(difficulties, 1);
   
   return {
-    problemID,
+    dirName,
     title,
     timeLimit,
     memoryLimit,
@@ -162,7 +160,7 @@ async function createMockProblems() {
         
         // Create temp dir
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-problem-'));
-        const problemDir = path.join(tempDir, problemData.problemID);
+        const problemDir = path.join(tempDir, problemData.dirName);
         
         if (fs.existsSync(TEMPLATE_PATH)) {
           // Copy template
@@ -173,7 +171,7 @@ async function createMockProblems() {
           if (fs.existsSync(problemJsonPath)) {
             const problemJson = JSON.parse(fs.readFileSync(problemJsonPath, 'utf-8'));
             
-            problemJson.code = problemData.problemID;
+            problemJson.code = problemData.dirName; // Still needed for internal structure but ignored by DB
             problemJson.title = problemData.title;
             problemJson.score_policy = problemData.scorePolicy;
             problemJson.tags = problemData.tags;
@@ -194,14 +192,14 @@ async function createMockProblems() {
           }
           
           // Create tarball
-          const tarballPath = path.join(tempDir, `${problemData.problemID}.tar.gz`);
+          const tarballPath = path.join(tempDir, `${problemData.dirName}.tar.gz`);
           await tar.c(
             {
               gzip: true,
               file: tarballPath,
               cwd: tempDir
             },
-            [problemData.problemID]
+            [problemData.dirName]
           );
           
           // Upload

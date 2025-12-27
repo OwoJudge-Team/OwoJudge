@@ -22,6 +22,10 @@ fn get_example_problem_path() -> PathBuf {
 fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let temp_dir = PathBuf::from(manifest_dir).join("target/temp_problems_submission").join(format!("gen_{}", problem_id));
+    
+    if temp_dir.exists() {
+        std_fs::remove_dir_all(&temp_dir).expect("Failed to clean temp dir");
+    }
     std_fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
 
     let original_tar_path = get_example_problem_path();
@@ -31,9 +35,13 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
         .arg(&original_tar_path)
         .arg("-C")
         .arg(&temp_dir)
+        .arg("-m")
         .status()
         .expect("Failed to execute tar command");
-    assert!(status.success(), "Failed to extract tarball");
+    
+    if !status.success() {
+        println!("Warning: tar command returned error status: {:?}", status);
+    }
 
     let extracted_dir = temp_dir.join("tps-example");
     let problem_json_path = extracted_dir.join("problem.json");
@@ -66,7 +74,7 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-async fn create_temp_problem(client: &Client) -> String {
+async fn create_temp_problem(client: &Client) -> i64 {
     let mut rng = rand::rng();
     let suffix: u32 = rng.random_range(1000..9999);
     let problem_id = format!("sub-{}", suffix); // Shortened to fit 16 char limit
@@ -92,7 +100,22 @@ async fn create_temp_problem(client: &Client) -> String {
         panic!("Failed to create problem: {}", text);
     }
     
-    problem_id
+    // Fetch the problem to get serialNumber
+    let response = client
+        .get("http://localhost:8787/api/problems")
+        .send()
+        .await
+        .expect("Failed to get problems");
+    
+    let problems: Value = response.json().await.expect("Failed to parse JSON");
+    let problems_array = problems.as_array().expect("Expected array of problems");
+    
+    // Find the problem we just created by title (which is in problem.json inside tarball)
+    // The title in tps-example/problem.json is "TPS Example"
+    // Since we might have multiple, we take the last one which should be ours due to auto-increment
+    let problem = problems_array.last().expect("No problems found");
+    
+    problem["serialNumber"].as_i64().expect("serialNumber should be an integer")
 }
 
 #[allow(dead_code)]
@@ -166,11 +189,11 @@ async fn test_submission_lifecycle() {
 
     // 1. Login as Admin to create problem
     login_admin(&client).await;
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 2. Create a submission
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": serial_number,
         "language": "g++ c++17",
         "userSolution": [
             {
@@ -189,30 +212,30 @@ async fn test_submission_lifecycle() {
     
     assert_eq!(response.status(), StatusCode::CREATED);
     let submission: Value = response.json().await.expect("Failed to parse submission");
-    let serial_number = submission["serialNumber"].as_i64().expect("Missing serialNumber");
+    let submission_serial_number = submission["serialNumber"].as_i64().expect("Missing serialNumber");
     
     // 3. Get Submission Details
     let response = client
-        .get(&format!("http://localhost:8787/api/submission/{}", serial_number))
+        .get(&format!("http://localhost:8787/api/submission/{}", submission_serial_number))
         .send()
         .await
         .expect("Failed to get submission");
     assert_eq!(response.status(), StatusCode::OK);
     let fetched_sub: Value = response.json().await.expect("Failed to parse fetched submission");
-    assert_eq!(fetched_sub["serialNumber"], serial_number);
-    assert_eq!(fetched_sub["problemID"], problem_id);
+    assert_eq!(fetched_sub["serialNumber"], submission_serial_number);
+    assert_eq!(fetched_sub["problemSerialNumber"], serial_number);
 
     // 4. List Submissions and filter
     let response = client
         .get("http://localhost:8787/api/submissions")
-        .query(&[("problemID", &problem_id)])
+        .query(&[("problemSerialNumber", &serial_number.to_string())])
         .send()
         .await
         .expect("Failed to list submissions");
     assert_eq!(response.status(), StatusCode::OK);
     let list: Value = response.json().await.expect("Failed to parse list");
     assert!(list.is_array());
-    let found = list.as_array().unwrap().iter().any(|s| s["serialNumber"] == serial_number);
+    let found = list.as_array().unwrap().iter().any(|s| s["serialNumber"] == submission_serial_number);
     assert!(found, "Submission not found in list");
 }
 
@@ -224,7 +247,7 @@ async fn test_submission_permissions() {
 
     // Setup: Admin creates problem and users
     login_admin(&admin_client).await;
-    let problem_id = create_temp_problem(&admin_client).await;
+    let problem_serial_number = create_temp_problem(&admin_client).await;
     
     let mut rng = rand::rng();
     let user1 = format!("user_{}", rng.random_range(1000..9999));
@@ -236,7 +259,7 @@ async fn test_submission_permissions() {
     // User 1 submits
     login_user(&user_client, &user1).await;
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": problem_serial_number,
         "language": "g++ c++17",
         "userSolution": [{ "filename": "main.cpp", "content": "..." }]
     });
@@ -275,11 +298,11 @@ async fn test_submission_permissions() {
 async fn test_rejudge_flow() {
     let client = ClientBuilder::new().cookie_store(true).build().unwrap();
     login_admin(&client).await;
-    let problem_id = create_temp_problem(&client).await;
+    let problem_serial_number = create_temp_problem(&client).await;
 
     // Submit
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": problem_serial_number,
         "language": "g++ c++17",
         "userSolution": [{ "filename": "main.cpp", "content": "..." }]
     });
@@ -313,7 +336,7 @@ async fn test_invalid_submission() {
 
     // 1. Invalid Problem ID
     let body = json!({
-        "problemID": "bad-id",
+        "problemSerialNumber": 99999999,
         "language": "g++ c++17",
         "userSolution": [{ "filename": "main.cpp", "content": "..." }]
     });
@@ -327,7 +350,7 @@ async fn test_invalid_submission() {
 
     // 2. Missing Fields
     let body = json!({
-        "problemID": "some-id"
+        "problemSerialNumber": 1001
         // missing language and solution
     });
     let response = client

@@ -15,13 +15,14 @@ interface ITestcase {
 
 interface IProblem extends Document {
   serialNumber: number;
-  problemID: string;
   createdTime: Date;
   title: string;
+  fileName: string;
   timeLimit: number;
   memoryLimit: number;
   processes: number;
   fullScore: number;
+  dailyQuota?: number;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
   tags?: string[];
@@ -44,13 +45,14 @@ interface IProblem extends Document {
 
 const problemSchema = new Schema<IProblem>({
   serialNumber: { type: Number, unique: true },
-  problemID: { type: String, required: true },
   createdTime: { type: Date, required: true, default: Date.now },
+  fileName: { type: String, required: true },
   title: { type: String, required: true },
   timeLimit: { type: Number, required: true },
   memoryLimit: { type: Number, required: true },
   processes: { type: Number, required: true, default: 1 },
   fullScore: { type: Number, required: true },
+  dailyQuota: { type: Number },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   tags: [String],
   problemRelatedTags: [String],

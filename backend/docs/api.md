@@ -196,9 +196,9 @@ Retrieves a list of all problems.
 ]
 ```
 
-### `GET /api/problems/:problemID`
+### `GET /api/problems/:serialNumber`
 
-Retrieves a single problem by its ID, including its description and sample test cases.
+Retrieves a single problem by its serial number, including its description and sample test cases.
 
 -   **Authentication:** Required.
 
@@ -220,7 +220,6 @@ Retrieves a single problem by its ID, including its description and sample test 
   },
   "_id": "68fb738f149ff1b7927a14a6",
   "serialNumber": 0,
-  "problemID": "tps-example",
   "createdTime": "2025-10-24T12:39:43.750Z",
   "title": "Problem Title",
   "timeLimit": 1,
@@ -260,7 +259,7 @@ Responses:
 -   `400 Bad Request`: Invalid problem data.
 -   `401 Unauthorized`: If the requester is not an admin.
 
-### `PUT /api/problems/:problemID`
+### `PUT /api/problems/:serialNumber`
 
 Updates an existing problem by uploading a new `.tar.gz` file.
 
@@ -272,7 +271,7 @@ Responses:
 -   `400 Bad Request`: Invalid problem data.
 -   `401 Unauthorized`: If the requester is not an admin.
 
-### `PATCH /api/problems/:problemID`
+### `PATCH /api/problems/:serialNumber`
 
 Updates specific fields of a problem.
 
@@ -285,7 +284,7 @@ Responses:
 -   `401 Unauthorized`: If the requester is not an admin.
 -   `404 Not Found`: If the problem does not exist.
 
-### `DELETE /api/problems/:problemID`
+### `DELETE /api/problems/:serialNumber`
 
 Deletes a problem and its associated files.
 
@@ -296,13 +295,13 @@ Responses:
 -   `401 Unauthorized`: If the requester is not an admin.
 -   `404 Not Found`: If the problem does not exist.
 
-### `POST /api/problems/:problemID/rejudge`
+### `POST /api/problems/:serialNumber/rejudge`
 
 Triggers a rejudge for all submissions associated with the problem.
 
 -   **Authentication:** Admin only.
 -   **Parameters:**
-    -   `problemSerialNumber` (string): The serial number of the problem.
+    -   `serialNumber` (string): The serial number of the problem.
 -   **Response Example:**
     `Rejudge triggered for X submissions.`
 -   **Status Codes:**
@@ -311,13 +310,13 @@ Triggers a rejudge for all submissions associated with the problem.
     -   `403 Forbidden`: User is not an admin.
     -   `404 Not Found`: Problem does not exist.
 
-### `GET /api/problems/:problemID/allowed-languages`
+### `GET /api/problems/:serialNumber/allowed-languages`
 
 Retrieves the list of programming languages allowed for submissions to a specific problem.
 
 -   **Authentication:** Required.
 -   **Parameters:**
-    -   `problemID` (string): The unique identifier of the problem.
+    -   `serialNumber` (string): The serial number of the problem.
 -   **Response:** Array of allowed language identifiers.
 -   **Example Response:**
     ```json
@@ -338,13 +337,13 @@ Retrieves the list of programming languages allowed for submissions to a specifi
     -   `404 Not Found`: Problem with given ID does not exist.
     -   `500 Internal Server Error`: Failed to read problem metadata.
 
-### `GET /api/problems/:problemID/testcases/:testcaseName`
+### `GET /api/problems/:serialNumber/testcases/:testcaseName`
 
 Generates or retrieves a test case for a specific problem.
 
 -   **Authentication:** Required.
 -   **Parameters:**
-    -   `problemID` (string): The unique identifier of the problem.
+    -   `serialNumber` (string): The serial number of the problem.
     -   `testcaseName` (string): The name of the test case to generate.
 -   **Response:** Plain text test case input.
 -   **Status Codes:**
@@ -364,13 +363,12 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
 -   **Query Parameters (optional):**
     -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username.
     -   `userID` (string): Filter submissions by user MongoDB ObjectId. Non-admins can only filter by their own userID.
-    -   `problemID` (string): Filter submissions by problem ID.
     -   `problemSerialNumber` (number): Filter submissions by problem serial number (display ID).
     -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`).
     -   `minScore` (number): Filter submissions with score greater than or equal to this value.
     -   `maxScore` (number): Filter submissions with score less than or equal to this value.
 -   **Examples:** 
-    -   `GET /api/submissions?username=admin&problemID=tps-example`
+    -   `GET /api/submissions?username=admin&problemSerialNumber=1001`
     -   `GET /api/submissions?status=AC&minScore=50`
     -   `GET /api/submissions?problemSerialNumber=0&maxScore=100`
 -   **Response Example:**
@@ -382,7 +380,6 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
         "username": "admin",
         "userHandle": "Admin Administrator",
         "userID": "68fb6d6e6deaffa916ced917",
-        "problemID": "tps-example",
         "problemSerialNumber": 0,
         "problemTitle": "Problem Title",
         "language": "g++ c++17",
@@ -409,7 +406,6 @@ Retrieves a single submission by its serial number. Non-admin users can only vie
       "username": "admin",
       "userHandle": "Admin Administrator",
       "userID": "68fb6d6e6deaffa916ced917",
-      "problemID": "tps-example",
       "problemSerialNumber": 0,
       "problemTitle": "Problem Title",
       "language": "g++ c++17",
@@ -445,14 +441,14 @@ Creates a new code submission for a problem.
 
 -   **Authentication:** Required.
 -   **Request Body:** Submission object with the following fields:
-    -   `problemID` (string, required): The ID of the problem to submit to.
+    -   `problemSerialNumber` (number, required): The serial number of the problem to submit to.
     -   `language` (string, required): Programming language identifier (e.g., `"g++ c++17"`, `"python3"`, `"gcc c17"`).
     -   `userSolution` (array, required): Array of source code files.
         -   Each file has `filename` and `content` properties.
 -   **Request Example:**
     ```json
     {
-      "problemID": "tps-example",
+      "problemSerialNumber": 0,
       "language": "g++ c++17",
       "userSolution": [
         {
@@ -470,7 +466,6 @@ Creates a new code submission for a problem.
       "username": "admin",
       "userHandle": "Admin Administrator",
       "userID": "68fb6d6e6deaffa916ced917",
-      "problemID": "tps-example",
       "problemSerialNumber": 0,
       "problemTitle": "Problem Title",
       "language": "g++ c++17",
