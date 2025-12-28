@@ -101,7 +101,36 @@ async fn create_temp_problem(client: &Client) -> i64 {
     }
     
     let problem: Value = response.json().await.expect("Failed to parse created problem JSON");
-    problem["serialNumber"].as_i64().expect("serialNumber should be an integer")
+    let serial_number = problem["serialNumber"].as_i64().expect("serialNumber should be an integer");
+
+    // Poll for status == "ready"
+    let mut attempts = 0;
+    loop {
+        let response = client
+            .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
+            .send()
+            .await
+            .expect("Failed to get problem");
+        
+        let problem: Value = response.json().await.expect("Failed to parse problem JSON");
+        if problem["status"] == "ready" {
+            break;
+        }
+        if problem["status"] == "error" {
+            panic!("Problem creation failed (status: error)");
+        }
+        
+        attempts += 1;
+        if attempts % 10 == 0 {
+            println!("Waiting for problem to be ready... attempt {}", attempts);
+        }
+        if attempts > 120 { // 60 seconds timeout
+            panic!("Problem creation timed out (status not ready)");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    serial_number
 }
 
 #[allow(dead_code)]
@@ -159,6 +188,33 @@ async fn create_temp_problem_with_quota(client: &Client, quota: i32) -> i64 {
         .expect("Failed to update problem quota");
     
     assert_eq!(response.status(), StatusCode::CREATED, "Failed to update problem quota");
+
+    // Poll for status == "ready"
+    let mut attempts = 0;
+    loop {
+        let response = client
+            .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
+            .send()
+            .await
+            .expect("Failed to get problem");
+        
+        let problem: Value = response.json().await.expect("Failed to parse problem JSON");
+        if problem["status"] == "ready" {
+            break;
+        }
+        if problem["status"] == "error" {
+            panic!("Problem creation failed (status: error)");
+        }
+        
+        attempts += 1;
+        if attempts % 10 == 0 {
+            println!("Waiting for problem to be ready... attempt {}", attempts);
+        }
+        if attempts > 120 { // 60 seconds timeout
+            panic!("Problem creation timed out (status not ready)");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
 
     serial_number
 }
@@ -582,26 +638,11 @@ pub async fn random_submission_api_calls(count: usize) {
         .expect("Failed to login as admin");
     
     // Create problem
-    let problem_id = format!("sub-prob-{}", rand::rng().random_range(1000..9999));
-    let tarball = create_tarball_with_id(&problem_id);
-    let part = multipart::Part::bytes(tarball).file_name("problem.tar.gz");
-    let form = multipart::Form::new().part("problem", part);
-    
-    let res = client.post("http://localhost:8787/api/problems")
-        .multipart(form)
-        .send()
-        .await
-        .expect("Failed to create setup problem");
-
-    if res.status() != StatusCode::CREATED {
-        let status = res.status();
-        let text = res.text().await.unwrap_or_default();
-        println!("Warning: Failed to create setup problem in submission test: {} - {}", status, text);
-    }
+    let serial_number = create_temp_problem(&client).await;
 
     // Create a submission
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": serial_number,
         "language": "C++17",
         "userSolution": [{
             "filename": "main.cpp",

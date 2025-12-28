@@ -7,6 +7,12 @@ enum ScorePolicy {
   Min = 'min'
 }
 
+export enum ProblemStatus {
+  Ready = 'ready',
+  Waiting = 'waiting',
+  Error = 'error'
+}
+
 interface ITestcase {
   filename: string;
   point: number;
@@ -23,6 +29,7 @@ interface IProblem extends Document {
   processes: number;
   fullScore: number;
   dailyQuota?: number;
+  status: ProblemStatus;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
   tags?: string[];
@@ -53,6 +60,7 @@ const problemSchema = new Schema<IProblem>({
   processes: { type: Number, required: true, default: 1 },
   fullScore: { type: Number, required: true },
   dailyQuota: { type: Number },
+  status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   tags: [String],
   problemRelatedTags: [String],

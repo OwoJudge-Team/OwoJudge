@@ -356,7 +356,7 @@ pub async fn random_contest_api_calls(count: usize) {
                     client.get(&format!("http://localhost:8787/api/contests/{}", cid)).send().await
                 },
                 "get_contest_detail_invalid" => {
-                    client.get("http://localhost:8787/api/contests/invalid-id").send().await
+                    client.get("http://localhost:8787/api/contests/000000000000000000000000").send().await
                 },
                 _ => unreachable!(),
             }

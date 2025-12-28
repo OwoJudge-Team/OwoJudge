@@ -25,6 +25,6 @@ fi
 cd __test__/api-test || exit 1
 cargo --quiet run
 cd ../..
-docker compose logs > api_test_output 2>&1
+docker compose logs backend > api_test_output 2>&1
 
 docker compose down -v --remove-orphans || true

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
-import { Problem } from '../mongoose/schemas/problems';
+import { Problem, ProblemStatus } from '../mongoose/schemas/problems';
 import { User, IUser } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
@@ -115,6 +115,11 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     const problem = await Problem.findOne({ serialNumber: data.problemSerialNumber });
     if (!problem) {
       response.status(404).send('Problem not found');
+      return;
+    }
+
+    if (problem.status !== ProblemStatus.Ready) {
+      response.status(400).send('Problem is not ready for submission');
       return;
     }
 
