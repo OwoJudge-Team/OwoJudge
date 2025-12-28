@@ -12,9 +12,10 @@ setup_cgroups() {
         # Create the isolate master cgroup directory
         mkdir -p /sys/fs/cgroup/isolate
         # echo $$ > /sys/fs/cgroup/isolate/cgroup.procs
+        ls -al /sys/fs/cgroup/isolate/cgroup.subtree_control
         
         # Now enable controllers in the isolate cgroup (which is now empty of processes)
-        echo "+memory +cpu +pids +cpuset +io" > /sys/fs/cgroup/isolate/cgroup.subtree_control
+        echo "+memory +cpu +pids +cpuset +io" | tee /sys/fs/cgroup/isolate/cgroup.subtree_control
 
         # Verify controllers are enabled
         echo "Enabled controllers: $(cat /sys/fs/cgroup/isolate/cgroup.controllers)"

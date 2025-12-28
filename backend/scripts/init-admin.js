@@ -64,6 +64,11 @@ const randomString = (size) => {
   return crypto.randomBytes(size).toString('hex');
 };
 
+/*
+USER: admin
+PASS: 239899b1fc5b25ef0f8dce73
+*/
+
 // Get environment variables
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
 const ROOT_USERNAME = process.env.ROOT_USERNAME || 'admin';
@@ -87,7 +92,7 @@ async function createAdminUser() {
     }
 
     // Generate random password for admin user
-    const adminPassword = randomString(12);
+    const adminPassword = 'admin';
     
     // Create admin user object
     const adminUser = new User({

@@ -7,6 +7,7 @@ import { getUsersValidation } from '../validations/get-user-validation';
 import { updateUserValidation } from '../validations/update-user-validation';
 import IValidationError from '../validations/validation-error';
 import { IRequest } from '../utils/request-interface';
+import { giteaService } from '../utils/gitea-service';
 
 const usersRouter = Router();
 
@@ -64,6 +65,7 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
 };
 
 const createUser = async (request: IRequest, response: Response) => {
+  console.log('Create User request received');
   if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
@@ -90,7 +92,29 @@ const createUser = async (request: IRequest, response: Response) => {
     newUser.solvedProblem = 0;
     newUser.solvedProblems = [];
     newUser.rating = 0;
+    console.log(`Creating user: ${newUser.username}`);
     const savedUser: IUser = await newUser.save();
+
+    console.log(`User ${savedUser.username} created successfully`);
+    // Create Gitea user and repository for the new user
+    try {
+      // First create the user in Gitea
+      await giteaService.createUser({
+        username: savedUser.username,
+        email: `${savedUser.username}@owojudge.local`,
+        password: password, // Use the original password before hashing
+        fullName: savedUser.displayName || savedUser.username
+      });
+
+      // Then create their repository
+      await giteaService.createUserRepo({
+        username: savedUser.username
+      });
+    } catch (giteaError) {
+      console.error(`Failed to create Gitea user/repo for ${savedUser.username}:`, giteaError);
+      // Don't fail user creation if Gitea setup fails
+    }
+
     response.status(201).send(savedUser);
   } catch (error) {
     console.log(`Error: ${error}`);

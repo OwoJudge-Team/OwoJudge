@@ -1,4 +1,43 @@
 services:
+  gitea:
+    image: docker.gitea.com/gitea:1.25.2
+    container_name: gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea
+      - GITEA__security__INSTALL_LOCK=true
+    restart: always
+    networks:
+      - judge-network
+    volumes:
+      - ./gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./secrets:/secrets
+      - ./scripts/entrypoint.sh:/scripts/entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "0.0.0.0:22:22"
+    depends_on:
+      - db
+    entrypoint: ["/bin/bash", "/scripts/entrypoint.sh"]
+
+  db:
+    image: docker.io/library/postgres:14
+    restart: always
+    environment:
+      - POSTGRES_USER=gitea
+      - POSTGRES_PASSWORD=gitea
+      - POSTGRES_DB=gitea
+    networks:
+      - judge-network
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
   mongodb:
     image: mongo:7.0
     container_name: judge-mongodb
@@ -6,7 +45,7 @@ services:
     environment:
       MONGO_INITDB_DATABASE: judge
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
@@ -16,6 +55,8 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
+    privileged: true
+    pid: host
     container_name: judge-backend
     restart: unless-stopped
     depends_on:
@@ -26,15 +67,17 @@ services:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongodb:27017/judge
       - ROOT_USERNAME=${ROOT_USERNAME:-admin}
+      - GITEA_BASE_URL=http://gitea:3000
     volumes:
       - ./uploads:/app/uploads
       - ./problems:/app/problems
       - ./scripts:/app/scripts
+      - ./secrets:/secrets:ro
       # Mount cgroup filesystem for isolate
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      # - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /sys/fs/cgroup/:/sys/fs/cgroup/:rw
       # Mount /run for isolate runtime directories
       - /run:/run:rw
-    privileged: true
     networks:
       - judge-network
     # Necessary for isolate to work with cgroups
@@ -46,7 +89,7 @@ services:
     security_opt:
       - apparmor:unconfined
     # Additional options for better cgroup support
-    cgroup: host
+    # cgroup: host
 
 volumes:
   mongodb_data:
