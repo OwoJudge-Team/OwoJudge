@@ -206,7 +206,7 @@ async function createMockProblems() {
           const formData = new FormData();
           const fileContent = fs.readFileSync(tarballPath);
           const blob = new Blob([fileContent], { type: 'application/gzip' });
-          formData.append('problem', blob, `${problemData.problemID}.tar.gz`);
+          formData.append('problem', blob, `${problemData.dirName}.tar.gz`);
           
           const uploadResp = await fetch(`${API_URL}/problems`, {
             method: 'POST',
@@ -222,7 +222,7 @@ async function createMockProblems() {
           }
 
           createdProblems.push({
-            problemID: problemData.problemID,
+            dirName: problemData.dirName,
             title: problemData.title,
             difficulty: problemData.problemRelatedTags[0] || 'N/A'
           });
@@ -254,7 +254,7 @@ async function createMockProblems() {
       console.log('Created Problems:');
       console.log('----------------------------');
       createdProblems.forEach(problem => {
-        console.log(`${problem.problemID.padEnd(35)} ${problem.title.padEnd(35)} [${problem.difficulty.padEnd(6)}]`);
+        console.log(`${problem.dirName.padEnd(35)} ${problem.title.padEnd(35)} [${problem.difficulty.padEnd(6)}]`);
       });
     }
 

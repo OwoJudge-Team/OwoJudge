@@ -7,10 +7,12 @@ const SubmissionStatus = {
   AC: 'Accepted',
   WA: 'Wrong Answer',
   PE: 'Presentation Error',
+  PS: 'Partially Scored',
   CE: 'Compilation Error',
   RE: 'Runtime Error',
   MLE: 'Memory Limit Exceeded',
   TLE: 'Time Limit Exceeded',
+  PLE: 'Process Limit Exceeded',
   SE: 'System Error'
 };
 
@@ -23,7 +25,6 @@ const userSchema = new mongoose.Schema({
 
 const problemSchema = new mongoose.Schema({
   serialNumber: Number,
-  problemID: String,
   title: String,
   testcase: [{
     filename: String,
@@ -47,7 +48,6 @@ const testCaseResultSchema = new mongoose.Schema({
 
 const submissionSchema = new mongoose.Schema({
   serialNumber: { type: Number, unique: true },
-  problemID: { type: String, required: true },
   problemSerialNumber: { type: Number, required: true },
   problemTitle: { type: String, required: true },
   username: { type: String, required: true },
@@ -104,12 +104,14 @@ const codeSnippets = {
 
 function generateRandomStatus() {
   const rand = Math.random();
-  if (rand < 0.5) return SubmissionStatus.AC;
+  if (rand < 0.4) return SubmissionStatus.AC;
+  if (rand < 0.5) return SubmissionStatus.PS;
   if (rand < 0.7) return SubmissionStatus.WA;
   if (rand < 0.8) return SubmissionStatus.TLE;
-  if (rand < 0.9) return SubmissionStatus.RE;
-  if (rand < 0.95) return SubmissionStatus.CE;
-  return SubmissionStatus.MLE;
+  if (rand < 0.85) return SubmissionStatus.RE;
+  if (rand < 0.9) return SubmissionStatus.CE;
+  if (rand < 0.95) return SubmissionStatus.MLE;
+  return SubmissionStatus.PLE;
 }
 
 // Main function
@@ -189,7 +191,6 @@ async function createMockSubmissions() {
       }
 
       const submission = new Submission({
-        problemID: problem.problemID,
         problemSerialNumber: problem.serialNumber,
         problemTitle: problem.title,
         username: user.username,
