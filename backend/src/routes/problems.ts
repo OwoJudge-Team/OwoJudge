@@ -600,7 +600,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
           status: ProblemStatus.Waiting
         };
 
-        const updatedProblem = await Problem.findByIdAndUpdate(existingProblem._id, updateData, { new: true, runValidators: true });
+        await Problem.findByIdAndUpdate(existingProblem._id, updateData, { new: true, runValidators: true });
         
         // Generate test cases asynchronously using tps gen in isolated environment
         // This runs in the background and doesn't block the response
