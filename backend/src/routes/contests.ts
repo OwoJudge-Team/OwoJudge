@@ -146,7 +146,7 @@ const getStandings = async (request: IRequest, response: Response) => {
 };
 
 const updateStandings = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
+  if (!request.isAuthenticated() || !request.user || !(request.user as IUser).isAdmin) {
     response.status(401).send('Please login as an admin first');
     return;
   }

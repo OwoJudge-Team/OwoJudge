@@ -86,7 +86,7 @@ const upload = multer({
 const getProblems = async (request: IRequest, response: Response) => {
   try {
     const problems: IProblem[] = await Problem.find()
-      .select('id serialNumber title createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
+      .select('id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
       .sort({ serialNumber: -1 });
     response.status(200).send(problems);
   } catch (error) {
