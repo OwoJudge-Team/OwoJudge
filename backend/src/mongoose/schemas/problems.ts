@@ -7,6 +7,12 @@ enum ScorePolicy {
   Min = 'min'
 }
 
+export enum ProblemStatus {
+  Ready = 'ready',
+  Waiting = 'waiting',
+  Error = 'error'
+}
+
 interface ITestcase {
   filename: string;
   point: number;
@@ -15,13 +21,15 @@ interface ITestcase {
 
 interface IProblem extends Document {
   serialNumber: number;
-  problemID: string;
   createdTime: Date;
   title: string;
+  fileName: string;
   timeLimit: number;
   memoryLimit: number;
   processes: number;
   fullScore: number;
+  dailyQuota?: number;
+  status: ProblemStatus;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
   tags?: string[];
@@ -44,13 +52,15 @@ interface IProblem extends Document {
 
 const problemSchema = new Schema<IProblem>({
   serialNumber: { type: Number, unique: true },
-  problemID: { type: String, required: true },
   createdTime: { type: Date, required: true, default: Date.now },
+  fileName: { type: String, required: true },
   title: { type: String, required: true },
   timeLimit: { type: Number, required: true },
   memoryLimit: { type: Number, required: true },
   processes: { type: Number, required: true, default: 1 },
   fullScore: { type: Number, required: true },
+  dailyQuota: { type: Number },
+  status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   tags: [String],
   problemRelatedTags: [String],

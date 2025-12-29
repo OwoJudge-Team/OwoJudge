@@ -108,6 +108,16 @@ You can generate mock users, problems, and submissions using the following comma
   docker compose exec backend node scripts/create-mock-submissions.js 100
   ```
 
+4. **Create Mock Contests**
+  Generates random contests with start and end times.
+  ```bash
+  # Create 5 mock contests (default)
+  docker compose exec backend node scripts/create-mock-contests.js
+
+  # Create 10 mock contests
+  docker compose exec backend node scripts/create-mock-contests.js 10
+  ```
+
 ### Helper Scripts
 
 - **Create Single Test User**:

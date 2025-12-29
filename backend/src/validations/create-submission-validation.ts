@@ -1,17 +1,10 @@
 export const createSubmissionValidation = {
-  problemID: {
-    isLength: {
-      options: {
-        min: 4,
-        max: 16
-      },
-      errorMessage: 'Length of problemID must between 4 to 16 characters'
+  problemSerialNumber: {
+    isInt: {
+      errorMessage: 'ProblemSerialNumber should be an integer'
     },
     notEmpty: {
-      errorMessage: 'ProblemID should not be empty'
-    },
-    isString: {
-      errorMessage: 'ProblemID should be a string'
+      errorMessage: 'ProblemSerialNumber should not be empty'
     }
   },
   language: {

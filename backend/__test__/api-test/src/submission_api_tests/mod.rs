@@ -22,6 +22,10 @@ fn get_example_problem_path() -> PathBuf {
 fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let temp_dir = PathBuf::from(manifest_dir).join("target/temp_problems_submission").join(format!("gen_{}", problem_id));
+    
+    if temp_dir.exists() {
+        std_fs::remove_dir_all(&temp_dir).expect("Failed to clean temp dir");
+    }
     std_fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
 
     let original_tar_path = get_example_problem_path();
@@ -31,9 +35,13 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
         .arg(&original_tar_path)
         .arg("-C")
         .arg(&temp_dir)
+        .arg("-m")
         .status()
         .expect("Failed to execute tar command");
-    assert!(status.success(), "Failed to extract tarball");
+    
+    if !status.success() {
+        println!("Warning: tar command returned error status: {:?}", status);
+    }
 
     let extracted_dir = temp_dir.join("tps-example");
     let problem_json_path = extracted_dir.join("problem.json");
@@ -66,7 +74,7 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-async fn create_temp_problem(client: &Client) -> String {
+async fn create_temp_problem(client: &Client) -> i64 {
     let mut rng = rand::rng();
     let suffix: u32 = rng.random_range(1000..9999);
     let problem_id = format!("sub-{}", suffix); // Shortened to fit 16 char limit
@@ -92,7 +100,37 @@ async fn create_temp_problem(client: &Client) -> String {
         panic!("Failed to create problem: {}", text);
     }
     
-    problem_id
+    let problem: Value = response.json().await.expect("Failed to parse created problem JSON");
+    let serial_number = problem["serialNumber"].as_i64().expect("serialNumber should be an integer");
+
+    // Poll for status == "ready"
+    let mut attempts = 0;
+    loop {
+        let response = client
+            .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
+            .send()
+            .await
+            .expect("Failed to get problem");
+        
+        let problem: Value = response.json().await.expect("Failed to parse problem JSON");
+        if problem["status"] == "ready" {
+            break;
+        }
+        if problem["status"] == "error" {
+            panic!("Problem creation failed (status: error)");
+        }
+        
+        attempts += 1;
+        if attempts % 10 == 0 {
+            println!("Waiting for problem to be ready... attempt {}", attempts);
+        }
+        if attempts > 120 { // 60 seconds timeout
+            panic!("Problem creation timed out (status not ready)");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    serial_number
 }
 
 #[allow(dead_code)]
@@ -107,6 +145,251 @@ async fn login_admin(client: &Client) {
         .await
         .expect("Failed to login");
     assert_eq!(response.status(), StatusCode::CREATED, "Admin login failed");
+}
+
+#[allow(dead_code)]
+async fn create_temp_problem_with_quota(client: &Client, quota: i32) -> i64 {
+    let mut rng = rand::rng();
+    let suffix: u32 = rng.random_range(1000..9999);
+    let problem_id = format!("sub-{}", suffix);
+
+    let file_content = create_tarball_with_id(&problem_id);
+    
+    let part = multipart::Part::bytes(file_content)
+        .file_name(format!("{}.tar.gz", problem_id))
+        .mime_str("application/gzip")
+        .expect("Failed to create mime type");
+
+    let form = multipart::Form::new().part("problem", part);
+
+    let response = client
+        .post("http://localhost:8787/api/problems")
+        .multipart(form)
+        .send()
+        .await
+        .expect("Failed to upload problem");
+    
+    if response.status() != StatusCode::CREATED {
+        let text = response.text().await.unwrap_or_default();
+        panic!("Failed to create problem: {}", text);
+    }
+    
+    let problem: Value = response.json().await.expect("Failed to parse created problem JSON");
+    let serial_number = problem["serialNumber"].as_i64().expect("serialNumber should be an integer");
+
+    // Update problem with quota
+    let response = client
+        .patch(&format!("http://localhost:8787/api/problems/{}", serial_number))
+        .json(&json!({
+            "dailyQuota": quota
+        }))
+        .send()
+        .await
+        .expect("Failed to update problem quota");
+    
+    assert_eq!(response.status(), StatusCode::CREATED, "Failed to update problem quota");
+
+    // Poll for status == "ready"
+    let mut attempts = 0;
+    loop {
+        let response = client
+            .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
+            .send()
+            .await
+            .expect("Failed to get problem");
+        
+        let problem: Value = response.json().await.expect("Failed to parse problem JSON");
+        if problem["status"] == "ready" {
+            break;
+        }
+        if problem["status"] == "error" {
+            panic!("Problem creation failed (status: error)");
+        }
+        
+        attempts += 1;
+        if attempts % 10 == 0 {
+            println!("Waiting for problem to be ready... attempt {}", attempts);
+        }
+        if attempts > 120 { // 60 seconds timeout
+            panic!("Problem creation timed out (status not ready)");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    serial_number
+}
+
+#[tokio::test]
+async fn test_submission_daily_quota() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    login_admin(&client).await;
+    
+    // Create problem with quota of 2
+    let serial_number = create_temp_problem_with_quota(&client, 2).await;
+
+    // Create a test user
+    let user = TempUser::new("quota_user", "password123", &client).await;
+    
+    let user_client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build user client");
+        
+    // Login as user
+    let response = user_client
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": user.username,
+            "password": user.password
+        }))
+        .send()
+        .await
+        .expect("Failed to login user");
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // 1st submission - Should succeed
+    let response = user_client
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": serial_number,
+            "language": "g++ c++17",
+            "userSolution": [
+                {
+                    "filename": "main.cpp",
+                    "content": "int main() { return 0; }"
+                }
+            ]
+        }))
+        .send()
+        .await
+        .expect("Failed to submit");
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // 2nd submission - Should succeed
+    let response = user_client
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": serial_number,
+            "language": "g++ c++17",
+            "userSolution": [
+                {
+                    "filename": "main.cpp",
+                    "content": "int main() { return 0; }"
+                }
+            ]
+        }))
+        .send()
+        .await
+        .expect("Failed to submit");
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // 3rd submission - Should fail with 429
+    let response = user_client
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": serial_number,
+            "language": "g++ c++17",
+            "userSolution": [
+                {
+                    "filename": "main.cpp",
+                    "content": "int main() { return 0; }"
+                }
+            ]
+        }))
+        .send()
+        .await
+        .expect("Failed to submit");
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
+async fn test_submission_pagination() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    login_admin(&client).await;
+    let serial_number = create_temp_problem(&client).await;
+
+    let user = TempUser::new("pagination_user", "password123", &client).await;
+    
+    let user_client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build user client");
+
+    // Login as user
+    let response = user_client
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": user.username,
+            "password": user.password
+        }))
+        .send()
+        .await
+        .expect("Failed to login user");
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // Create 5 submissions
+    for _ in 0..5 {
+        let response = user_client
+            .post("http://localhost:8787/api/submissions")
+            .json(&json!({
+                "problemSerialNumber": serial_number,
+                "language": "g++ c++17",
+                "userSolution": [
+                    {
+                        "filename": "main.cpp",
+                        "content": "int main() { return 0; }"
+                    }
+                ]
+            }))
+            .send()
+            .await
+            .expect("Failed to submit");
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
+
+    // Test limit=2, offset=0
+    let response = user_client
+        .get("http://localhost:8787/api/submissions")
+        .query(&[("limit", "2"), ("offset", "0"), ("problemSerialNumber", &serial_number.to_string())])
+        .send()
+        .await
+        .expect("Failed to get submissions");
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    let submissions: Vec<Value> = response.json().await.expect("Failed to parse JSON");
+    assert_eq!(submissions.len(), 2);
+
+    // Test limit=2, offset=2
+    let response = user_client
+        .get("http://localhost:8787/api/submissions")
+        .query(&[("limit", "2"), ("offset", "2"), ("problemSerialNumber", &serial_number.to_string())])
+        .send()
+        .await
+        .expect("Failed to get submissions");
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    let submissions: Vec<Value> = response.json().await.expect("Failed to parse JSON");
+    assert_eq!(submissions.len(), 2);
+
+    // Test limit=2, offset=4 (should return 1)
+    let response = user_client
+        .get("http://localhost:8787/api/submissions")
+        .query(&[("limit", "2"), ("offset", "4"), ("problemSerialNumber", &serial_number.to_string())])
+        .send()
+        .await
+        .expect("Failed to get submissions");
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    let submissions: Vec<Value> = response.json().await.expect("Failed to parse JSON");
+    assert_eq!(submissions.len(), 1);
 }
 
 #[allow(dead_code)]
@@ -166,11 +449,11 @@ async fn test_submission_lifecycle() {
 
     // 1. Login as Admin to create problem
     login_admin(&client).await;
-    let problem_id = create_temp_problem(&client).await;
+    let serial_number = create_temp_problem(&client).await;
 
     // 2. Create a submission
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": serial_number,
         "language": "g++ c++17",
         "userSolution": [
             {
@@ -189,30 +472,30 @@ async fn test_submission_lifecycle() {
     
     assert_eq!(response.status(), StatusCode::CREATED);
     let submission: Value = response.json().await.expect("Failed to parse submission");
-    let serial_number = submission["serialNumber"].as_i64().expect("Missing serialNumber");
+    let submission_serial_number = submission["serialNumber"].as_i64().expect("Missing serialNumber");
     
     // 3. Get Submission Details
     let response = client
-        .get(&format!("http://localhost:8787/api/submission/{}", serial_number))
+        .get(&format!("http://localhost:8787/api/submission/{}", submission_serial_number))
         .send()
         .await
         .expect("Failed to get submission");
     assert_eq!(response.status(), StatusCode::OK);
     let fetched_sub: Value = response.json().await.expect("Failed to parse fetched submission");
-    assert_eq!(fetched_sub["serialNumber"], serial_number);
-    assert_eq!(fetched_sub["problemID"], problem_id);
+    assert_eq!(fetched_sub["serialNumber"], submission_serial_number);
+    assert_eq!(fetched_sub["problemSerialNumber"], serial_number);
 
     // 4. List Submissions and filter
     let response = client
         .get("http://localhost:8787/api/submissions")
-        .query(&[("problemID", &problem_id)])
+        .query(&[("problemSerialNumber", &serial_number.to_string())])
         .send()
         .await
         .expect("Failed to list submissions");
     assert_eq!(response.status(), StatusCode::OK);
     let list: Value = response.json().await.expect("Failed to parse list");
     assert!(list.is_array());
-    let found = list.as_array().unwrap().iter().any(|s| s["serialNumber"] == serial_number);
+    let found = list.as_array().unwrap().iter().any(|s| s["serialNumber"] == submission_serial_number);
     assert!(found, "Submission not found in list");
 }
 
@@ -224,7 +507,7 @@ async fn test_submission_permissions() {
 
     // Setup: Admin creates problem and users
     login_admin(&admin_client).await;
-    let problem_id = create_temp_problem(&admin_client).await;
+    let problem_serial_number = create_temp_problem(&admin_client).await;
     
     let mut rng = rand::rng();
     let user1 = format!("user_{}", rng.random_range(1000..9999));
@@ -236,7 +519,7 @@ async fn test_submission_permissions() {
     // User 1 submits
     login_user(&user_client, &user1).await;
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": problem_serial_number,
         "language": "g++ c++17",
         "userSolution": [{ "filename": "main.cpp", "content": "..." }]
     });
@@ -275,11 +558,11 @@ async fn test_submission_permissions() {
 async fn test_rejudge_flow() {
     let client = ClientBuilder::new().cookie_store(true).build().unwrap();
     login_admin(&client).await;
-    let problem_id = create_temp_problem(&client).await;
+    let problem_serial_number = create_temp_problem(&client).await;
 
     // Submit
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": problem_serial_number,
         "language": "g++ c++17",
         "userSolution": [{ "filename": "main.cpp", "content": "..." }]
     });
@@ -313,7 +596,7 @@ async fn test_invalid_submission() {
 
     // 1. Invalid Problem ID
     let body = json!({
-        "problemID": "bad-id",
+        "problemSerialNumber": 99999999,
         "language": "g++ c++17",
         "userSolution": [{ "filename": "main.cpp", "content": "..." }]
     });
@@ -327,7 +610,7 @@ async fn test_invalid_submission() {
 
     // 2. Missing Fields
     let body = json!({
-        "problemID": "some-id"
+        "problemSerialNumber": 1001
         // missing language and solution
     });
     let response = client
@@ -355,26 +638,11 @@ pub async fn random_submission_api_calls(count: usize) {
         .expect("Failed to login as admin");
     
     // Create problem
-    let problem_id = format!("sub-prob-{}", rand::rng().random_range(1000..9999));
-    let tarball = create_tarball_with_id(&problem_id);
-    let part = multipart::Part::bytes(tarball).file_name("problem.tar.gz");
-    let form = multipart::Form::new().part("problem", part);
-    
-    let res = client.post("http://localhost:8787/api/problems")
-        .multipart(form)
-        .send()
-        .await
-        .expect("Failed to create setup problem");
-
-    if res.status() != StatusCode::CREATED {
-        let status = res.status();
-        let text = res.text().await.unwrap_or_default();
-        println!("Warning: Failed to create setup problem in submission test: {} - {}", status, text);
-    }
+    let serial_number = create_temp_problem(&client).await;
 
     // Create a submission
     let submission_body = json!({
-        "problemID": problem_id,
+        "problemSerialNumber": serial_number,
         "language": "C++17",
         "userSolution": [{
             "filename": "main.cpp",

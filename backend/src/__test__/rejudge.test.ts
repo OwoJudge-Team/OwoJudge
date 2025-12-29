@@ -112,7 +112,7 @@ describe('Rejudge API', () => {
     describe('rejudgeProblem', () => {
         beforeEach(() => {
             mockRequest = {
-                params: { problemID: 'test-problem' },
+                params: { serialNumber: '1001' },
                 user: { isAdmin: true } as any,
                 isAuthenticated: () => true
             };
@@ -131,14 +131,14 @@ describe('Rejudge API', () => {
         });
 
         it('should rejudge all submissions for the problem', async () => {
-            const mockProblem = { problemID: 'test-problem' };
+            const mockProblem = { serialNumber: 1001 };
             const mockSubmission1 = {
                 serialNumber: 101,
                 status: SubmissionStatus.AC,
                 score: 100,
                 results: [...Array(5)],
                 save: vi.fn(),
-                problemID: 'test-problem'
+                problemSerialNumber: 1001
             };
             const mockSubmission2 = {
                 serialNumber: 102,
@@ -146,7 +146,7 @@ describe('Rejudge API', () => {
                 score: 0,
                 results: [...Array(5)],
                 save: vi.fn(),
-                problemID: 'test-problem'
+                problemSerialNumber: 1001
             };
 
             mockProblemFindOne.mockResolvedValue(mockProblem);
@@ -154,7 +154,7 @@ describe('Rejudge API', () => {
 
             await rejudgeProblem(mockRequest as IRequest, mockResponse as Response);
 
-            expect(mockSubmissionFind).toHaveBeenCalledWith({ problemID: 'test-problem' });
+            expect(mockSubmissionFind).toHaveBeenCalledWith({ problemSerialNumber: 1001 });
 
             // Check submission 1
             expect(mockSubmission1.status).toBe(SubmissionStatus.PD);

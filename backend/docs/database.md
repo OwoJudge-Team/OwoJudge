@@ -19,7 +19,6 @@ The `User` schema stores information about registered users.
 The `Problem` schema stores all data related to a specific programming problem.
 
 - `serialNumber` (Number, unique): An auto-incremented serial number for the problem.
-- `problemID` (String, required): A unique identifier for the problem (user-defined).
 - `createdTime` (Date, required, default: now): The timestamp when the problem was created.
 - `title` (String, required): The title of the problem.
 - `timeLimit` (Number, required): The time limit for execution, in seconds.
@@ -51,7 +50,6 @@ The `Problem` schema stores all data related to a specific programming problem.
 The `Submission` schema records each code submission made by a user.
 
 - `serialNumber` (Number, unique, auto-increment): A unique serial number for the submission (starts from 1,000,000).
-- `problemID` (String, required): The ID of the problem being submitted.
 - `problemSerialNumber` (Number, required): The serial number of the problem.
 - `problemTitle` (String, required): The title of the problem.
 - `username` (String, required): The username of the user who made the submission.
@@ -81,7 +79,7 @@ The `Contest` schema defines a programming contest.
 - `startTime` (Date, required): The start time of the contest.
 - `endTime` (Date, required): The end time of the contest.
 - `problems` (Array of Objects): An array of problem objects included in the contest.
-    - `name` (String): The problem name/ID.
+    - `serialNumber` (Number): The problem serial number.
     - `score` (Number): The score assigned to the problem in this contest.
 - `standings` (Array of Objects): The current standings of the contest.
     - `username` (String, required)
@@ -89,6 +87,6 @@ The `Contest` schema defines a programming contest.
     - `solvedCount` (Number, default: 0)
     - `lastSubmissionTime` (Date)
     - `problemScores` (Array of Objects):
-        - `problemID` (String)
+        - `serialNumber` (Number)
         - `score` (Number)
         - `lastSubmissionTime` (Date)
