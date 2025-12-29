@@ -19,6 +19,7 @@ The `User` schema stores information about registered users.
 The `Problem` schema stores all data related to a specific programming problem.
 
 - `serialNumber` (Number, unique): An auto-incremented serial number for the problem.
+- `status` (String, required, enum: `ready`, `waiting`, `error`): The current status of the problem's test case generation.
 - `createdTime` (Date, required, default: now): The timestamp when the problem was created.
 - `title` (String, required): The title of the problem.
 - `timeLimit` (Number, required): The time limit for execution, in seconds.

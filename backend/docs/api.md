@@ -181,7 +181,7 @@ Retrieves a list of all problems.
     },
     "_id": "68fb738f149ff1b7927a14a6",
     "serialNumber": 0,
-    "problemID": "tps-example",
+    "status": "ready",
     "createdTime": "2025-10-24T12:39:43.750Z",
     "title": "Problem Title",
     "timeLimit": 1,
@@ -220,6 +220,7 @@ Retrieves a single problem by its serial number, including its description and s
   },
   "_id": "68fb738f149ff1b7927a14a6",
   "serialNumber": 0,
+  "status": "ready",
   "createdTime": "2025-10-24T12:39:43.750Z",
   "title": "Problem Title",
   "timeLimit": 1,
@@ -254,35 +255,70 @@ Creates a new problem by uploading a `.tar.gz` file containing the problem data.
 
 Please modify from tps-example in the docs/example.
 
-Responses:
--   `201 Created`: Problem created successfully.
--   `400 Bad Request`: Invalid problem data.
--   `401 Unauthorized`: If the requester is not an admin.
+-   **Response Example:**
+    ```json
+    {
+      "_id": "68fb738f149ff1b7927a14a6",
+      "serialNumber": 0,
+      "title": "Problem Title",
+      "status": "waiting",
+      "createdTime": "2025-10-24T12:39:43.750Z",
+      "timeLimit": 1,
+      "memoryLimit": 2048,
+      "tags": ["basic"],
+      "problemRelatedTags": ["math"]
+    }
+    ```
+-   **Note:** Test case generation starts in the background. The problem status will be `waiting` initially and will change to `ready` (or `error`) once processing is complete. Submissions are only allowed when the status is `ready`.
+
+-   **Status Codes:**
+    -   `201 Created`: Problem created successfully.
+    -   `400 Bad Request`: Invalid problem data or file format.
+    -   `401 Unauthorized`: If the requester is not an admin.
 
 ### `PUT /api/problems/:serialNumber`
 
 Updates an existing problem by uploading a new `.tar.gz` file.
 
 -   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
 -   **Request:** `multipart/form-data` with a single file field named `problem`.
 
-Responses:
--   `201 Created`: Problem updated successfully.
--   `400 Bad Request`: Invalid problem data.
--   `401 Unauthorized`: If the requester is not an admin.
+-   **Response Example:**
+    `Problem updated successfully`
+
+-   **Note:** Similar to creation, test case generation runs in the background and the problem status will be set to `waiting` during this time.
+
+-   **Status Codes:**
+    -   `201 Created`: Problem updated successfully.
+    -   `400 Bad Request`: Invalid problem data.
+    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `404 Not Found`: If the problem does not exist.
 
 ### `PATCH /api/problems/:serialNumber`
 
-Updates specific fields of a problem.
+Updates specific metadata fields of a problem.
 
 -   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
 -   **Request Body:** Partial `IProblem` object.
 
-Responses:
--   `201 Created`: Problem updated successfully.
--   `400 Bad Request`: Invalid update data.
--   `401 Unauthorized`: If the requester is not an admin.
--   `404 Not Found`: If the problem does not exist.
+-   **Response Example:**
+    ```json
+    {
+      "serialNumber": 0,
+      "title": "Updated Problem Title",
+      "message": "Problem updated successfully"
+    }
+    ```
+
+-   **Status Codes:**
+    -   `201 Created`: Problem updated successfully.
+    -   `400 Bad Request`: Invalid update data.
+    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `404 Not Found`: If the problem does not exist.
 
 ### `DELETE /api/problems/:serialNumber`
 
@@ -334,7 +370,7 @@ Retrieves the list of programming languages allowed for submissions to a specifi
 -   **Status Codes:**
     -   `200 OK`: Successfully retrieved allowed languages.
     -   `401 Unauthorized`: User not authenticated.
-    -   `404 Not Found`: Problem with given ID does not exist.
+    -   `404 Not Found`: Problem with given serial number does not exist.
     -   `500 Internal Server Error`: Failed to read problem metadata.
 
 ### `GET /api/problems/:serialNumber/testcases/:testcaseName`
@@ -367,10 +403,13 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
     -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`).
     -   `minScore` (number): Filter submissions with score greater than or equal to this value.
     -   `maxScore` (number): Filter submissions with score less than or equal to this value.
+    -   `index` (number): Number of records to skip (takes precedence over `offset`).
+    -   `offset` (number): Number of records to skip (default: 0).
+    -   `limit` (number): Number of records to return (default: 20).
 -   **Examples:** 
     -   `GET /api/submissions?username=admin&problemSerialNumber=1001`
     -   `GET /api/submissions?status=AC&minScore=50`
-    -   `GET /api/submissions?problemSerialNumber=0&maxScore=100`
+    -   `GET /api/submissions?problemSerialNumber=0&maxScore=100&limit=10&offset=20`
 -   **Response Example:**
     ```json
     [
@@ -483,7 +522,7 @@ Creates a new code submission for a problem.
     ```
 -   **Status Codes:**
     -   `201 Created`: Submission created and queued successfully.
-    -   `400 Bad Request`: Invalid submission data.
+    -   `400 Bad Request`: Invalid submission data or problem is not ready (status is not `ready`).
     -   `401 Unauthorized`: User not authenticated.
     -   `404 Not Found`: Problem does not exist.
 -   `500 Internal Server Error`: Failed to creating submission.

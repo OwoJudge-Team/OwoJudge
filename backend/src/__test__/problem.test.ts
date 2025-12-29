@@ -9,11 +9,11 @@ vi.mock('../mongoose/schemas/problems', () => {
   return {
     Problem: {
       findOne: vi.fn().mockImplementation((query) => {
-        if (query.problemID === 'non-existent-problem') {
+        if (query.serialNumber === 999) {
           return null;
         }
         return {
-          problemID: query.problemID || 'test-problem',
+          serialNumber: query.serialNumber || 0,
           title: 'Test Problem',
           timeLimit: 1000,
           memoryLimit: 262144,
@@ -21,21 +21,21 @@ vi.mock('../mongoose/schemas/problems', () => {
         };
       }),
       findOneAndUpdate: vi.fn().mockImplementation((query, data) => {
-        if (query.problemID === 'non-existent-problem') {
+        if (query.serialNumber === 999) {
           return null;
         }
         return {
           ...data,
-          problemID: query.problemID,
+          serialNumber: query.serialNumber,
           _id: 'mockedid123'
         };
       }),
       findOneAndDelete: vi.fn().mockImplementation((query) => {
-        if (query.problemID === 'non-existent-problem') {
+        if (query.serialNumber === 999) {
           return null;
         }
         return {
-          problemID: query.problemID,
+          serialNumber: query.serialNumber,
           title: 'Test Problem',
           timeLimit: 1000,
           memoryLimit: 262144,
@@ -55,7 +55,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
     ...actualModule,
     Problem: function() {
       return {
-        problemID: '',
+        serialNumber: 0,
         createdTime: new Date(),
         title: '',
         fileName: '',
@@ -66,7 +66,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
         submissionDetail: {},
         userDetail: {},
         save: vi.fn().mockResolvedValue({
-          problemID: 'test-problem',
+          serialNumber: 0,
           title: 'Test Problem'
         })
       };
@@ -80,9 +80,9 @@ vi.mock('../routes/problems', async (importOriginal) => {
       res.status(200).send('File uploaded and extracted successfully');
     }),
     deleteProblem: vi.fn().mockImplementation(async (req, res) => {
-      const { problemID } = req.params;
-      // Check for empty problemID - consider empty string as no problemID
-      if (!problemID) {
+      const { serialNumber } = req.params;
+      // Check for empty serialNumber
+      if (!serialNumber) {
         res.status(400).send('Problem ID is required');
         return;
       }
@@ -92,16 +92,16 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
-      if (problemID === 'non-existent-problem') {
+      if (serialNumber === '999') {
         res.sendStatus(404);
         return;
       }
       
-      res.status(200).send({ problemID, message: 'Problem deleted successfully' });
+      res.status(200).send({ serialNumber, message: 'Problem deleted successfully' });
     }),
     updateProblem: vi.fn().mockImplementation(async (req, res) => {
-      const { problemID } = req.params;
-      if (!problemID) {
+      const { serialNumber } = req.params;
+      if (!serialNumber) {
         res.status(400).send('Problem ID is required');
         return;
       }
@@ -111,20 +111,20 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
-      if (problemID === 'non-existent-problem') {
+      if (serialNumber === '999') {
         res.sendStatus(404);
         return;
       }
       
       res.status(201).send({ 
-        problemID, 
+        serialNumber, 
         title: req.body.title || 'Updated Problem',
         message: 'Problem updated successfully' 
       });
     }),
     updateProblemWithFile: vi.fn().mockImplementation(async (req, res) => {
-      const { problemID } = req.params;
-      if (!problemID) {
+      const { serialNumber } = req.params;
+      if (!serialNumber) {
         res.status(400).send('Problem ID is required');
         return;
       }
@@ -139,45 +139,45 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
       
-      if (problemID === 'non-existent-problem') {
+      if (serialNumber === '999') {
         res.status(404).send('Problem not found');
         return;
       }
       
       res.status(200).send({
-        problemID,
+        serialNumber,
         title: 'Updated Problem with File',
         message: 'Problem updated successfully with new file'
       });
     }),
     getProblemByID: vi.fn().mockImplementation(async (req, res) => {
-      const { problemID } = req.params;
+      const { serialNumber } = req.params;
       
       if (!req.user) {
         res.status(401).send('Please login first');
         return;
       }
       
-      if (!problemID) {
+      if (!serialNumber) {
         res.status(400).send('Problem ID is required');
         return;
       }
       
-      if (problemID === 'non-existent-problem') {
+      if (serialNumber === '999') {
         res.sendStatus(404);
         return;
       }
 
       // Mock problem from database
       const problem = {
-        problemID,
+        serialNumber,
         title: 'Test Problem',
         description: 'Basic Description',
         timeLimit: 1000,
         memoryLimit: 262144,
         tags: ['math', 'implementation'],
         toObject: () => ({
-          problemID,
+          serialNumber,
           title: 'Test Problem',
           description: 'Basic Description',
           timeLimit: 1000,
@@ -220,7 +220,7 @@ vi.mock('fs', () => ({
   readFileSync: vi.fn().mockImplementation((path) => {
     if (path.includes('metadata.json')) {
       return JSON.stringify({
-        problemID: 'test-problem',
+        serialNumber: 0,
         title: 'Test Problem',
         timeLimit: 1000,
         memoryLimit: 262144
@@ -307,7 +307,7 @@ describe('problem upload', () => {
 describe('problem deletion', () => {
   it('should delete a problem successfully', async () => {
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: true },
       isAuthenticated: () => true
     } as unknown as IRequest;
@@ -325,7 +325,7 @@ describe('problem deletion', () => {
 
   it('should return 404 when trying to delete a non-existent problem', async () => {
     const request = {
-      params: { problemID: 'non-existent-problem' },
+      params: { serialNumber: '999' },
       user: { isAdmin: true },
       isAuthenticated: () => true
     } as unknown as IRequest;
@@ -352,7 +352,7 @@ describe('problem deletion', () => {
     });
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: false },
       isAuthenticated: () => true
     } as unknown as IRequest;
@@ -368,7 +368,7 @@ describe('problem deletion', () => {
     expect(response.status).toHaveBeenCalledWith(403);
   });
   
-  it('should return 400 when no problemID is provided', async () => {
+  it('should return 400 when no serialNumber is provided', async () => {
     // Use the imported deleteProblem function which is already mocked at the module level
     const { deleteProblem } = await import('../routes/problems');
     
@@ -395,7 +395,7 @@ describe('problem update', () => {
     const { updateProblem } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: false },
       body: { title: 'Should not update' },
       isAuthenticated: () => true
@@ -416,7 +416,7 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: false },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
@@ -440,7 +440,7 @@ describe('problem update', () => {
     const { updateProblem } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: true },
       body: {
         title: 'Updated Test Problem',
@@ -465,7 +465,7 @@ describe('problem update', () => {
     const { updateProblem } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'non-existent-problem' },
+      params: { serialNumber: '999' },
       user: { isAdmin: true },
       body: {
         title: 'This Should Fail'
@@ -488,7 +488,7 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: true },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
@@ -511,7 +511,7 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { isAdmin: true },
       file: undefined,
       isAuthenticated: () => true
@@ -531,7 +531,7 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'non-existent-problem' },
+      params: { serialNumber: '999' },
       user: { isAdmin: true },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
@@ -554,7 +554,7 @@ describe('problem update', () => {
     const { updateProblemWithFile } = await import('../routes/problems');
     
     const mockReq = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       isAuthenticated: () => true
     } as unknown as IRequest;
     
@@ -593,7 +593,7 @@ describe('problem get by id', () => {
     const { getProblemByID } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: { id: 'user123', username: 'testuser' },
       isAuthenticated: () => true
     } as unknown as IRequest;
@@ -613,7 +613,7 @@ describe('problem get by id', () => {
     const { getProblemByID } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'test-problem' },
+      params: { serialNumber: '0' },
       user: null,
       isAuthenticated: () => false
     } as unknown as IRequest;
@@ -633,7 +633,7 @@ describe('problem get by id', () => {
     const { getProblemByID } = await import('../routes/problems');
     
     const request = {
-      params: { problemID: 'non-existent-problem' },
+      params: { serialNumber: '999' },
       user: { id: 'user123', username: 'testuser' },
       isAuthenticated: () => true
     } as unknown as IRequest;
@@ -652,18 +652,18 @@ describe('problem get by id', () => {
   it('should handle reading file errors gracefully', async () => {
     // Create a special mock for this test case
     const mockGetProblemByID = vi.fn().mockImplementation(async (req, res) => {
-      const { problemID } = req.params;
+      const { serialNumber } = req.params;
       
       // Mock database problem
       const problem = {
-        problemID,
+        serialNumber,
         title: 'Test Problem',
         description: 'Basic Description',
         timeLimit: 1000,
         memoryLimit: 262144,
         tags: ['math'],
         toObject: () => ({
-          problemID,
+          serialNumber,
           title: 'Test Problem',
           description: 'Basic Description',
           timeLimit: 1000,
@@ -677,7 +677,7 @@ describe('problem get by id', () => {
     });
     
     const request = {
-      params: { problemID: 'problem-with-missing-files' },
+      params: { serialNumber: '888' },
       user: { id: 'user123', username: 'testuser' },
       isAuthenticated: () => true
     } as unknown as IRequest;

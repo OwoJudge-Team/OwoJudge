@@ -87,7 +87,7 @@ const getProblems = async (request: IRequest, response: Response) => {
   try {
     const problems: IProblem[] = await Problem.find()
       .select('id serialNumber title createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
-      .sort({ createdTime: -1 });
+      .sort({ serialNumber: -1 });
     response.status(200).send(problems);
   } catch (error) {
     if (error) {

@@ -51,7 +51,7 @@ const getSubmissions = async (request: IRequest, response: Response): Promise<vo
   try {
     const submissions: ISubmission[] = await Submission.find(query)
       .select('serialNumber problemSerialNumber problemTitle username userHandle userID status language createdTime score')
-      .sort({ createdTime: -1 })
+      .sort({ serialNumber: -1 })
       .skip(finalOffset)
       .limit(limit);
     response.status(200).send(submissions);
