@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FaCopy, FaCheck } from "react-icons/fa6";
 
 interface CodeBlockProps {
@@ -19,30 +19,27 @@ export default function CodeBlock({ language, children }: CodeBlockProps) {
   };
 
   return (
-    <div className="group/code relative my-6 overflow-hidden rounded-xl border border-slate-700/60 bg-[#282c34] shadow-lg transition-all hover:border-slate-600 hover:shadow-xl">
+    <div className="group/code bg-code relative my-6 overflow-hidden rounded-lg border border-slate-700 shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-700/60 bg-slate-900/40 px-4 py-2.5 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          {/* Window controls decoration */}
-          <div className="flex gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-rose-500/20 group-hover/code:bg-rose-500" />
-            <div className="h-2.5 w-2.5 rounded-full bg-amber-500/20 group-hover/code:bg-amber-500" />
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/20 group-hover/code:bg-emerald-500" />
-          </div>
-          <span className="ml-2 text-xs font-bold uppercase tracking-wider text-slate-400/80">
-            {language || "text"}
-          </span>
-        </div>
-
+      <div className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+          {language || "text"}
+        </span>
         <button
           onClick={handleCopy}
-          className="relative inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-all hover:bg-white/10 hover:text-slate-100 focus:outline-none"
+          className="inline-flex items-center gap-1.5 rounded bg-slate-700/50 px-2 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-600 hover:text-white focus:outline-none"
           aria-label="Copy code"
         >
           {copied ? (
-            <FaCheck className="h-4 w-4 text-emerald-400" />
+            <>
+              <FaCheck className="h-3 w-3 text-emerald-400" />
+              <span className="text-emerald-400">Copied!</span>
+            </>
           ) : (
-            <FaCopy className="h-4 w-4" />
+            <>
+              <FaCopy className="h-3 w-3" />
+              <span>Copy</span>
+            </>
           )}
         </button>
       </div>
@@ -51,12 +48,12 @@ export default function CodeBlock({ language, children }: CodeBlockProps) {
       <div className="relative">
         <SyntaxHighlighter
           language={language}
-          style={oneDark as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+          style={nord}
           PreTag="div"
           wrapLines={true}
           showLineNumbers={true}
           lineNumberStyle={{
-            minWidth: "2.5em",
+            minWidth: "3em",
             paddingRight: "1em",
             textAlign: "right",
             color: "#4b5563", // slate-600
@@ -64,15 +61,16 @@ export default function CodeBlock({ language, children }: CodeBlockProps) {
           }}
           customStyle={{
             margin: 0,
-            padding: "1.5rem",
+            padding: "0.7rem",
             backgroundColor: "transparent", // Let parent bg show through
-            fontSize: "0.95rem",
-            lineHeight: "1.6",
+            fontSize: "1rem",
+            lineHeight: "1.5",
           }}
           codeTagProps={{
             style: {
-              fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+              // fontFamily: '"Fira Mono", "JetBrains Mono", "Consolas", monospace',
               fontVariantLigatures: "none",
+              fontWeight: 400,
             },
           }}
         >

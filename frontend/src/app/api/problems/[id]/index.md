@@ -138,4 +138,68 @@ signed main() {
     // cin >> t;
     while(t--) hyper();
 }
+
+
+
+
+#define y second
+#define all(a) a.begin(),a.end()
+template<typename T,typename U>ostream& operator<<(ostream&os,const pair<T,U>&p)
+{return os<<"("<<p.first<<", "<<p.second<<")";}
+template<typename T>ostream& operator<<(ostream&os,const vector<T>&v)
+{os<<"[";rep(i,0,v.size())os<<v[i]<<(i==v.size()-1?"]":", ");return os;}
+#ifdef DBG
+template<typename T> void _dbg(T x){cerr<<x<<"\n";}
+template<typename T,typename ...U> void _dbg(T x,U ...y){cerr<<x<<", ";_dbg(y...);}
+#define dbg(...) do{cerr<<"\033[33m"<<#__VA_ARGS__<<" = ";_dbg(__VA_ARGS__);cerr<<"\033[0m";}while(0)
+#else
+#define dbg(...) (void(0))
+#endif
+using pii = pair<int,int>;
+using vi = vector<int>;
+using vvi = vector<vi>;
+using vp = vector<pii>;
+using vvp = vector<vp>;
+const vp dirs = {{0,1},{1,0},{0,-1},{-1,0},{1,1},{1,-1},{-1,1},{-1,-1},{0,0}};
+const int INF = 1e18;
+
+struct Node {
+    int w, l, r, id;
+};
+
+void hyper() {
+    int n; cin >> n;
+    vi f(n);
+    rep(i,0,n) cin >> f[i];
+    if(n == 1) return cout << "0\n", void();
+
+    vector<Node> v;
+    rep(i,0,n) v.push_back({f[i], -1, -1, i});
+    priority_queue<pii, vector<pii>, greater<pii>> pq;
+    rep(i,0,n) pq.emplace(f[i], i);
+    while(pq.size() > 1) {
+        auto [w1, a] = pq.top(); pq.pop();
+        auto [w2, b] = pq.top(); pq.pop();
+        int i = v.size();
+        v.push_back({w1 + w2, a, b, -1});
+        pq.emplace(v[i].w, i);
+    }
+
+    vector<string> ans(n);
+    function<void(int,string)> dfs = [&](int u, string s) {
+        if(v[u].id != -1) return ans[v[u].id] = s, void();
+        if(v[u].r != -1) dfs(v[u].r, s + '1');
+        if(v[u].l != -1) dfs(v[u].l, s + '0');
+    };
+    dfs(pq.top().y, "");
+    rep(i,0,n) cout << ans[i] << '\n';
+}
+
+signed main() {
+    ios::sync_with_stdio(0), cin.tie(0);
+    int t = 1;
+    // cin >> t;
+    while(t--) hyper();
+}
+
 ```
