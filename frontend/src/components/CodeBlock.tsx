@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FaCopy, FaCheck } from "react-icons/fa6";
 
 interface CodeBlockProps {
@@ -19,52 +19,60 @@ export default function CodeBlock({ language, children }: CodeBlockProps) {
   };
 
   return (
-    <div className="group/code relative my-4">
-      {/* Language label and copy button */}
-      <div className="flex items-center justify-between rounded-t-lg border border-b-0 border-slate-700 bg-slate-800/80 px-4 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-          {language}
-        </span>
+    <div className="group/code relative my-6 overflow-hidden rounded-xl border border-slate-700/60 bg-[#282c34] shadow-lg transition-all hover:border-slate-600 hover:shadow-xl">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-700/60 bg-slate-900/40 px-4 py-2.5 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          {/* Window controls decoration */}
+          <div className="flex gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-rose-500/20 group-hover/code:bg-rose-500" />
+            <div className="h-2.5 w-2.5 rounded-full bg-amber-500/20 group-hover/code:bg-amber-500" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/20 group-hover/code:bg-emerald-500" />
+          </div>
+          <span className="ml-2 text-xs font-bold uppercase tracking-wider text-slate-400/80">
+            {language || "text"}
+          </span>
+        </div>
+
         <button
           onClick={handleCopy}
-          className="inline-flex items-center gap-1.5 rounded-md bg-slate-700/50 px-2.5 py-1.5 text-xs font-semibold text-slate-300 transition-all duration-150 hover:bg-slate-700 hover:text-slate-100"
+          className="relative inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-all hover:bg-white/10 hover:text-slate-100 focus:outline-none"
           aria-label="Copy code"
         >
           {copied ? (
-            <>
-              <FaCheck className="h-3 w-3 text-emerald-400" />
-              <span className="text-emerald-400">Copied!</span>
-            </>
+            <FaCheck className="h-4 w-4 text-emerald-400" />
           ) : (
-            <>
-              <FaCopy className="h-3 w-3" />
-              <span>Copy</span>
-            </>
+            <FaCopy className="h-4 w-4" />
           )}
         </button>
       </div>
 
       {/* Code content */}
-      <div className="overflow-hidden rounded-b-lg border border-slate-700 bg-slate-950">
+      <div className="relative">
         <SyntaxHighlighter
           language={language}
-          style={vscDarkPlus as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+          style={oneDark as any} // eslint-disable-line @typescript-eslint/no-explicit-any
           PreTag="div"
           wrapLines={true}
-          showLineNumbers={false}
+          showLineNumbers={true}
+          lineNumberStyle={{
+            minWidth: "2.5em",
+            paddingRight: "1em",
+            textAlign: "right",
+            color: "#4b5563", // slate-600
+            userSelect: "none",
+          }}
           customStyle={{
-            backgroundColor: "rgb(2 6 23)",
-            padding: "1.25rem",
             margin: 0,
-            borderRadius: 0,
-            fontSize: "0.875rem",
-            lineHeight: "1.5",
+            padding: "1.5rem",
+            backgroundColor: "transparent", // Let parent bg show through
+            fontSize: "0.95rem",
+            lineHeight: "1.6",
           }}
           codeTagProps={{
             style: {
-              fontFamily:
-                'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-              backgroundColor: "transparent",
+              fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+              fontVariantLigatures: "none",
             },
           }}
         >
