@@ -30,7 +30,7 @@ const CreateProblemPage: React.FC = () => {
         // TODO: Submit to backend
         await new Promise((resolve) => setTimeout(resolve, 2000));
         setModalMessage("Problem uploaded successfully!");
-      } catch (error) {
+      } catch {
         setModalMessage("An error occurred while uploading the problem.");
       } finally {
         setLoading(false);

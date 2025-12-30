@@ -1,5 +1,7 @@
 ## Problem Statement
 
+中文測試，weber 好帥好喜歡愛了愛了 <3
+
 Iahub is playing an uncommon game. Initially, he has $ n $ boxes, numbered 1, 2, 3, $ ... $ , $ n $ . Each box has some number of candies in it, described by a sequence $ a*{1} $ , $ a*{2} $ , $ ... $ , $ a*{n} $ . The number $ a*{k} $ represents the number of candies in box $ k $ .
 
 The goal of the game is to move all candies into exactly two boxes. The rest of $ n-2 $ boxes must contain zero candies. Iahub is allowed to do several (possible zero) moves. At each move he chooses two different boxes $ i $ and $ j $ , such that $ a*{i} \le a*{j} $ . Then, Iahub moves from box $ j $ to box $ i $ exactly $ a\_{i} $ candies. Obviously, when two boxes have equal number of candies, box number $ j $ becomes empty.

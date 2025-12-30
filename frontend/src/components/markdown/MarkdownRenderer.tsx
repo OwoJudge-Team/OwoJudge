@@ -19,17 +19,27 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
         rehypePlugins={[rehypeKatex]}
         components={
           {
-            pre: ({ children }) => <>{children}</>,
-            code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<"code">) => {
-              const match = /language-(\w+)/.exec(className || "");
-              const isInline = !match;
+            pre: ({ children }) => {
+              const childArray = React.Children.toArray(children);
+              const codeElement = childArray.find((child) => React.isValidElement(child)) as
+                | React.ReactElement<{ className?: string; children?: React.ReactNode }>
+                | undefined;
 
-              if (!isInline && match) {
+              if (codeElement) {
+                const { className, children: codeContent } = codeElement.props;
+                const match = /language-(\w+)/.exec(className || "");
+                const language = match ? match[1] : "text";
+
                 return (
-                  <CodeBlock language={match[1]}>{String(children).replace(/\n$/, "")}</CodeBlock>
+                  <CodeBlock language={language}>
+                    {String(codeContent).replace(/\n$/, "")}
+                  </CodeBlock>
                 );
               }
 
+              return <>{children}</>;
+            },
+            code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<"code">) => {
               return (
                 <code
                   className={`${className || ""} rounded bg-slate-800/60 px-1.5 py-0.5 font-mono text-sm text-indigo-300`}

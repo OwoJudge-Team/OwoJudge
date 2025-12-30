@@ -5,7 +5,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface FetchOptions extends Omit<RequestInit, "body"> {
-  body?: any;
+  body?: unknown;
 }
 
 /**
@@ -47,7 +47,7 @@ export async function apiGet(
  */
 export async function apiPost(
   endpoint: string,
-  body?: any,
+  body?: unknown,
   options: Omit<FetchOptions, "method" | "body"> = {}
 ) {
   return apiFetch(endpoint, { ...options, method: "POST", body });
@@ -58,7 +58,7 @@ export async function apiPost(
  */
 export async function apiPut(
   endpoint: string,
-  body?: any,
+  body?: unknown,
   options: Omit<FetchOptions, "method" | "body"> = {}
 ) {
   return apiFetch(endpoint, { ...options, method: "PUT", body });
