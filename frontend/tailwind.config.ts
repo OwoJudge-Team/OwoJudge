@@ -10,6 +10,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        code: "oklch(0.2491 0.0335 264.3)",
         background: "var(--background)",
         foreground: "var(--foreground)",
         primary: {

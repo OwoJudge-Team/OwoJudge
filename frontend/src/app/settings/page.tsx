@@ -8,7 +8,7 @@ export default function SettingsPage() {
   const [handle, setHandle] = useState("");
   const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("user");
+  const [role] = useState("user");
   const [email, setEmail] = useState("");
   const [sshPublicKey, setSshPublicKey] = useState("");
 

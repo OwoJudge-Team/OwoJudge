@@ -45,7 +45,7 @@ const CreateContestPage = () => {
       setModalMessage(
         `Contest created successfully! \n${selectedProblems.map((id) => problems.find((p) => p.id === id)?.title).join(", ")}\nStart Time: ${startTime}\nDeadline: ${deadline}`
       );
-    } catch (error) {
+    } catch {
       setModalMessage("An error occurred while uploading the problem.");
     } finally {
       setLoading(false);

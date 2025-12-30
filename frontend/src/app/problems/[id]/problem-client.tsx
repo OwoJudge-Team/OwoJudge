@@ -50,8 +50,8 @@ export default function ProblemClient({ displayID }: Props) {
       }
       setSource("");
       setMessage("Submitted successfully!");
-    } catch (e: any) {
-      setError(e.message || "Error submitting");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error submitting");
     } finally {
       setSubmitting(false);
     }

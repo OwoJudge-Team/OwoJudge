@@ -2,7 +2,7 @@
 
 import React from "react";
 import contests from "@/constants/contests";
-import { formatISOTime, compareToCurrentTime } from "@/utils/time";
+import { formatISOTime } from "@/utils/time";
 import { problems as allProblems } from "@/constants/problems";
 import { useParams } from "next/navigation";
 import {

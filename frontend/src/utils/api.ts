@@ -4,8 +4,8 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-interface FetchOptions extends Omit<RequestInit, 'body'> {
-  body?: any;
+interface FetchOptions extends Omit<RequestInit, "body"> {
+  body?: unknown;
 }
 
 /**
@@ -17,9 +17,9 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
 
   const config: RequestInit = {
     ...restOptions,
-    credentials: 'include',
+    credentials: "include",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...headers,
     },
   };
@@ -35,41 +35,52 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
 /**
  * GET request
  */
-export async function apiGet(endpoint: string, options: Omit<FetchOptions, 'method' | 'body'> = {}) {
-  return apiFetch(endpoint, { ...options, method: 'GET' });
+export async function apiGet(
+  endpoint: string,
+  options: Omit<FetchOptions, "method" | "body"> = {}
+) {
+  return apiFetch(endpoint, { ...options, method: "GET" });
 }
 
 /**
  * POST request
  */
-export async function apiPost(endpoint: string, body?: any, options: Omit<FetchOptions, 'method' | 'body'> = {}) {
-  return apiFetch(endpoint, { ...options, method: 'POST', body });
+export async function apiPost(
+  endpoint: string,
+  body?: unknown,
+  options: Omit<FetchOptions, "method" | "body"> = {}
+) {
+  return apiFetch(endpoint, { ...options, method: "POST", body });
 }
 
 /**
  * PUT request
  */
-export async function apiPut(endpoint: string, body?: any, options: Omit<FetchOptions, 'method' | 'body'> = {}) {
-  return apiFetch(endpoint, { ...options, method: 'PUT', body });
+export async function apiPut(
+  endpoint: string,
+  body?: unknown,
+  options: Omit<FetchOptions, "method" | "body"> = {}
+) {
+  return apiFetch(endpoint, { ...options, method: "PUT", body });
 }
 
 /**
  * DELETE request
  */
-export async function apiDelete(endpoint: string, options: Omit<FetchOptions, 'method' | 'body'> = {}) {
-  return apiFetch(endpoint, { ...options, method: 'DELETE' });
+export async function apiDelete(
+  endpoint: string,
+  options: Omit<FetchOptions, "method" | "body"> = {}
+) {
+  return apiFetch(endpoint, { ...options, method: "DELETE" });
 }
 
 /**
  * Auth-specific API calls
  */
 export const authApi = {
-  login: (username: string, password: string) => 
-    apiPost('/api/auth', { username, password }),
-  
-  logout: () => 
-    apiPost('/api/auth/logout'),
-  
-  getStatus: () => 
-    apiGet('/api/auth/status'),
+  login: (username: string, password: string) => apiPost("/api/auth", { username, password }),
+
+  logout: () => apiPost("/api/auth/logout"),
+
+  getStatus: () => apiGet("/api/auth/status"),
 };
