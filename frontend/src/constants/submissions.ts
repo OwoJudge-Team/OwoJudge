@@ -1,11 +1,11 @@
-type Status = "AC" | "WA" | "TLE" | "MLE";
+export type Status = "AC" | "WA" | "TLE" | "MLE";
 
-interface UserSolution {
+export interface UserSolution {
   filename: string;
   content: string;
 }
 
-interface Result {
+export interface Result {
   testcase: string;
   status: Status;
   time: number;
@@ -13,7 +13,7 @@ interface Result {
   message: string;
 }
 
-interface Submission {
+export interface Submission {
   id: number;
   user: string;
   userID: number;
@@ -725,13 +725,236 @@ export const submissions: Submission[] = [
     language: "C++",
     score: 100,
     createdTime: "2024-06-15 10:30:00",
+    status: "WA",
+    time: "0.39s",
+    memory: "4MB",
+    userSolution: {
+      filename: "main.cpp",
+      content: `#include <bits/stdc++.h>
+#define rep(i,a,b) for(int i=a; i<b; ++i)
+#define rep1(i,a,b) for(int i=a; i<=b; ++i)
+#define per(i,a,b) for(int i=a; i>b; --i)
+#define per1(i,a,b) for(int i=a; i>=b; --i)
+#define int int64_t
+#define fi first
+#define se second
+#define max max<int>
+#define min min<int>
+#define all(a) a.begin(),a.end()
+#define sz(a) (signed)a.size()
+#define rr(a,x) memset(a,x,sizeof(a))
+#define hyper ios::sync_with_stdio(0); cin.tie(0)
+using namespace std;
+using pii = pair<int,int>;
+using vi = vector<int>;
+using vvi = vector<vi>;
+const int IINF = 0x3f3f3f3f;
+const int INF = 0x3f3f3f3f3f3f3f3f;
+const int MOD = 998244353;
+const int MN = 1005;
+
+int n, m, k, t;
+int dis[MN][MN];
+int toair[MN];
+set<int> airports;
+
+void update(int u, int v, int w) {
+    rep1(i,1,n) rep1(j,1,n) {
+        dis[i][j] = min(dis[i][j], dis[i][u] + w + dis[v][j]);
+        dis[i][j] = min(dis[i][j], dis[i][v] + w + dis[u][j]);
+    }
+    rep1(i,1,n) {
+        toair[i] = INF;
+        for(int v: airports) {
+            toair[i] = min(toair[i], dis[i][v]);
+        }
+    }
+}
+
+signed main() {
+    hyper;
+    cin >> n >> m;
+    rr(dis, 0x3f);
+    rep1(i,1,n) dis[i][i] = 0;
+    rep(i,0,m) {
+        int u, v, w;
+        cin >> u >> v >> w;
+        dis[u][v] = dis[v][u] = min(dis[u][v], w);
+    }
+    cin >> k >> t;
+    rep(i,0,k) {
+        int d;
+        cin >> d;
+        airports.insert(d);
+    }
+
+    rep1(k,1,n) rep1(i,1,n) rep1(j,1,n)
+        dis[i][j] = min(dis[i][j], dis[i][k] + dis[k][j]);
+    rep1(i,1,n) {
+        toair[i] = INF;
+        for(int v: airports) {
+            toair[i] = min(toair[i], dis[i][v]);
+        }
+    }
+
+    int q; cin >> q;
+    while(q--) {
+        int type; cin >> type;
+        if(type == 1) {
+            int x, y, t;
+            cin >> x >> y >> t;
+            if(t < dis[x][y]) {
+                dis[x][y] = dis[y][x] = t;
+                update(x, y, t);
+            }
+        } else if(type == 2) {
+            int x;
+            cin >> x;
+            if(airports.count(x)) continue;
+            airports.insert(x);
+            rep1(i,1,n) {
+                toair[i] = min(toair[i], dis[i][x]);
+            }
+        } else if(type == 3) {
+            int ans = 0;
+            rep1(i,1,n) rep1(j,1,n) {
+                int air = INF;
+                if(toair[i] != INF && toair[j] != INF)
+                    air = toair[i] + t + toair[j];
+                int d = min(dis[i][j], air);
+                if(d != INF) ans += d;
+            }
+            cout << ans << '\\n';
+        }
+    }
+}
+`,
+    },
+    results: [
+      {
+        testcase: "0-01",
+        status: "AC",
+        time: 0.09,
+        memory: 10,
+        message: "Passed",
+      },
+      {
+        testcase: "0-02",
+        status: "WA",
+        time: 0.39,
+        memory: 12,
+        message: "Passed",
+      },
+    ],
+  },
+  {
+    id: 21,
+    user: "bob",
+    userID: 2,
+    problemID: 3,
+    problem: "Traveling Salesman",
+    language: "C++",
+    score: 100,
+    createdTime: "2024-06-15 10:35:00",
     status: "AC",
-    time: "0.50s",
+    time: "0.67s",
     memory: "5MB",
     userSolution: {
       filename: "main.cpp",
-      content:
-        "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}",
+      content: `#include <bits/stdc++.h>
+#define rep(i,a,b) for(int i=a; i<b; ++i)
+#define rep1(i,a,b) for(int i=a; i<=b; ++i)
+#define per(i,a,b) for(int i=a; i>b; --i)
+#define per1(i,a,b) for(int i=a; i>=b; --i)
+#define int int64_t
+#define fi first
+#define se second
+#define max max<int>
+#define min min<int>
+#define all(a) a.begin(),a.end()
+#define sz(a) (signed)a.size()
+#define rr(a,x) memset(a,x,sizeof(a))
+#define hyper ios::sync_with_stdio(0); cin.tie(0)
+using namespace std;
+using pii = pair<int,int>;
+using vi = vector<int>;
+using vvi = vector<vi>;
+const int IINF = 0x3f3f3f3f;
+const int INF = 0x3f3f3f3f3f3f3f3f;
+const int MOD = 998244353;
+const int MN = 1005;
+
+int n, m, k, t;
+int dis[MN][MN];
+set<int> airports;
+
+void update(int u, int v, int w) {
+    rep1(i,1,n) rep1(j,1,n) {
+        dis[i][j] = min(dis[i][j], dis[i][u] + w + dis[v][j]);
+        dis[i][j] = min(dis[i][j], dis[i][v] + w + dis[u][j]);
+    }
+}
+
+signed main() {
+    hyper;
+    cin >> n >> m;
+    rr(dis, 0x3f);
+    rep1(i,1,n) dis[i][i] = 0;
+    rep(i,0,m) {
+        int u, v, w;
+        cin >> u >> v >> w;
+        dis[u][v] = min(dis[u][v], w);
+        dis[v][u] = min(dis[v][u], w);
+    }
+    cin >> k >> t;
+    rep(i,0,k) {
+        int d;
+        cin >> d;
+        airports.insert(d);
+    }
+    for(int u: airports) for(int v: airports) {
+        if(u != v) {
+            dis[u][v] = min(dis[u][v], t);
+            dis[v][u] = min(dis[v][u], t);
+        }
+    }
+
+    rep1(k,1,n) rep1(i,1,n) rep1(j,1,n)
+        dis[i][j] = min(dis[i][j], dis[i][k] + dis[k][j]);
+
+    int q; cin >> q;
+    while(q--) {
+        int type; cin >> type;
+        if(type == 1) {
+            int x, y, t;
+            cin >> x >> y >> t;
+            if(t < dis[x][y]) {
+                dis[x][y] = dis[y][x] = t;
+                update(x, y, t);
+            }
+        } else if(type == 2) {
+            int x;
+            cin >> x;
+            if(airports.count(x)) continue;
+            for(int v: airports) {
+                if(t < dis[x][v]) {
+                    dis[x][v] = dis[v][x] = t;
+                }
+            }
+            for(int v: airports) {
+                update(x, v, t);
+            }
+            airports.insert(x);
+        } else if(type == 3) {
+            int ans = 0;
+            rep1(i,1,n) rep1(j,1,n) {
+                if(dis[i][j] != INF) ans += dis[i][j];
+            }
+            cout << ans << '\\n';
+        }
+    }
+}
+`,
     },
     results: [
       {
@@ -744,7 +967,7 @@ export const submissions: Submission[] = [
       {
         testcase: "0-02",
         status: "AC",
-        time: 0.45,
+        time: 0.67,
         memory: 12,
         message: "Passed",
       },
