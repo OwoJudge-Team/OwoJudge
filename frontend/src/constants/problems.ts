@@ -6,6 +6,7 @@ export interface Problem {
   acNum: number; // number of ACs
   status: "unseen" | "wrong" | "correct"; // user's submission status
   tryCount?: number; // number of attempts (only for wrong status)
+  serialNumber?: number; // serial number for problem
 }
 
 export const problems: Problem[] = [

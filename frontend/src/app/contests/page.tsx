@@ -1,6 +1,7 @@
 "use client";
 
-import contests from "@/constants/contests";
+import { useState, useEffect } from "react";
+import { apiGet } from "@/utils/api";
 import { formatISOTime, compareToCurrentTime } from "@/utils/time";
 import { FaClock } from "react-icons/fa";
 import CoolLink from "@/components/cool-link";
@@ -13,6 +14,28 @@ const END_TIME_COLOR = [
 ];
 
 const ContestPage: React.FC = () => {
+
+  const [contests, setContests] = useState<Array<{
+    _id: string;
+    title: string;
+    startTime: string;
+    endTime: string;
+  }>>([]);
+
+  useEffect(() => {
+    const fetchContests = async () => {
+      try {
+        const res = await apiGet("/api/contests");
+        const data = await res.json();
+        setContests(data);
+      } catch (error) {
+        console.error("Failed to fetch contests:", error);
+      }
+    };
+
+    fetchContests();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
