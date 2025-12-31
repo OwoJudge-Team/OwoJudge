@@ -49,7 +49,7 @@ interface ISubmission extends Document {
   status: SubmissionStatus;
   createdTime: Date;
   score?: number;
-  results?: { [groupName: string]: IGroupResult };
+  results?: Map<string, IGroupResult>;
 }
 
 const submissionSchema = new Schema<ISubmission>({
