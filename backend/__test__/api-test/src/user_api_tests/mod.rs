@@ -371,7 +371,16 @@ async fn test_create_user() {
         .send()
         .await
         .expect("Failed to send request");
-    assert_eq!(response.status(), StatusCode::CREATED);
+    
+    let status = response.status();
+    if status != StatusCode::CREATED {
+        let body = response.text().await.unwrap_or_default();
+        println!("Failed to create user. Status: {}", status);
+        println!("Response body: {}", body);
+        panic!("Expected CREATED but got {}", status);
+    }
+    
+    assert_eq!(status, StatusCode::CREATED);
 }
 
 #[tokio::test]
