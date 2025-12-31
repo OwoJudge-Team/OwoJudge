@@ -8,6 +8,7 @@ interface IUser {
   solvedProblem: number;
   solvedProblems: any;
   rating: number;
+  quotaUsage: Map<string, { count: number; date: Date }>;
   id: ObjectId;
 }
 
@@ -40,6 +41,14 @@ const userSchema = new mongoose.Schema<IUser>({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  quotaUsage: {
+    type: Map,
+    of: new mongoose.Schema({
+      count: { type: Number, required: true },
+      date: { type: Date, required: true }
+    }),
+    default: {}
   }
 });
 
