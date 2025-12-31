@@ -91,7 +91,7 @@ const getSubmissionByID = async (request: IRequest, response: Response): Promise
   }
 };
 
-const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
+export const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
   if (!request.isAuthenticated() || !request.user) {
     response.status(401).send('Please login first');
     return;
@@ -125,19 +125,31 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
 
     // Check daily quota
     if (problem.dailyQuota && problem.dailyQuota > 0) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const submissionCount = await Submission.countDocuments({
-        userID: user.id,
-        problemSerialNumber: problem.serialNumber,
-        createdTime: { $gte: startOfDay }
-      });
+      if (!user.quotaUsage) {
+        user.quotaUsage = new Map();
+      }
 
-      if (submissionCount >= problem.dailyQuota) {
+      const problemID = problem.id.toString();
+      const usage = user.quotaUsage.get(problemID);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Reset quota if it's a new day or no usage record exists
+      if (!usage || usage.date < today) {
+        user.quotaUsage.set(problemID, { count: 0, date: today });
+      }
+
+      const currentUsage = user.quotaUsage.get(problemID)!;
+
+      if (currentUsage.count >= problem.dailyQuota) {
         response.status(429).send(`Daily submission quota exceeded. Limit: ${problem.dailyQuota}`);
         return;
       }
+
+      // Increment quota usage
+      currentUsage.count += 1;
+      user.quotaUsage.set(problemID, currentUsage);
+      await user.save();
     }
 
     // Add the additional fields
@@ -146,6 +158,7 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     data.userID = user.id as any;
     data.problemSerialNumber = problem.serialNumber;
     data.problemTitle = problem.title;
+    data.results = {};
 
     const newSubmission: ISubmission = new Submission(data);
     const savedSubmission: ISubmission = await newSubmission.save();
@@ -180,7 +193,7 @@ export const rejudgeSubmission = async (request: IRequest, response: Response): 
 
     submission.status = SubmissionStatus.PD;
     submission.score = 0;
-    submission.results = [];
+    submission.results = {};
     await submission.save();
 
     submitUserSubmission(submission);

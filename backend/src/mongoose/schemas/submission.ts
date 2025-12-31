@@ -27,6 +27,16 @@ const testCaseResultSchema = new Schema<ITestCaseResult>({
   message: { type: String }
 }, { _id: false });
 
+interface IGroupResult {
+  score: number;
+  testcases: ITestCaseResult[];
+}
+
+const groupResultSchema = new Schema<IGroupResult>({
+  score: { type: Number, required: true },
+  testcases: [testCaseResultSchema]
+}, { _id: false });
+
 interface ISubmission extends Document {
   serialNumber: number;
   problemSerialNumber: number;
@@ -39,7 +49,7 @@ interface ISubmission extends Document {
   status: SubmissionStatus;
   createdTime: Date;
   score?: number;
-  results?: ITestCaseResult[];
+  results?: { [groupName: string]: IGroupResult };
 }
 
 const submissionSchema = new Schema<ISubmission>({
@@ -54,7 +64,7 @@ const submissionSchema = new Schema<ISubmission>({
   status: { type: Schema.Types.String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
   createdTime: { type: Schema.Types.Date, default: Date.now },
   score: { type: Schema.Types.Number, default: 0 },
-  results: [testCaseResultSchema],
+  results: { type: Schema.Types.Mixed, default: {} },
 });
 
 // Auto-increment serialNumber using pre-save hook
@@ -76,4 +86,4 @@ submissionSchema.pre('save', async function() {
 
 const Submission = model<ISubmission>('Submission', submissionSchema);
 
-export { Submission, ISubmission, IUserSolution, ITestCaseResult };
+export { Submission, ISubmission, IUserSolution, ITestCaseResult, IGroupResult };

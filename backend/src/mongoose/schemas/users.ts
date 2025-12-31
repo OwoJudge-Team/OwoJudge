@@ -1,6 +1,6 @@
 import mongoose, { ObjectId } from 'mongoose';
 
-interface IUser {
+interface IUser extends mongoose.Document {
   username: string;
   displayName: string;
   password: string;
@@ -8,7 +8,7 @@ interface IUser {
   solvedProblem: number;
   solvedProblems: any;
   rating: number;
-  id: ObjectId;
+  quotaUsage: Map<string, { count: number; date: Date }>;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -40,6 +40,14 @@ const userSchema = new mongoose.Schema<IUser>({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  quotaUsage: {
+    type: Map,
+    of: new mongoose.Schema({
+      count: { type: Number, required: true },
+      date: { type: Date, required: true }
+    }),
+    default: {}
   }
 });
 

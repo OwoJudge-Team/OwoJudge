@@ -178,10 +178,13 @@ Retrieves a list of all problems.
         ],
         "problemRelatedTags": [
           "math"
-        ]
+        ],
+        "fullScore": 100,
+        "dailyQuota": 3
       }
     ]
     ```
+-   **Note:** `dailyQuota` represents the remaining daily submissions allowed for the authenticated user for that specific problem.
 
 ### `GET /api/problems/:serialNumber`
 
@@ -189,7 +192,7 @@ Retrieves a single problem by its serial number, including its description and s
 
 -   **Authentication:** Required.
 
-```
+```json
 {
   "submissionDetail": {
     "accepted": 0,
@@ -221,6 +224,7 @@ Retrieves a single problem by its serial number, including its description and s
   "problemRelatedTags": [
     "math"
   ],
+  "dailyQuota": 3,
   "__v": 0,
   "description": "# TPS example problem (a + b)\n\n## Story\n\nThis is an example problem for the TPS (Testlib Problem Specification) format. The problem is a simple addition problem where the task is to read two integers from the input and output their sum.\n\n## Description\n\nGiven two integers \\( a \\) and \\( b \\), output their sum.\n\n## Input\n\nThe input consists of a single line containing two integers \\( a \\) and \\( b \\) separated by a space.\n\n## Output\n\nOutput a single integer which is the sum of \\( a \\) and \\( b \\).\n\n## Constraints\n\n- \\( 1 \\leq a, b \\leq 100 \\)",
   "sampleTestcases": [
@@ -232,6 +236,7 @@ Retrieves a single problem by its serial number, including its description and s
   ]
 }
 ```
+-   **Note:** `dailyQuota` represents the remaining daily submissions allowed for the current user.
 
 ### `POST /api/problems`
 
@@ -453,17 +458,49 @@ Retrieves a single submission by its serial number. Non-admin users can only vie
           "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
         }
       ],
-      "results": [
-        {
-          "testcase": "0-01",
-          "status": "AC",
-          "time": 0.01,
-          "memory": 1024,
-          "message": "ok"
+      "results": {
+        "sample": {
+          "score": 0,
+          "testcases": [
+            {
+              "testcase": "0-01",
+              "status": "AC",
+              "time": 0.01,
+              "memory": 1024,
+              "message": "ok"
+            },
+            {
+              "testcase": "0-02",
+              "status": "AC",
+              "time": 0.01,
+              "memory": 1024,
+              "message": "ok"
+            }
+          ]
+        },
+        "subtask1": {
+          "score": 100,
+          "testcases": [
+            {
+              "testcase": "1-01",
+              "status": "AC",
+              "time": 0.02,
+              "memory": 2048,
+              "message": "ok"
+            }
+          ]
         }
-      ]
+      }
     }
     ```
+-   **Note:** The `results` field contains an object where keys are group/subtask names (e.g., `"sample"`, `"subtask1"`) and values are objects containing:
+    -   `score` (number): Points earned for this group (0 if any test case failed, otherwise the group's assigned score).
+    -   `testcases` (array): Array of individual test case results within this group, each containing:
+        -   `testcase` (string): Test case identifier.
+        -   `status` (string): Result status (`AC`, `WA`, `TLE`, `MLE`, `RE`, etc.).
+        -   `time` (number): Execution time in seconds.
+        -   `memory` (number): Memory usage in KB.
+        -   `message` (string, optional): Additional message from the checker.
 -   **Status Codes:**
     -   `200 OK`: Submission retrieved successfully.
     -   `401 Unauthorized`: User not authenticated.
@@ -513,7 +550,7 @@ Creates a new code submission for a problem.
           "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
         }
       ],
-      "results": []
+      "results": {}
     }
     ```
 -   **Status Codes:**
@@ -521,7 +558,8 @@ Creates a new code submission for a problem.
     -   `400 Bad Request`: Invalid submission data or problem is not ready (status is not `ready`).
     -   `401 Unauthorized`: User not authenticated.
     -   `404 Not Found`: Problem does not exist.
--   `500 Internal Server Error`: Failed to creating submission.
+    -   `429 Too Many Requests`: Daily submission quota exceeded.
+    -   `500 Internal Server Error`: Failed to creating submission.
 
 ### `POST /api/submissions/:serialNumber/rejudge`
 
