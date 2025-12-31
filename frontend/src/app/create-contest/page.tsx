@@ -71,13 +71,27 @@ const CreateContestPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // TODO: Submit to backend
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setModalMessage(
-        `Contest created successfully! ${title}, ${description}, \n${selectedProblems.map((id) => problems.find((p) => p.serialNumber === id)?.title).join(", ")}\nStart Time: ${startTime}\nDeadline: ${deadline}`
-      );
+      const formData: CreateContestFormData = {
+        title,
+        description,
+        problems: selectedProblems.map((id) => {
+          const problem = problems.find((p) => p.serialNumber === id);
+          return {
+            serialNumber: id,
+            score: problem ? problem.fullScore ?? 0 : 0,
+          };
+        }),
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(deadline).toISOString(),
+      };
+
+      const res = await apiPost("/api/contests", formData);
+      if (!res.ok) {
+        throw new Error("Failed to create contest");
+      }
+      setModalMessage(`Contest created successfully!`);
     } catch {
-      setModalMessage("An error occurred while uploading the problem.");
+      setModalMessage("An error occurred while creating the contest.");
     } finally {
       setLoading(false);
       setIsModalOpen(true);

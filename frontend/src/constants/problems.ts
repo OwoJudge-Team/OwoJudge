@@ -7,6 +7,7 @@ export interface Problem {
   status: "unseen" | "wrong" | "correct"; // user's submission status
   tryCount?: number; // number of attempts (only for wrong status)
   serialNumber?: number; // serial number for problem
+  fullScore?: number; // full score for the problem
 }
 
 export const problems: Problem[] = [
