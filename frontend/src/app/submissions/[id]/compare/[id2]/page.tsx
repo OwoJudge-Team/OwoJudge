@@ -158,10 +158,6 @@ export default function ComparePage() {
 function SubmissionHeader({ submission, side }: { submission: Submission; side: string }) {
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-800 shadow-md transition-all hover:border-slate-600">
-      {/*<div className="absolute right-0 top-0 p-3 opacity-10">
-        <span className="text-8xl font-bold">{side[0]}</span>
-      </div>*/}
-
       <div className="border-b border-slate-700 bg-slate-800/50 p-4">
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
