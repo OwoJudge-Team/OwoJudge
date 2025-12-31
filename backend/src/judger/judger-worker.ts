@@ -545,7 +545,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       const { finalStatus, score, groupedResults } = await runAllTests(submission, workDir, isCompiledLanguage);
       submission.status = finalStatus;
       submission.score = score;
-      submission.results = groupedResults;
+      submission.results = new Map(Object.entries(groupedResults));
       await submission.save();
 
       // Update submission statistics based on final status
