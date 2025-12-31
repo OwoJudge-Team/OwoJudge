@@ -146,6 +146,7 @@ const createSubmission = async (request: IRequest, response: Response): Promise<
     data.userID = user.id as any;
     data.problemSerialNumber = problem.serialNumber;
     data.problemTitle = problem.title;
+    data.results = {};
 
     const newSubmission: ISubmission = new Submission(data);
     const savedSubmission: ISubmission = await newSubmission.save();
@@ -180,7 +181,7 @@ export const rejudgeSubmission = async (request: IRequest, response: Response): 
 
     submission.status = SubmissionStatus.PD;
     submission.score = 0;
-    submission.results = [];
+    submission.results = {};
     await submission.save();
 
     submitUserSubmission(submission);

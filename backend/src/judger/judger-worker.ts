@@ -1,5 +1,5 @@
 import { parentPort, workerData } from 'worker_threads';
-import { Submission, ISubmission } from '../mongoose/schemas/submission';
+import { Submission, ISubmission, IGroupResult } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
 import { User } from '../mongoose/schemas/users';
 import languageSupport from '../utils/language-support';
@@ -285,14 +285,14 @@ const runAllTests = async (
   submission: ISubmission,
   workDir: string,
   isCompiledLanguage: boolean
-): Promise<{ finalStatus: SubmissionStatus, score: number, testCaseResults: TestCaseResult[] }> => {
+): Promise<{ finalStatus: SubmissionStatus, score: number, groupedResults: { [groupName: string]: IGroupResult } }> => {
   const problemSerialNumber = submission.problemSerialNumber;
   const problemMeta = await Problem.findOne({ serialNumber: problemSerialNumber });
   const problemDir = path.join('problems', problemSerialNumber.toString());
 
   const checkerCompiled = await compileChecker(problemDir, workDir);
   if (!checkerCompiled) {
-    return { finalStatus: SubmissionStatus.SE, score: 0, testCaseResults: [] };
+    return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {} };
   }
 
   const subtasksPath = fs.readFileSync(path.join(problemDir, 'subtasks.json'), 'utf-8');
@@ -346,7 +346,7 @@ const runAllTests = async (
       });
     } catch (genError) {
       console.error(`Failed to generate testcases in isolated environment for ${problemDir}:`, genError);
-      return { finalStatus: SubmissionStatus.SE, score: 0, testCaseResults: [] };
+      return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {} };
     }
   }
   const testcasesConfig = fs.readFileSync(testcasesConfigPath, 'utf-8');
@@ -393,26 +393,35 @@ const runAllTests = async (
   const resultsByTestCase = new Map(testCaseResults.map(r => [r.testcase, r]));
   let totalScore = 0;
   let finalStatus: SubmissionStatus = SubmissionStatus.AC;
+  const groupedResults: { [groupName: string]: IGroupResult } = {};
 
   for (const [subtaskName, subtaskInfo] of Object.entries<any>(subtasks.subtasks)) {
     const cases = subtaskTestCases.get(subtaskName);
     if (!cases) continue;
 
     let subtaskOk = true;
+    const groupTestCases: TestCaseResult[] = [];
+    
     for (const testcaseName of cases) {
       const result = resultsByTestCase.get(testcaseName);
+      if (result) {
+        groupTestCases.push(result);
+      }
       if (!result || result.status !== SubmissionStatus.AC) {
         subtaskOk = false;
         if (finalStatus === SubmissionStatus.AC) {
           finalStatus = result?.status || SubmissionStatus.SE;
         }
-        break;
       }
     }
 
-    if (subtaskOk) {
-      totalScore += subtaskInfo.score;
-    }
+    const groupScore = subtaskOk ? subtaskInfo.score : 0;
+    totalScore += groupScore;
+    
+    groupedResults[subtaskName] = {
+      score: groupScore,
+      testcases: groupTestCases
+    };
   }
 
   if (totalScore === 0 && finalStatus === SubmissionStatus.AC) {
@@ -427,7 +436,7 @@ const runAllTests = async (
     finalStatus = SubmissionStatus.PS;
   }
 
-  return { finalStatus, score: totalScore, testCaseResults };
+  return { finalStatus, score: totalScore, groupedResults };
 }
 
 const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<SubmissionStatus> => {
@@ -533,10 +542,10 @@ const processSubmission = async (submissionID: string): Promise<void> => {
         }
         isCompiledLanguage = true;
       }
-      const { finalStatus, score, testCaseResults } = await runAllTests(submission, workDir, isCompiledLanguage);
+      const { finalStatus, score, groupedResults } = await runAllTests(submission, workDir, isCompiledLanguage);
       submission.status = finalStatus;
       submission.score = score;
-      submission.results = testCaseResults;
+      submission.results = groupedResults;
       await submission.save();
 
       // Update submission statistics based on final status

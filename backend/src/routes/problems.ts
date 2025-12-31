@@ -841,7 +841,7 @@ export const rejudgeProblem = async (request: IRequest, response: Response) => {
     for (const submission of submissions) {
       submission.status = SubmissionStatus.PD;
       submission.score = 0;
-      submission.results = [];
+      submission.results = {};
       await submission.save();
 
       // We don't await the submission process here to avoid timeout

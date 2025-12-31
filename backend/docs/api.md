@@ -453,17 +453,49 @@ Retrieves a single submission by its serial number. Non-admin users can only vie
           "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
         }
       ],
-      "results": [
-        {
-          "testcase": "0-01",
-          "status": "AC",
-          "time": 0.01,
-          "memory": 1024,
-          "message": "ok"
+      "results": {
+        "sample": {
+          "score": 0,
+          "testcases": [
+            {
+              "testcase": "0-01",
+              "status": "AC",
+              "time": 0.01,
+              "memory": 1024,
+              "message": "ok"
+            },
+            {
+              "testcase": "0-02",
+              "status": "AC",
+              "time": 0.01,
+              "memory": 1024,
+              "message": "ok"
+            }
+          ]
+        },
+        "subtask1": {
+          "score": 100,
+          "testcases": [
+            {
+              "testcase": "1-01",
+              "status": "AC",
+              "time": 0.02,
+              "memory": 2048,
+              "message": "ok"
+            }
+          ]
         }
-      ]
+      }
     }
     ```
+-   **Note:** The `results` field contains an object where keys are group/subtask names (e.g., `"sample"`, `"subtask1"`) and values are objects containing:
+    -   `score` (number): Points earned for this group (0 if any test case failed, otherwise the group's assigned score).
+    -   `testcases` (array): Array of individual test case results within this group, each containing:
+        -   `testcase` (string): Test case identifier.
+        -   `status` (string): Result status (`AC`, `WA`, `TLE`, `MLE`, `RE`, etc.).
+        -   `time` (number): Execution time in seconds.
+        -   `memory` (number): Memory usage in KB.
+        -   `message` (string, optional): Additional message from the checker.
 -   **Status Codes:**
     -   `200 OK`: Submission retrieved successfully.
     -   `401 Unauthorized`: User not authenticated.
@@ -513,7 +545,7 @@ Creates a new code submission for a problem.
           "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
         }
       ],
-      "results": []
+      "results": {}
     }
     ```
 -   **Status Codes:**
