@@ -94,17 +94,29 @@ const getProblems = async (request: IRequest, response: Response) => {
     if (user && user.quotaUsage) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      let userModified = false;
 
       const problemsWithQuota = problems.map(problem => {
         const problemObj = problem.toObject();
         if (problemObj.dailyQuota && problemObj.dailyQuota > 0) {
-          const usage = user.quotaUsage.get(problem.id.toString());
-          if (usage && usage.date >= today) {
-            problemObj.dailyQuota = Math.max(0, problemObj.dailyQuota - usage.count);
+          const problemID = problem.id.toString();
+          const usage = user.quotaUsage.get(problemID);
+          if (usage) {
+            if (usage.date < today) {
+              user.quotaUsage.set(problemID, { count: 0, date: today });
+              userModified = true;
+            } else {
+              problemObj.dailyQuota = Math.max(0, problemObj.dailyQuota - usage.count);
+            }
           }
         }
         return problemObj;
       });
+
+      if (userModified) {
+        await user.save();
+      }
+
       response.status(200).send(problemsWithQuota);
     } else {
       response.status(200).send(problems);
@@ -192,9 +204,16 @@ const getProblemByID = async (request: IRequest, response: Response) => {
       if (user && user.quotaUsage && fullProblem.dailyQuota && fullProblem.dailyQuota > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const usage = user.quotaUsage.get(problem.id.toString());
-        if (usage && usage.date >= today) {
-          fullProblem.dailyQuota = Math.max(0, fullProblem.dailyQuota - usage.count);
+        const problemID = problem.id.toString();
+        const usage = user.quotaUsage.get(problemID);
+
+        if (usage) {
+          if (usage.date < today) {
+            user.quotaUsage.set(problemID, { count: 0, date: today });
+            await user.save();
+          } else {
+            fullProblem.dailyQuota = Math.max(0, fullProblem.dailyQuota - usage.count);
+          }
         }
       }
 

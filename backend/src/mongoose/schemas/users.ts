@@ -1,6 +1,6 @@
 import mongoose, { ObjectId } from 'mongoose';
 
-interface IUser {
+interface IUser extends mongoose.Document {
   username: string;
   displayName: string;
   password: string;
@@ -9,7 +9,6 @@ interface IUser {
   solvedProblems: any;
   rating: number;
   quotaUsage: Map<string, { count: number; date: Date }>;
-  id: ObjectId;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
