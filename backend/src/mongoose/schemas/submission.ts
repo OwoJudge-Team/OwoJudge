@@ -64,7 +64,7 @@ const submissionSchema = new Schema<ISubmission>({
   status: { type: Schema.Types.String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
   createdTime: { type: Schema.Types.Date, default: Date.now },
   score: { type: Schema.Types.Number, default: 0 },
-  results: { type: Schema.Types.Mixed, default: {} },
+  results: { type: Map, of: groupResultSchema, default: {} },
 });
 
 // Auto-increment serialNumber using pre-save hook
