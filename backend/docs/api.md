@@ -413,21 +413,26 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
     -   `GET /api/submissions?problemSerialNumber=0&maxScore=100&limit=10&offset=20`
 -   **Response Example:**
     ```json
-    [
-      {
-        "_id": "68fb7890a1b2c3d4e5f67890",
-        "serialNumber": 1000000,
-        "username": "admin",
-        "userHandle": "Admin Administrator",
-        "userID": "68fb6d6e6deaffa916ced917",
-        "problemSerialNumber": 0,
-        "problemTitle": "Problem Title",
-        "language": "g++ c++17",
-        "status": "AC",
-        "score": 100,
-        "createdTime": "2025-10-24T13:00:00.000Z"
-      }
-    ]
+    {
+      "total": 123,
+      "submissions": [
+        {
+          "_id": "68fb7890a1b2c3d4e5f67890",
+          "serialNumber": 1000000,
+          "username": "admin",
+          "userHandle": "Admin Administrator",
+          "userID": "68fb6d6e6deaffa916ced917",
+          "problemSerialNumber": 0,
+          "problemTitle": "Problem Title",
+          "language": "g++ c++17",
+          "status": "AC",
+          "score": 100,
+          "time": 0.05,
+          "memory": 2048,
+          "createdTime": "2025-10-24T13:00:00.000Z"
+        }
+      ]
+    }
     ```
 -   **Note:** The response only includes summary fields. Use `GET /api/submission/:serialNumber` to get full submission details including source code and test results.
 
@@ -451,6 +456,8 @@ Retrieves a single submission by its serial number. Non-admin users can only vie
       "language": "g++ c++17",
       "status": "AC",
       "score": 100,
+      "time": 0.05,
+      "memory": 2048,
       "createdTime": "2025-10-24T13:00:00.000Z",
       "userSolution": [
         {

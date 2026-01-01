@@ -19,17 +19,17 @@ beforeAll(async () => {
   const newUser = new User(newUserInfo);
   newUser.password = hashString(newUser.password);
   try {
+    await User.deleteMany({});
+
     const savedUser: IUser = await newUser.save();
     console.log(`Saved user: ${savedUser} as an admin`);
   } catch (error) {
-    console.log(`Admin already exists: ${error}`);
+    console.log(`Error creating admin: ${error}`);
   }
 });
 
 afterAll(async () => {
-  await User.deleteOne({ username: 'admin' });
-  await User.deleteOne({ username: 'testuser' });
-  await User.deleteOne({ username: 'admintestuser' });
+  await User.deleteMany({});
   await mongoose.disconnect();
 });
 
@@ -50,7 +50,7 @@ describe('User Routes', () => {
   });
 
   it('should get user with name admin', async () => {
-    const req = { 
+    const req = {
       query: { filter: 'username', value: 'admin' },
       isAuthenticated: () => true
     } as unknown as Request;
@@ -69,8 +69,8 @@ describe('User Routes', () => {
   });
 
   it('should get user with name admin', async () => {
-    const req = { 
-      params: { username: 'admin' }, 
+    const req = {
+      params: { username: 'admin' },
       user: 'test',
       isAuthenticated: () => true
     } as unknown as Request;
@@ -87,7 +87,7 @@ describe('User Routes', () => {
   });
 
   it('should get 403 if not login', async () => {
-    const req = { 
+    const req = {
       params: { username: 'admin' },
       isAuthenticated: () => false
     } as unknown as Request;
@@ -201,7 +201,7 @@ describe('User Routes', () => {
     await deleteUser(req, res);
     expect(res.status).toHaveBeenCalledWith(201);
   });
-  
+
   it('should get 401 for deleting user by non admin user', async () => {
     const req = {
       params: { username: 'testuser' },
@@ -217,7 +217,7 @@ describe('User Routes', () => {
     await deleteUser(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
   });
-  
+
   it('should get 400 for deleting user but without username', async () => {
     const req = {
       params: {},
@@ -233,7 +233,7 @@ describe('User Routes', () => {
     await deleteUser(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
-  
+
   it('should update the user', async () => {
     const req = {
       params: { username: 'admin' },
@@ -250,7 +250,7 @@ describe('User Routes', () => {
     await updateUser(req, res);
     expect(res.status).toHaveBeenCalledWith(201);
   });
-  
+
   it('should get 401 for update a different user by non admin', async () => {
     const req = {
       params: { username: 'admin' },
@@ -267,7 +267,7 @@ describe('User Routes', () => {
     await updateUser(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
   });
-  
+
   it('should get 401 for geting admin from non admin user', async () => {
     const req = {
       params: { username: 'admin' },

@@ -15,10 +15,10 @@ import mongoose from 'mongoose';
 const execAsync = promisify(exec);
 
 if (workerData && typeof workerData.workerId === 'number') {
-    const start = workerData.workerId * 100;
-    const end = start + 100;
-    IsolateManager.setBoxIdRange(start, end);
-    console.log(`Worker ${workerData.workerId} initialized with box range ${start}-${end}`);
+  const start = workerData.workerId * 100;
+  const end = start + 100;
+  IsolateManager.setBoxIdRange(start, end);
+  console.log(`Worker ${workerData.workerId} initialized with box range ${start}-${end}`);
 }
 
 interface TestCaseResult {
@@ -285,14 +285,14 @@ const runAllTests = async (
   submission: ISubmission,
   workDir: string,
   isCompiledLanguage: boolean
-): Promise<{ finalStatus: SubmissionStatus, score: number, groupedResults: { [groupName: string]: IGroupResult } }> => {
+): Promise<{ finalStatus: SubmissionStatus, score: number, groupedResults: { [groupName: string]: IGroupResult }, time: number, memory: number }> => {
   const problemSerialNumber = submission.problemSerialNumber;
   const problemMeta = await Problem.findOne({ serialNumber: problemSerialNumber });
   const problemDir = path.join('problems', problemSerialNumber.toString());
 
   const checkerCompiled = await compileChecker(problemDir, workDir);
   if (!checkerCompiled) {
-    return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {} };
+    return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {}, time: 0, memory: 0 };
   }
 
   const subtasksPath = fs.readFileSync(path.join(problemDir, 'subtasks.json'), 'utf-8');
@@ -346,7 +346,7 @@ const runAllTests = async (
       });
     } catch (genError) {
       console.error(`Failed to generate testcases in isolated environment for ${problemDir}:`, genError);
-      return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {} };
+      return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {}, time: 0, memory: 0 };
     }
   }
   const testcasesConfig = fs.readFileSync(testcasesConfigPath, 'utf-8');
@@ -401,7 +401,7 @@ const runAllTests = async (
 
     let subtaskOk = true;
     const groupTestCases: TestCaseResult[] = [];
-    
+
     for (const testcaseName of cases) {
       const result = resultsByTestCase.get(testcaseName);
       if (result) {
@@ -417,7 +417,7 @@ const runAllTests = async (
 
     const groupScore = subtaskOk ? subtaskInfo.score : 0;
     totalScore += groupScore;
-    
+
     groupedResults[subtaskName] = {
       score: groupScore,
       testcases: groupTestCases
@@ -436,7 +436,15 @@ const runAllTests = async (
     finalStatus = SubmissionStatus.PS;
   }
 
-  return { finalStatus, score: totalScore, groupedResults };
+  // Calculate max time and memory
+  let maxTime = 0;
+  let maxMemory = 0;
+  for (const r of testCaseResults) {
+    if (r.time > maxTime) maxTime = r.time;
+    if (r.memory > maxMemory) maxMemory = r.memory;
+  }
+
+  return { finalStatus, score: totalScore, groupedResults, time: maxTime, memory: maxMemory };
 }
 
 const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<SubmissionStatus> => {
@@ -533,7 +541,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
         if (result === SubmissionStatus.CE) {
           submission.status = SubmissionStatus.CE;
           await submission.save();
-          
+
           // Update submission statistics
           problem.submissionDetail.compilationError += 1;
           problem.submissionDetail.submitted += 1;
@@ -542,19 +550,21 @@ const processSubmission = async (submissionID: string): Promise<void> => {
         }
         isCompiledLanguage = true;
       }
-      const { finalStatus, score, groupedResults } = await runAllTests(submission, workDir, isCompiledLanguage);
+      const { finalStatus, score, groupedResults, time, memory } = await runAllTests(submission, workDir, isCompiledLanguage);
       submission.status = finalStatus;
       submission.score = score;
+      submission.time = time;
+      submission.memory = memory;
       submission.results = groupedResults;
       await submission.save();
 
       // Update submission statistics based on final status
       problem.submissionDetail.submitted += 1;
-      
+
       switch (finalStatus) {
         case SubmissionStatus.AC:
           problem.submissionDetail.accepted += 1;
-          
+
           // Check if this is the user's first AC on this problem
           const previousAC = await Submission.countDocuments({
             username: submission.username,
@@ -562,12 +572,12 @@ const processSubmission = async (submissionID: string): Promise<void> => {
             status: SubmissionStatus.AC,
             _id: { $ne: submissionID }
           });
-          
+
           if (previousAC === 0) {
             // First time solving this problem
             problem.userDetail.solved += 1;
             await problem.save();
-            
+
             // Update user statistics
             user.solvedProblem += 1;
             if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
@@ -608,7 +618,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       console.error('Error during worker execution:', error);
       submission.status = SubmissionStatus.SE;
       await submission.save();
-      
+
       // Update submission statistics for system error
       problem.submissionDetail.submitted += 1;
       await problem.save();
@@ -639,7 +649,7 @@ if (parentPort) {
     try {
       if (message.type === 'process_submission') {
         await processSubmission(message.submissionID);
-        
+
         const response: WorkerResponse = {
           type: 'submission_complete',
           submissionID: message.submissionID
