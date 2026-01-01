@@ -388,6 +388,54 @@ Generates or retrieves a test case for a specific problem.
     -   `401 Unauthorized`: User not authenticated.
     -   `500 Internal Server Error`: Failed to generate test case.
 
+### `GET /api/problems/:serialNumber/plagiarism`
+
+Retrieves the plagiarism detection report for a specific problem using Dolos.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
+-   **Response:** JSON object containing the Dolos plagiarism report.
+-   **Response Example:**
+    ```json
+    {
+      "pairs": [
+        {
+          "similarity": 0.85,
+          "leftFileId": 0,
+          "rightFileId": 1,
+          "leftCovered": 0.45,
+          "rightCovered": 0.52,
+          "totalOverlap": 120,
+          "longestFragment": 45
+        }
+      ],
+      "files": [
+        {
+          "id": 0,
+          "path": "sub_1000001_user1.cpp",
+          "charCount": 350,
+          "lineCount": 25
+        },
+        {
+          "id": 1,
+          "path": "sub_1000002_user2.cpp",
+          "charCount": 340,
+          "lineCount": 24
+        }
+      ],
+      "metadata": {
+        "createdAt": "2025-10-24T14:00:00.000Z"
+      }
+    }
+    ```
+-   **Status Codes:**
+    -   `200 OK`: Successfully retrieved plagiarism report.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Problem does not exist, no submissions found, or analysis failed.
+    -   `500 Internal Server Error`: Internal server error during analysis.
+
 ## Submissions
 
 Endpoints for managing code submissions.

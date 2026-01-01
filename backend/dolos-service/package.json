@@ -1,0 +1,10 @@
+{
+  "name": "dolos-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "analyze.js",
+  "dependencies": {
+    "@dodona/dolos": "^2.9.3",
+    "fs-extra": "^11.2.0"
+  }
+}

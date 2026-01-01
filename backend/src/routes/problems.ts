@@ -17,6 +17,7 @@ import * as path from 'path';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
 import { submitUserSubmission } from '../judger/judger';
+import { DolosManager } from '../utils/dolos-manager';
 
 const execAsync = promisify(exec);
 
@@ -906,7 +907,39 @@ export const rejudgeProblem = async (request: IRequest, response: Response) => {
   }
 };
 
+const getPlagiarismReport = async (request: IRequest, response: Response) => {
+  if (!request.isAuthenticated() || !request.user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+  const user = request.user as IUser;
+  if (!user.isAdmin) {
+    response.status(403).send('You are not authorized to view plagiarism reports');
+    return;
+  }
+
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
+  try {
+    const result = await DolosManager.checkPlagiarism(serialNumber);
+    if (!result) {
+      response.status(404).send('No submissions found or analysis failed');
+      return;
+    }
+    response.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    response.status(500).send('Internal Server Error');
+  }
+};
+
 problemsRouter.get('/api/problems', getProblems);
+problemsRouter.get('/api/problems/:serialNumber/plagiarism', getPlagiarismReport);
 problemsRouter.get('/api/problems/:serialNumber', getProblemByID);
 problemsRouter.get('/api/problems/:serialNumber/testcases/:testcaseName', generateTestcase);
 problemsRouter.get('/api/problems/:serialNumber/allowed-languages', getAllowedLanguages);
@@ -949,5 +982,6 @@ export {
   deleteProblem,
   updateProblem,
   updateProblemWithFile,
-  generateTestcase
+  generateTestcase,
+  getPlagiarismReport
 };
