@@ -52,6 +52,7 @@ const mockSubmissions = [
 const mockSubmissionFind = vi.fn();
 const mockSubmissionFindOne = vi.fn();
 const mockSubmissionSelect = vi.fn();
+const mockSubmissionCountDocuments = vi.fn();
 
 // Mock Submission model
 vi.mock('../mongoose/schemas/submission', () => ({
@@ -68,7 +69,8 @@ vi.mock('../mongoose/schemas/submission', () => ({
                 };
             }
         }),
-        findOne: (query: any) => mockSubmissionFindOne(query)
+        findOne: (query: any) => mockSubmissionFindOne(query),
+        countDocuments: (query: any) => mockSubmissionCountDocuments(query)
     },
     ISubmission: {}
 }));
@@ -135,6 +137,7 @@ describe('Submission Routes', () => {
         it('should return only user\'s own submissions for non-admin', async () => {
             const userSubmissions = mockSubmissions.filter(s => s.username === 'testuser');
             mockSubmissionFind.mockResolvedValue(userSubmissions);
+            mockSubmissionCountDocuments.mockResolvedValue(userSubmissions.length);
 
             mockRequest = {
                 isAuthenticated: () => true,
@@ -146,6 +149,13 @@ describe('Submission Routes', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(200);
             expect(mockSubmissionFind).toHaveBeenCalledWith({ username: 'testuser' });
+            expect(mockSubmissionCountDocuments).toHaveBeenCalledWith({ username: 'testuser' });
+
+            // Verify response format
+            expect(mockResponse.send).toHaveBeenCalledWith({
+                total: userSubmissions.length,
+                submissions: userSubmissions
+            });
 
             // Verify select includes time and memory
             expect(mockSubmissionSelect).toHaveBeenCalledWith(expect.stringContaining('time'));

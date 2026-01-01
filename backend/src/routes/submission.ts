@@ -49,12 +49,13 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
   const finalOffset = !isNaN(index) ? index : offset;
 
   try {
+    const total = await Submission.countDocuments(query);
     const submissions: ISubmission[] = await Submission.find(query)
       .select('serialNumber problemSerialNumber problemTitle username userHandle userID status language createdTime score time memory')
       .sort({ serialNumber: -1 })
       .skip(finalOffset)
       .limit(limit);
-    response.status(200).send(submissions);
+    response.status(200).send({ total, submissions });
   } catch (error: unknown) {
     if (error) {
       response.status(400).send(error);
