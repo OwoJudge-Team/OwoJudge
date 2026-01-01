@@ -3,10 +3,10 @@
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from 'next/navigation';
+import { Submission, StatusToCode, SubmissionStatus } from "@/constants/submissions";
+import { formatISOTime } from "@/utils/time";
 import { apiGet } from "@/utils/api";
-import { submissions } from "@/constants/submissions";
-import { FaClock } from "react-icons/fa";
-import { FaFloppyDisk } from "react-icons/fa6";
+import { FaClock, FaFloppyDisk, FaSpinner } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
 import Paginator from "@/components/Paginator";
@@ -17,27 +17,18 @@ const SubmissionPage: React.FC = () => {
   const [searchProblem, setSearchProblem] = useState("");
   const [filterLanguage, setFilterLanguage] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const limit: number = Number(useSearchParams().get('limit') || 0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [submissions, setSubmissions] = useState<Array<Submission>>([]);
+  const limit: number = Number(useSearchParams().get('limit') || 20);
   const offset: number = Number(useSearchParams().get('offset') || 0);
-
-  // Function to filter submissions based on the search and filters
-  const filteredSubmissions = submissions.filter((submission) => {
-    return (
-      (view === "global" || submission.user === "alice") && // Replace 'alice' with current logged-in user
-      (!searchUser || submission.user.toLowerCase().includes(searchUser.toLowerCase())) &&
-      (!searchProblem || submission.problem.toLowerCase().includes(searchProblem.toLowerCase())) &&
-      (!filterLanguage || submission.language === filterLanguage) &&
-      (!filterStatus || submission.status === filterStatus)
-    );
-  });
 
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
         const res = await apiGet(`/api/submissions?limit=${limit}&offset=${offset}`);
         const data = await res.json();
-        console.log(data);
-        // setSubmissions(data); // Uncomment and implement when real API is available
+        setTotalCount(data.total);
+        setSubmissions(data.submissions);
       } catch (error) {
         console.error("Failed to fetch submissions:", error);
       }
@@ -130,43 +121,47 @@ const SubmissionPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {filteredSubmissions.map((submission) => (
-                <tr key={submission.id} className="transition hover:bg-neutral">
+              {submissions.map((submission) => (
+                <tr key={submission.serialNumber} className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/submissions/${submission.id}`}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300 transition hover:bg-slate-700/80 hover:text-indigo-400"
-                    >
-                      {submission.id}
-                    </Link>
+                    <CoolLink
+                      href={`/submissions/${submission.serialNumber}`}
+                      text={String(submission.serialNumber)}
+                    />
                   </td>
-                  <td className="px-6 py-4 text-slate-100">{submission.createdTime}</td>
+                  <td className="px-6 py-4 text-slate-100">{formatISOTime(submission.createdTime)}</td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/users/${submission.userID}`} text={submission.user} />
+                    <CoolLink href={`/users/${submission.userID}`} text={submission.userHandle} />
                   </td>
                   <td className="px-6 py-4">
                     <CoolLink
-                      href={`/problems/${submission.problemID}`}
-                      text={submission.problem}
+                      href={`/problems/${submission.problemSerialNumber}`}
+                      text={submission.problemTitle}
                     />
                   </td>
                   <td className="px-6 py-4">
-                    <div
-                      className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
-                    >
-                      {submission.status}
-                    </div>
+                    {submission.status === SubmissionStatus.PD || submission.status === SubmissionStatus.QU ? (
+                      <div className="flex items-center justify-center w-[5ch]">
+                        <FaSpinner className="animate-spin text-xl text-slate-300" />
+                      </div>
+                    ) : (
+                      <div
+                        className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                      >
+                        {StatusToCode[submission.status]}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-around rounded-xl bg-slate-600/50 p-1">
+                    <div className="flex items-center gap-1 justify-around rounded-xl bg-slate-600/50 p-1">
                       <FaClock />
-                      {submission.time}
+                      {submission.time}s
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-around rounded-xl bg-slate-600/50 p-1">
+                    <div className="flex items-center gap-1 justify-around rounded-xl bg-slate-600/50 p-1">
                       <FaFloppyDisk />
-                      {submission.memory}
+                      {submission.memory}MB
                     </div>
                   </td>
                 </tr>
@@ -174,7 +169,7 @@ const SubmissionPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <Paginator />
+        <Paginator totalCount={totalCount} defaultLimit={limit}/>
       </div>
     </div>
   );

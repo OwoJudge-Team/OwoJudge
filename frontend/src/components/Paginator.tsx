@@ -4,11 +4,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FaCircleChevronLeft, FaCircleChevronRight } from "react-icons/fa6";
 
 interface PaginatorProps {
-  totalCount?: number;
+  totalCount: number;
   defaultLimit?: number;
 }
 
-export default function Paginator({ totalCount = 20, defaultLimit = 10 }: PaginatorProps) {
+export default function Paginator({ totalCount, defaultLimit = 20 }: PaginatorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
