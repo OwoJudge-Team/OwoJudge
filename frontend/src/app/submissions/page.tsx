@@ -1,8 +1,7 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
-import Link from "next/link";
-import { useSearchParams } from 'next/navigation';
+import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
 import { Submission, StatusToCode, SubmissionStatus } from "@/constants/submissions";
 import { formatISOTime } from "@/utils/time";
 import { apiGet } from "@/utils/api";
@@ -15,82 +14,108 @@ const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<"global" | "user">("global"); // Switch between global/user submissions
   const [searchUser, setSearchUser] = useState("");
   const [searchProblem, setSearchProblem] = useState("");
-  const [filterLanguage, setFilterLanguage] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const [submissions, setSubmissions] = useState<Array<Submission>>([]);
-  const limit: number = Number(useSearchParams().get('limit') || 20);
-  const offset: number = Number(useSearchParams().get('offset') || 0);
+  const [limit, setLimit] = useState<number>(20);
+  const [offset, setOffset] = useState<number>(0);
+
+  const context = useAuth();
+  const user = context?.user;
 
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
-        const res = await apiGet(`/api/submissions?limit=${limit}&offset=${offset}`);
+        const params = new URLSearchParams();
+        params.set("limit", String(limit));
+        params.set("offset", String(offset));
+        if (view === "user" && user && user.isAdmin) {
+          params.set("username", String(user.username));
+        } else if (searchUser && user && user.isAdmin) {
+          params.set("username", searchUser);
+        }
+        if (searchProblem) {
+          params.set("problemSerialNumber", searchProblem);
+        }
+        if (filterStatus) {
+          params.set("status", filterStatus);
+        }
+        console.log(params.toString());
+        const res = await apiGet(`/api/submissions?${params.toString()}`);
         const data = await res.json();
         setTotalCount(data.total);
-        setSubmissions(data.submissions);
+        setSubmissions(data.submissions ?? []);
       } catch (error) {
         console.error("Failed to fetch submissions:", error);
       }
     };
 
     fetchSubmissions();
-  }, [limit, offset]);
+  }, [limit, offset, view, searchUser, searchProblem, filterStatus]);
+
+  
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-light">
+        <p className="text-slate-300">Please log in to view submissions.</p>
+      </div>
+    );
+  }
+
+  if (!submissions) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-light">
+        <p className="text-slate-300">Loading submissions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-light p-8">
       <div className="mx-auto max-w-6xl">
         {/* View Switch (Global/User Submissions) */}
-        <div className="mb-4 flex items-center">
-          <button
-            onClick={() => setView("global")}
-            className={`mr-4 rounded-lg px-4 py-2 ${
-              view === "global" ? "bg-slate-700 text-slate-100" : "text-slate-300"
-            } transition`}
-          >
-            Global Submissions
-          </button>
-          <button
-            onClick={() => setView("user")}
-            className={`rounded-lg px-4 py-2 ${
-              view === "user" ? "bg-slate-700 text-slate-100" : "text-slate-300"
-            } transition`}
-          >
-            My Submissions
-          </button>
-        </div>
+        {user.isAdmin && (
+          <div className="mb-4 flex items-center">
+            <button
+              onClick={() => setView("global")}
+              className={`mr-4 rounded-lg px-4 py-2 ${
+                view === "global" ? "bg-slate-700 text-slate-100" : "text-slate-300"
+              } transition`}
+            >
+              Global Submissions
+            </button>
+            <button
+              onClick={() => setView("user")}
+              className={`rounded-lg px-4 py-2 ${
+                view === "user" ? "bg-slate-700 text-slate-100" : "text-slate-300"
+              } transition`}
+            >
+              My Submissions
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-6 rounded-lg bg-background p-4 shadow-lg">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className={`grid grid-cols-2 gap-4 ${user.isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
             {/* User Search */}
-            <input
-              type="text"
-              placeholder="Search by User"
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
-              value={searchUser}
-              onChange={(e) => setSearchUser(e.target.value)}
-            />
+            {user.isAdmin && (
+              <input
+                type="text"
+                placeholder="Search by UserName"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+                value={searchUser}
+                onChange={(e) => setSearchUser(e.target.value)}
+              />
+            )}
             {/* Problem Search */}
             <input
               type="text"
-              placeholder="Search by Problem"
+              placeholder="Search by Problem ID"
               className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
               value={searchProblem}
               onChange={(e) => setSearchProblem(e.target.value)}
             />
-            {/* Language Filter */}
-            <select
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
-              value={filterLanguage}
-              onChange={(e) => setFilterLanguage(e.target.value)}
-            >
-              <option value="">Filter by Language</option>
-              <option value="Python">Python</option>
-              <option value="C++">C++</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="Java">Java</option>
-            </select>
             {/* Status Filter */}
             <select
               className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
@@ -98,10 +123,11 @@ const SubmissionPage: React.FC = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="">Filter by Status</option>
-              <option value="AC">AC (Accepted)</option>
-              <option value="WA">WA (Wrong Answer)</option>
-              <option value="TLE">TLE (Time Limit Exceeded)</option>
-              <option value="MLE">MLE (Memory Limit Exceeded)</option>
+              {Object.entries(StatusToCode).map(([status, code]) => (
+                <option key={code} value={status}>
+                  {code} ({status})
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -169,7 +195,15 @@ const SubmissionPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <Paginator totalCount={totalCount} defaultLimit={limit}/>
+        <Paginator
+          totalCount={totalCount}
+          limit={limit}
+          offset={offset}
+          onChange={(newOffset, newLimit) => {
+            if (typeof newLimit === "number") setLimit(newLimit);
+            setOffset(newOffset);
+          }}
+        />
       </div>
     </div>
   );
