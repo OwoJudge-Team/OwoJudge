@@ -44,6 +44,6 @@ export interface Submission {
   createdTime: string;
   time: string;
   memory: string;
-  userSolution: UserSolution;
+  userSolution: Array<UserSolution>;
   results: Result[];
 }
