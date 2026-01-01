@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from 'next/navigation';
+import { apiGet } from "@/utils/api";
 import { submissions } from "@/constants/submissions";
 import { FaClock } from "react-icons/fa";
 import { FaFloppyDisk } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
+import Paginator from "@/components/Paginator";
 
 const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<"global" | "user">("global"); // Switch between global/user submissions
@@ -14,6 +17,8 @@ const SubmissionPage: React.FC = () => {
   const [searchProblem, setSearchProblem] = useState("");
   const [filterLanguage, setFilterLanguage] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const limit: number = Number(useSearchParams().get('limit') || 0);
+  const offset: number = Number(useSearchParams().get('offset') || 0);
 
   // Function to filter submissions based on the search and filters
   const filteredSubmissions = submissions.filter((submission) => {
@@ -25,6 +30,21 @@ const SubmissionPage: React.FC = () => {
       (!filterStatus || submission.status === filterStatus)
     );
   });
+
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      try {
+        const res = await apiGet(`/api/submissions?limit=${limit}&offset=${offset}`);
+        const data = await res.json();
+        console.log(data);
+        // setSubmissions(data); // Uncomment and implement when real API is available
+      } catch (error) {
+        console.error("Failed to fetch submissions:", error);
+      }
+    };
+
+    fetchSubmissions();
+  }, [limit, offset]);
 
   return (
     <div className="min-h-screen bg-neutral-light p-8">
@@ -154,6 +174,7 @@ const SubmissionPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Paginator />
       </div>
     </div>
   );
