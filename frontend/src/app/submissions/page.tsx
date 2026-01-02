@@ -1,85 +1,122 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { submissions } from "@/constants/submissions";
-import { FaClock } from "react-icons/fa";
-import { FaFloppyDisk } from "react-icons/fa6";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { Submission, StatusToCode, SubmissionStatus } from "@/constants/submissions";
+import { formatISOTime } from "@/utils/time";
+import { apiGet } from "@/utils/api";
+import { FaClock, FaFloppyDisk, FaSpinner } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
+import Paginator from "@/components/Paginator";
 
 const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<"global" | "user">("global"); // Switch between global/user submissions
   const [searchUser, setSearchUser] = useState("");
   const [searchProblem, setSearchProblem] = useState("");
-  const [filterLanguage, setFilterLanguage] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [submissions, setSubmissions] = useState<Array<Submission>>([]);
+  const [limit, setLimit] = useState<number>(20);
+  const [offset, setOffset] = useState<number>(0);
 
-  // Function to filter submissions based on the search and filters
-  const filteredSubmissions = submissions.filter((submission) => {
+  const context = useAuth();
+  const user = context?.user;
+
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set("limit", String(limit));
+        params.set("offset", String(offset));
+        if (view === "user" && user && user.isAdmin) {
+          params.set("username", String(user.username));
+        } else if (searchUser && user && user.isAdmin) {
+          params.set("username", searchUser);
+        }
+        if (searchProblem) {
+          params.set("problemSerialNumber", searchProblem);
+        }
+        if (filterStatus) {
+          params.set("status", filterStatus);
+        }
+        console.log(params.toString());
+        const res = await apiGet(`/api/submissions?${params.toString()}`);
+        const data = await res.json();
+        setTotalCount(data.total);
+        setSubmissions(data.submissions ?? []);
+      } catch (error) {
+        console.error("Failed to fetch submissions:", error);
+      }
+    };
+
+    fetchSubmissions();
+  }, [limit, offset, view, searchUser, searchProblem, filterStatus, user]);
+
+  if (!user) {
     return (
-      (view === "global" || submission.user === "alice") && // Replace 'alice' with current logged-in user
-      (!searchUser || submission.user.toLowerCase().includes(searchUser.toLowerCase())) &&
-      (!searchProblem || submission.problem.toLowerCase().includes(searchProblem.toLowerCase())) &&
-      (!filterLanguage || submission.language === filterLanguage) &&
-      (!filterStatus || submission.status === filterStatus)
+      <div className="flex min-h-screen items-center justify-center bg-neutral-light">
+        <p className="text-slate-300">Please log in to view submissions.</p>
+      </div>
     );
-  });
+  }
+
+  if (!submissions) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-light">
+        <p className="text-slate-300">Loading submissions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-light p-8">
       <div className="mx-auto max-w-6xl">
         {/* View Switch (Global/User Submissions) */}
-        <div className="mb-4 flex items-center">
-          <button
-            onClick={() => setView("global")}
-            className={`mr-4 rounded-lg px-4 py-2 ${
-              view === "global" ? "bg-slate-700 text-slate-100" : "text-slate-300"
-            } transition`}
-          >
-            Global Submissions
-          </button>
-          <button
-            onClick={() => setView("user")}
-            className={`rounded-lg px-4 py-2 ${
-              view === "user" ? "bg-slate-700 text-slate-100" : "text-slate-300"
-            } transition`}
-          >
-            My Submissions
-          </button>
-        </div>
+        {user.isAdmin && (
+          <div className="mb-4 flex items-center">
+            <button
+              onClick={() => setView("global")}
+              className={`mr-4 rounded-lg px-4 py-2 ${
+                view === "global" ? "bg-slate-700 text-slate-100" : "text-slate-300"
+              } transition`}
+            >
+              Global Submissions
+            </button>
+            <button
+              onClick={() => setView("user")}
+              className={`rounded-lg px-4 py-2 ${
+                view === "user" ? "bg-slate-700 text-slate-100" : "text-slate-300"
+              } transition`}
+            >
+              My Submissions
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-6 rounded-lg bg-background p-4 shadow-lg">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div
+            className={`grid grid-cols-2 gap-4 ${user.isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+          >
             {/* User Search */}
-            <input
-              type="text"
-              placeholder="Search by User"
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
-              value={searchUser}
-              onChange={(e) => setSearchUser(e.target.value)}
-            />
+            {user.isAdmin && (
+              <input
+                type="text"
+                placeholder="Search by UserName"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+                value={searchUser}
+                onChange={(e) => setSearchUser(e.target.value)}
+              />
+            )}
             {/* Problem Search */}
             <input
               type="text"
-              placeholder="Search by Problem"
+              placeholder="Search by Problem ID"
               className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
               value={searchProblem}
               onChange={(e) => setSearchProblem(e.target.value)}
             />
-            {/* Language Filter */}
-            <select
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
-              value={filterLanguage}
-              onChange={(e) => setFilterLanguage(e.target.value)}
-            >
-              <option value="">Filter by Language</option>
-              <option value="Python">Python</option>
-              <option value="C++">C++</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="Java">Java</option>
-            </select>
             {/* Status Filter */}
             <select
               className="w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
@@ -87,10 +124,11 @@ const SubmissionPage: React.FC = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="">Filter by Status</option>
-              <option value="AC">AC (Accepted)</option>
-              <option value="WA">WA (Wrong Answer)</option>
-              <option value="TLE">TLE (Time Limit Exceeded)</option>
-              <option value="MLE">MLE (Memory Limit Exceeded)</option>
+              {Object.entries(StatusToCode).map(([status, code]) => (
+                <option key={code} value={status}>
+                  {code} ({status})
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -110,43 +148,50 @@ const SubmissionPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {filteredSubmissions.map((submission) => (
-                <tr key={submission.id} className="transition hover:bg-neutral">
+              {submissions.map((submission) => (
+                <tr key={submission.serialNumber} className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/submissions/${submission.id}`}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300 transition hover:bg-slate-700/80 hover:text-indigo-400"
-                    >
-                      {submission.id}
-                    </Link>
+                    <CoolLink
+                      href={`/submissions/${submission.serialNumber}`}
+                      text={String(submission.serialNumber)}
+                    />
                   </td>
-                  <td className="px-6 py-4 text-slate-100">{submission.createdTime}</td>
+                  <td className="px-6 py-4 text-slate-100">
+                    {formatISOTime(submission.createdTime)}
+                  </td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/users/${submission.userID}`} text={submission.user} />
+                    <CoolLink href={`/users/${submission.userID}`} text={submission.userHandle} />
                   </td>
                   <td className="px-6 py-4">
                     <CoolLink
-                      href={`/problems/${submission.problemID}`}
-                      text={submission.problem}
+                      href={`/problems/${submission.problemSerialNumber}`}
+                      text={submission.problemTitle}
                     />
                   </td>
                   <td className="px-6 py-4">
-                    <div
-                      className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
-                    >
-                      {submission.status}
-                    </div>
+                    {submission.status === SubmissionStatus.PD ||
+                    submission.status === SubmissionStatus.QU ? (
+                      <div className="flex w-[5ch] items-center justify-center">
+                        <FaSpinner className="animate-spin text-xl text-slate-300" />
+                      </div>
+                    ) : (
+                      <div
+                        className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                      >
+                        {StatusToCode[submission.status]}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-around rounded-xl bg-slate-600/50 p-1">
+                    <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                       <FaClock />
-                      {submission.time}
+                      {submission.time}s
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-around rounded-xl bg-slate-600/50 p-1">
+                    <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                       <FaFloppyDisk />
-                      {submission.memory}
+                      {submission.memory}MB
                     </div>
                   </td>
                 </tr>
@@ -154,6 +199,15 @@ const SubmissionPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Paginator
+          totalCount={totalCount}
+          limit={limit}
+          offset={offset}
+          onChange={(newOffset, newLimit) => {
+            if (typeof newLimit === "number") setLimit(newLimit);
+            setOffset(newOffset);
+          }}
+        />
       </div>
     </div>
   );

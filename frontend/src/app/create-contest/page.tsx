@@ -1,12 +1,30 @@
 "use client";
 
-import { problems } from "@/constants/problems";
+import { Problem } from "@/constants/problems";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiGet, apiPost } from "@/utils/api";
 import Modal from "@/components/Modal";
 import { useState, useRef, useEffect } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { LuLoaderCircle } from "react-icons/lu";
 
+interface ProblemProps {
+  serialNumber: number;
+  score: number;
+}
+
+interface CreateContestFormData {
+  title: string;
+  description: string;
+  problems: ProblemProps[];
+  startTime: string;
+  endTime: string;
+}
+
 const CreateContestPage = () => {
+  const [problems, setProblems] = useState<Array<Problem>>([]);
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
   const [selectedProblems, setSelectedProblems] = useState<number[]>([]);
   const [startTime, setStartTime] = useState<string>("");
   const [deadline, setDeadline] = useState<string>("");
@@ -17,6 +35,7 @@ const CreateContestPage = () => {
   const startDateRef = useRef<HTMLInputElement>(null);
   const deadlineRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleProblemToggle = (problemId: number) => {
     setSelectedProblems((prev) =>
@@ -33,6 +52,20 @@ const CreateContestPage = () => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
+    const fetchProblems = async () => {
+      try {
+        const res = await apiGet("/api/problems");
+        const data = await res.json();
+        console.log(data);
+        setProblems(data);
+      } catch (error) {
+        console.error("Failed to fetch problems:", error);
+      }
+    };
+
+    fetchProblems();
+
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
@@ -40,13 +73,29 @@ const CreateContestPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // TODO: Submit to backend
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setModalMessage(
-        `Contest created successfully! \n${selectedProblems.map((id) => problems.find((p) => p.id === id)?.title).join(", ")}\nStart Time: ${startTime}\nDeadline: ${deadline}`
-      );
+      const formData: CreateContestFormData = {
+        title,
+        description,
+        problems: selectedProblems.map((id) => {
+          const problem = problems.find((p) => p.serialNumber === id);
+          return {
+            serialNumber: id,
+            score: problem ? (problem.fullScore ?? 0) : 0,
+          };
+        }),
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(deadline).toISOString(),
+      };
+
+      const res = await apiPost("/api/contests", formData, {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to create contest");
+      }
+      setModalMessage(`Contest created successfully!`);
     } catch {
-      setModalMessage("An error occurred while uploading the problem.");
+      setModalMessage("An error occurred while creating the contest.");
     } finally {
       setLoading(false);
       setIsModalOpen(true);
@@ -56,12 +105,51 @@ const CreateContestPage = () => {
     }
   };
 
+  if (!user || !user.isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-lg text-slate-300">Access denied. Admins only.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-3xl">
         <h1 className="mb-6 text-2xl font-bold text-slate-100">Create New Contest</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
+            <label htmlFor="title" className="mb-2 block text-lg font-semibold text-slate-300">
+              Title
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
+
+          <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
+            <label
+              htmlFor="description"
+              className="mb-2 block text-lg font-semibold text-slate-300"
+            >
+              Description
+            </label>
+            <input
+              id="description"
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
+
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
             <label className="mb-4 block text-lg font-semibold text-slate-300">
               Select Problems
@@ -78,7 +166,7 @@ const CreateContestPage = () => {
                       <span className="text-slate-400">Select problems...</span>
                     ) : (
                       selectedProblems.map((problemId) => {
-                        const problem = problems.find((p) => p.id === problemId);
+                        const problem = problems.find((p) => p.serialNumber === problemId);
                         return (
                           <span
                             key={problemId}
@@ -109,13 +197,13 @@ const CreateContestPage = () => {
                 <div className="no-scrollbar scrollbar-hide absolute left-0 right-0 top-full z-10 mt-2 max-h-64 overflow-y-auto rounded border border-slate-600 bg-slate-700 shadow-lg">
                   {problems.map((problem) => (
                     <label
-                      key={problem.id}
+                      key={problem.serialNumber}
                       className="flex cursor-pointer items-center gap-3 border-b border-slate-600 px-4 py-3 hover:bg-slate-600"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedProblems.includes(problem.id)}
-                        onChange={() => handleProblemToggle(problem.id)}
+                        checked={selectedProblems.includes(problem.serialNumber || 0)}
+                        onChange={() => handleProblemToggle(problem.serialNumber || 0)}
                         className="h-4 w-4 accent-indigo-500 hover:cursor-pointer"
                       />
                       <div className="flex flex-1 items-center justify-between">
