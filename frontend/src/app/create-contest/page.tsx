@@ -85,7 +85,9 @@ const CreateContestPage = () => {
         endTime: new Date(deadline).toISOString(),
       };
 
-      const res = await apiPost("/api/contests", formData);
+      const res = await apiPost("/api/contests", formData, {
+        headers: { "Content-Type": "application/json" }
+      });
       if (!res.ok) {
         throw new Error("Failed to create contest");
       }

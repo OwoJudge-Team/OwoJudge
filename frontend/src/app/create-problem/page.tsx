@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { FaArrowUpFromBracket } from "react-icons/fa6";
+import { apiPost } from "@/utils/api";
 import { LuLoaderCircle } from "react-icons/lu";
 import Modal from "@/components/Modal";
 
@@ -27,9 +28,21 @@ const CreateProblemPage: React.FC = () => {
     if (file) {
       setLoading(true);
       try {
-        // TODO: Submit to backend
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        setModalMessage("Problem uploaded successfully!");
+        const form = new FormData();
+        form.append("problem", file);
+
+        const res = await apiPost("/api/problems", form);
+
+        if (res.ok) {
+          setModalMessage("Problem uploaded successfully!");
+        } else {
+          let msg = `Upload failed (${res.status})`;
+          try {
+            const data = await res.json();
+            if (data && data.message) msg = data.message;
+          } catch {}
+          setModalMessage(msg);
+        }
       } catch {
         setModalMessage("An error occurred while uploading the problem.");
       } finally {

@@ -9,23 +9,25 @@ interface FetchOptions extends Omit<RequestInit, "body"> {
 }
 
 /**
- * Make an authenticated API request
- * Automatically includes credentials and handles JSON
+ * Make an authenticated API request.
+ * Default: Assumes multipart/form-data (no header set, no JSON stringify).
+ * Explicit: If Content-Type is application/json, it stringifies the body.
  */
 export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
   const { body, headers, ...restOptions } = options;
 
+  const incomingHeaders = (headers as Record<string, string>) || {};
+  
+  const isJson = incomingHeaders["Content-Type"] === "application/json";
+
   const config: RequestInit = {
     ...restOptions,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
+    headers: headers,
   };
 
   if (body !== undefined) {
-    config.body = JSON.stringify(body);
+    config.body = isJson ? JSON.stringify(body) : (body as any);
   }
 
   const url = `${API_URL}${endpoint}`;

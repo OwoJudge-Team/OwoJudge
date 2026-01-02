@@ -8,6 +8,20 @@ export interface Problem {
   tryCount?: number; // number of attempts (only for wrong status)
   serialNumber?: number; // serial number for problem
   fullScore?: number; // full score for the problem
+  submissionDetail?: {
+    accepted: number;
+    compilationError: number;
+    memoryLimitExceeded: number;
+    processLimitExceeded: number;
+    runtimeError: number;
+    submitted: number;
+    timeLimitExceeded: number;
+    wrongAnswer: number;
+  };
+  userDetail?: {
+    solved: number;
+    attempted: number;
+  };
 }
 
 export const problems: Problem[] = [

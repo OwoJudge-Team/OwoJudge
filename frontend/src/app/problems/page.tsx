@@ -1,6 +1,6 @@
 "use client";
 
-import { problems } from "@/constants/problems";
+import { Problem } from "@/constants/problems";
 import {
   FaChartPie,
   FaCircleCheck,
@@ -10,9 +10,28 @@ import {
   FaUserGroup,
   FaCircleQuestion,
 } from "react-icons/fa6";
+import { useEffect, useState } from "react";
+import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
 
 const ProblemPage: React.FC = () => {
+
+  const [problems, setProblems] = useState<Problem[]>([]);
+
+  useEffect(() => {
+    const fetchProblems = async () => {
+      try {
+        const res = await apiGet(`/api/problems`);
+        const data = await res.json();
+        setProblems(data);
+      } catch (error) {
+        console.error("Failed to fetch problems:", error);
+      }
+    };
+
+    fetchProblems();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
@@ -75,45 +94,45 @@ const ProblemPage: React.FC = () => {
                 </td>
               </tr>
               {problems.map((p) => (
-                <tr key={p.id} className="group transition-all duration-150 hover:bg-slate-700/50">
+                <tr key={p.serialNumber} className="group transition-all duration-150 hover:bg-slate-700/50">
                   <td className="px-6 py-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
-                      {p.id}
+                      {p.serialNumber}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/problems/${p.id}`} text={p.title} />
+                    <CoolLink href={`/problems/${p.serialNumber}`} text={p.title} />
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
                       <FaChartPie />
-                      {p.quota}
+                      {p.quota ?? 0}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
                         <FaStar />
-                        {p.score}
+                        {p.fullScore}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
                       <FaUserGroup />
-                      {p.acNum.toLocaleString()}
+                      {p.submissionDetail!.accepted.toLocaleString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {p.status === "correct" ? (
+                    {p.userDetail?.solved ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
                         <FaCircleCheck />
                         Solved
                       </span>
-                    ) : p.status === "wrong" ? (
+                    ) : p.userDetail?.attempted ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
                         <FaCircleXmark />
-                        {p.tryCount} {p.tryCount === 1 ? "Try" : "Tries"}
+                        {p.userDetail?.attempted} {p.userDetail?.attempted === 1 ? "Try" : "Tries"}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
