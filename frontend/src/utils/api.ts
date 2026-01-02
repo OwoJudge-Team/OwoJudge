@@ -80,7 +80,7 @@ export async function apiDelete(
  * Auth-specific API calls
  */
 export const authApi = {
-  login: (username: string, password: string) => apiPost("/api/auth", { username, password }),
+  login: (username: string, password: string) => apiPost("/api/auth", { username, password }, { headers: { "Content-Type": "application/json" } }),
 
   logout: () => apiPost("/api/auth/logout"),
 

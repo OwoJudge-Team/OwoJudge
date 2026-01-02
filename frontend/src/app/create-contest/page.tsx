@@ -1,6 +1,7 @@
 "use client";
 
 import { Problem } from "@/constants/problems";  
+import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/utils/api";
 import Modal from "@/components/Modal";
 import { useState, useRef, useEffect } from "react";
@@ -34,6 +35,7 @@ const CreateContestPage = () => {
   const startDateRef = useRef<HTMLInputElement>(null);
   const deadlineRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleProblemToggle = (problemId: number) => {
     setSelectedProblems((prev) =>
@@ -102,6 +104,14 @@ const CreateContestPage = () => {
       setDeadline("");
     }
   };
+
+  if (!user || !user.isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-lg text-slate-300">Access denied. Admins only.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-12">

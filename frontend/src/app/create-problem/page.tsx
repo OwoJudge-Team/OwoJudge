@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { FaArrowUpFromBracket } from "react-icons/fa6";
 import { apiPost } from "@/utils/api";
 import { LuLoaderCircle } from "react-icons/lu";
@@ -12,6 +13,7 @@ const CreateProblemPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const handleBoxClick = () => {
     fileInputRef.current?.click();
@@ -54,6 +56,14 @@ const CreateProblemPage: React.FC = () => {
       setIsModalOpen(true);
     }
   };
+
+  if (!user || !user.isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-lg text-slate-300">Access denied. Admins only.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-12">
