@@ -15,13 +15,14 @@ const END_TIME_COLOR = [
 ];
 
 const ContestPage: React.FC = () => {
-
-  const [contests, setContests] = useState<Array<{
-    _id: string;
-    title: string;
-    startTime: string;
-    endTime: string;
-  }>>([]);
+  const [contests, setContests] = useState<
+    Array<{
+      _id: string;
+      title: string;
+      startTime: string;
+      endTime: string;
+    }>
+  >([]);
   const { user } = useAuth();
 
   useEffect(() => {

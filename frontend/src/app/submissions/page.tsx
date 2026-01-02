@@ -51,12 +51,11 @@ const SubmissionPage: React.FC = () => {
     };
 
     fetchSubmissions();
-  }, [limit, offset, view, searchUser, searchProblem, filterStatus]);
+  }, [limit, offset, view, searchUser, searchProblem, filterStatus, user]);
 
-  
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-light">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-light">
         <p className="text-slate-300">Please log in to view submissions.</p>
       </div>
     );
@@ -64,7 +63,7 @@ const SubmissionPage: React.FC = () => {
 
   if (!submissions) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-light">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-light">
         <p className="text-slate-300">Loading submissions...</p>
       </div>
     );
@@ -97,7 +96,9 @@ const SubmissionPage: React.FC = () => {
 
         {/* Filters */}
         <div className="mb-6 rounded-lg bg-background p-4 shadow-lg">
-          <div className={`grid grid-cols-2 gap-4 ${user.isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          <div
+            className={`grid grid-cols-2 gap-4 ${user.isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+          >
             {/* User Search */}
             {user.isAdmin && (
               <input
@@ -155,7 +156,9 @@ const SubmissionPage: React.FC = () => {
                       text={String(submission.serialNumber)}
                     />
                   </td>
-                  <td className="px-6 py-4 text-slate-100">{formatISOTime(submission.createdTime)}</td>
+                  <td className="px-6 py-4 text-slate-100">
+                    {formatISOTime(submission.createdTime)}
+                  </td>
                   <td className="px-6 py-4">
                     <CoolLink href={`/users/${submission.userID}`} text={submission.userHandle} />
                   </td>
@@ -166,8 +169,9 @@ const SubmissionPage: React.FC = () => {
                     />
                   </td>
                   <td className="px-6 py-4">
-                    {submission.status === SubmissionStatus.PD || submission.status === SubmissionStatus.QU ? (
-                      <div className="flex items-center justify-center w-[5ch]">
+                    {submission.status === SubmissionStatus.PD ||
+                    submission.status === SubmissionStatus.QU ? (
+                      <div className="flex w-[5ch] items-center justify-center">
                         <FaSpinner className="animate-spin text-xl text-slate-300" />
                       </div>
                     ) : (
@@ -179,13 +183,13 @@ const SubmissionPage: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 justify-around rounded-xl bg-slate-600/50 p-1">
+                    <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                       <FaClock />
                       {submission.time}s
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 justify-around rounded-xl bg-slate-600/50 p-1">
+                    <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                       <FaFloppyDisk />
                       {submission.memory}MB
                     </div>

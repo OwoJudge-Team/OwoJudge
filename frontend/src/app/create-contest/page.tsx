@@ -1,6 +1,6 @@
 "use client";
 
-import { Problem } from "@/constants/problems";  
+import { Problem } from "@/constants/problems";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/utils/api";
 import Modal from "@/components/Modal";
@@ -80,7 +80,7 @@ const CreateContestPage = () => {
           const problem = problems.find((p) => p.serialNumber === id);
           return {
             serialNumber: id,
-            score: problem ? problem.fullScore ?? 0 : 0,
+            score: problem ? (problem.fullScore ?? 0) : 0,
           };
         }),
         startTime: new Date(startTime).toISOString(),
@@ -88,7 +88,7 @@ const CreateContestPage = () => {
       };
 
       const res = await apiPost("/api/contests", formData, {
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
         throw new Error("Failed to create contest");
@@ -119,7 +119,6 @@ const CreateContestPage = () => {
         <h1 className="mb-6 text-2xl font-bold text-slate-100">Create New Contest</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
             <label htmlFor="title" className="mb-2 block text-lg font-semibold text-slate-300">
               Title
@@ -135,7 +134,10 @@ const CreateContestPage = () => {
           </div>
 
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
-            <label htmlFor="description" className="mb-2 block text-lg font-semibold text-slate-300">
+            <label
+              htmlFor="description"
+              className="mb-2 block text-lg font-semibold text-slate-300"
+            >
               Description
             </label>
             <input

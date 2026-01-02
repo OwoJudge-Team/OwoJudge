@@ -17,7 +17,7 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
   const { body, headers, ...restOptions } = options;
 
   const incomingHeaders = (headers as Record<string, string>) || {};
-  
+
   const isJson = incomingHeaders["Content-Type"] === "application/json";
 
   const config: RequestInit = {
@@ -27,7 +27,7 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
   };
 
   if (body !== undefined) {
-    config.body = isJson ? JSON.stringify(body) : (body as any);
+    config.body = isJson ? JSON.stringify(body) : (body as BodyInit);
   }
 
   const url = `${API_URL}${endpoint}`;
@@ -80,7 +80,12 @@ export async function apiDelete(
  * Auth-specific API calls
  */
 export const authApi = {
-  login: (username: string, password: string) => apiPost("/api/auth", { username, password }, { headers: { "Content-Type": "application/json" } }),
+  login: (username: string, password: string) =>
+    apiPost(
+      "/api/auth",
+      { username, password },
+      { headers: { "Content-Type": "application/json" } }
+    ),
 
   logout: () => apiPost("/api/auth/logout"),
 

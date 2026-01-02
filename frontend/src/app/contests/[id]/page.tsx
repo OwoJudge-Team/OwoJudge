@@ -20,7 +20,7 @@ import CoolLink from "@/components/cool-link";
 
 export default function ContestPage() {
   const id = useParams().id;
-  
+
   const problemScores = new Map<number, number>();
   const [contest, setContest] = useState<Contest | null>(null);
   const [userStanding, setUserStanding] = useState<Standing | null>(null);
@@ -56,8 +56,7 @@ export default function ContestPage() {
             }
           }
 
-          const userRank =
-            standingData.findIndex((s) => s.username === user.username) + 1 || 0;
+          const userRank = standingData.findIndex((s) => s.username === user.username) + 1 || 0;
           setRank(userRank);
         }
 
@@ -72,7 +71,7 @@ export default function ContestPage() {
     };
 
     fetchContest();
-  }, [id]);
+  }, [id, user]);
 
   if (!contest) {
     return (
@@ -116,7 +115,9 @@ export default function ContestPage() {
           <div></div>
           <div className="text-s mb-4 text-slate-400">Rank</div>
 
-          <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">{userStanding?.totalScore ?? 0}</div>
+          <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">
+            {userStanding?.totalScore ?? 0}
+          </div>
           <div className="text-6xl font-light text-slate-400">/</div>
           <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">
             {userStanding?.solvedCount ?? 0}
@@ -152,57 +153,60 @@ export default function ContestPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
-          {problems.map((p) => (
-            <tr key={p.serialNumber} className="group transition-all duration-150 hover:bg-slate-700/50">
-              <td className="px-6 py-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
-                  {p.serialNumber}
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <CoolLink href={`/problems/${p.serialNumber}`} text={p.title} />
-              </td>
-              <td className="px-6 py-4">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
-                  <FaChartPie />
-                  {p.quota ?? 0}
-                </span>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
-                    <FaStar />
-                    {problemScores.get(p.serialNumber ?? -1) ?? 0}
+            {problems.map((p) => (
+              <tr
+                key={p.serialNumber}
+                className="group transition-all duration-150 hover:bg-slate-700/50"
+              >
+                <td className="px-6 py-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
+                    {p.serialNumber}
                   </div>
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                  <FaUserGroup />
-                  {p.submissionDetail!.accepted.toLocaleString()}
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                {p.userDetail?.solved ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
-                    <FaCircleCheck />
-                    Solved
+                </td>
+                <td className="px-6 py-4">
+                  <CoolLink href={`/problems/${p.serialNumber}`} text={p.title} />
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
+                    <FaChartPie />
+                    {p.quota ?? 0}
                   </span>
-                ) : p.userDetail?.attempted ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
-                    <FaCircleXmark />
-                    {p.userDetail?.attempted} {p.userDetail?.attempted === 1 ? "Try" : "Tries"}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
-                    <FaCircleDot />
-                    Unseen
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
+                      <FaStar />
+                      {problemScores.get(p.serialNumber ?? -1) ?? 0}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <FaUserGroup />
+                    {p.submissionDetail!.accepted.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  {p.userDetail?.solved ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
+                      <FaCircleCheck />
+                      Solved
+                    </span>
+                  ) : p.userDetail?.attempted ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
+                      <FaCircleXmark />
+                      {p.userDetail?.attempted} {p.userDetail?.attempted === 1 ? "Try" : "Tries"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
+                      <FaCircleDot />
+                      Unseen
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </div>

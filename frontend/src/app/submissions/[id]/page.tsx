@@ -31,7 +31,7 @@ export default function SubmissionPage() {
       try {
         const res = await apiGet(`/api/submission/${id}`);
         const data = await res.json();
-        console.log(data);  
+        console.log(data);
         setSubmission(data);
       } catch (error) {
         console.error("Failed to fetch submission:", error);
