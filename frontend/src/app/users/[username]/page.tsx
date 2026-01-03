@@ -115,9 +115,10 @@ export default function UserDetailPage() {
           <CoolLink href="/users" text="Back to Users" direction="left" />
         </div>
 
-        {/* User Profile Header */}
+        {/* Unified User Profile Header */}
         <div className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
-          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+            {/* User Info */}
             <div>
               <div className="mb-2 flex items-center gap-3">
                 <h1 className="text-4xl font-bold text-slate-100">{user.displayName}</h1>
@@ -129,30 +130,28 @@ export default function UserDetailPage() {
               </div>
               <p className="text-xl text-slate-400">@{user.username}</p>
             </div>
-          </div>
-        </div>
 
-        {/* Statistics Grid */}
-        <div className="mb-8 grid gap-6 md:grid-cols-2">
-          {/* Rating Card */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-lg">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-400">
-              <FaTrophy className="text-amber-500" /> Rating
+            {/* Stats Row within Header */}
+            <div className="flex gap-8">
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
+                  <FaTrophy className="text-amber-500" /> Rating
+                </div>
+                <div className="text-3xl font-bold text-amber-400">{user.rating}</div>
+              </div>
+              <div className="h-auto w-px bg-slate-700"></div>
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
+                  <FaCircleCheck className="text-emerald-500" /> Solved
+                </div>
+                <div className="text-3xl font-bold text-emerald-400">{user.solvedProblem}</div>
+              </div>
             </div>
-            <div className="text-3xl font-bold text-amber-400">{user.rating}</div>
-          </div>
-
-          {/* Solved Card */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-lg">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-400">
-              <FaCircleCheck className="text-emerald-500" /> Solved
-            </div>
-            <div className="text-3xl font-bold text-emerald-400">{user.solvedProblem}</div>
           </div>
         </div>
 
         {/* Solved Problems List */}
-        {user.solvedProblems && user.solvedProblems.length > 0 && (
+        {user.solvedProblems && user.solvedProblems.length > 0 ? (
           <div className="rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
             <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-slate-200">
               <FaCircleCheck className="text-emerald-500" /> Solved Problems
@@ -168,6 +167,10 @@ export default function UserDetailPage() {
                 </Link>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-12 text-center shadow-xl">
+            <p className="text-lg text-slate-400">No problems solved yet.</p>
           </div>
         )}
 
