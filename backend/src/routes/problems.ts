@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { query, validationResult, matchedData, checkSchema } from 'express-validator';
+import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
 import { updateProblemValidation } from '../validations/update-problem-validation';
-import { IUser, User } from '../mongoose/schemas/users';
+import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import multer from 'multer';
 import { readFileSync } from 'fs';
@@ -14,6 +14,7 @@ import { generateSingleTestcase } from '../utils/generate-testcase';
 import { IsolateManager } from '../utils/isolate-manager';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isAdmin, isAuthenticated } from '../middleware/auth';
 
 const execAsync = promisify(exec);
 
@@ -62,10 +63,6 @@ const getProblems = async (request: IRequest, response: Response) => {
 };
 
 const getProblemByID = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const { problemID } = request.params;
   try {
     const problem: IProblem | null = await Problem.findOne({ problemID });
@@ -73,41 +70,41 @@ const getProblemByID = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     const problemDir = 'problems/' + problemID;
-    
+
     try {
       // Read sample testcases from tests/mapping file
       const sampleTestcases: any[] = [];
       const testsDir = path.join(problemDir, 'tests');
       const mappingPath = path.join(testsDir, 'mapping');
-      
+
       if (fs.existsSync(mappingPath)) {
         const mappingContent = fs.readFileSync(mappingPath, 'utf-8');
         const sampleTestcaseNames: string[] = [];
-        
+
         // Parse mapping file to find sample subtask testcases
         for (const line of mappingContent.split('\n')) {
           const trimmedLine = line.trim();
           if (!trimmedLine) continue;
-          
+
           const parts = trimmedLine.split(/\s+/);
           if (parts.length < 2) continue;
-          
+
           const subtaskName = parts[0];
           const testcaseName = parts[1];
-          
+
           // Check if this belongs to sample subtask
           if (subtaskName === 'sample' || subtaskName.includes('sample')) {
             sampleTestcaseNames.push(testcaseName);
           }
         }
-        
+
         // Read actual test case files
         for (const testcaseName of sampleTestcaseNames) {
           const inputPath = path.join(testsDir, `${testcaseName}.in`);
           const outputPath = path.join(testsDir, `${testcaseName}.out`);
-          
+
           if (fs.existsSync(inputPath) && fs.existsSync(outputPath)) {
             sampleTestcases.push({
               name: testcaseName,
@@ -125,7 +122,7 @@ const getProblemByID = async (request: IRequest, response: Response) => {
         description: description,
         sampleTestcases: sampleTestcases || []
       };
-      
+
       response.status(200).send(fullProblem);
     } catch (metadataErr) {
       console.error('Error reading metadata:', metadataErr);
@@ -149,17 +146,12 @@ const getProblemByID = async (request: IRequest, response: Response) => {
 /// │   └── ...
 /// └── ...
 const createProblem = async (request: IRequest, response: Response): Promise<void> => {
-  const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send('No file uploaded');
     return;
   }
-  
+
   console.log(filePath);
   const file = readFileSync(filePath as string);
   if (!isTarGz(file)) {
@@ -175,9 +167,9 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
       response.status(403).send('Problem with this filename already exists');
       return;
     }
-    
+
     console.log(targetPath);
-    
+
     spawnSync('mv', [filePath as string, targetPath]);
     await tar.x({
       file: targetPath,
@@ -193,7 +185,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
       if (metadata.code.includes('.') || metadata.code.includes('/')) {
         throw new Error('Problem ID cannot contain `.` or `/`');
       }
-      
+
       try {
         const newProblem = new Problem({
           problemID: metadata.code,
@@ -229,20 +221,20 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
         return;
       }
       console.log(`Problem ${metadata.code} saved to database`);
-      
+
       // Generate test cases asynchronously using tps gen in isolated environment
       // This runs in the background and doesn't block the response
       (async () => {
         try {
           console.log(`Starting async test generation for ${metadata.code} in isolated environment`);
-          
+
           await IsolateManager.withBox(async (box) => {
             const genBoxDir = box.getBoxDir();
             const workDir = path.join('judging', 'tps-gen-' + metadata.code);
-            
+
             // Ensure work directory exists
             fs.mkdirSync(workDir, { recursive: true });
-            
+
             try {
               // Copy entire problem directory to isolated box
               await box.copyToBox(`${problemDir}/*`);
@@ -287,7 +279,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
           console.error(`Failed to generate test cases for ${metadata.code}:`, genError);
         }
       })();
-      
+
     } catch (error) {
       console.error('Error reading or parsing metadata.json:', error);
       throw error;
@@ -314,11 +306,6 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
 };
 
 const deleteProblem = async (request: IRequest, response: Response) => {
-  const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const { problemID } = request.params;
   try {
     const problem: IProblem | null = await Problem.findOne({ problemID });
@@ -326,11 +313,11 @@ const deleteProblem = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     const fileName = problem.problemID;
     const problemDir = 'problems/' + fileName;
     const tarFilePath = 'problems/' + fileName + '.tar.gz';
-    
+
     try {
       if (problemDir.indexOf('..') !== -1 || tarFilePath.indexOf('..') !== -1) {
         throw new Error('Invalid file path');
@@ -349,10 +336,6 @@ const deleteProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblem = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const { problemID } = request.params;
   const data = matchedData(request);
   console.log(data);
@@ -377,11 +360,6 @@ const updateProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblemWithFile = async (request: IRequest, response: Response): Promise<void> => {
-  const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const { problemID } = request.params;
   const filePath = request.file?.path;
   if (!filePath) {
@@ -461,20 +439,20 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 
       await Problem.findOneAndUpdate({ problemID }, updateData, { new: true, runValidators: true });
       console.log(`Problem ${problemID} updated successfully`);
-      
+
       // Generate test cases asynchronously using tps gen in isolated environment
       // This runs in the background and doesn't block the response
       (async () => {
         try {
           console.log(`Starting async test generation for ${problemID} in isolated environment`);
-          
+
           await IsolateManager.withBox(async (box) => {
             const genBoxDir = box.getBoxDir();
             const workDir = path.join('judging', 'tps-gen-' + problemID);
-            
+
             // Ensure work directory exists
             fs.mkdirSync(workDir, { recursive: true });
-            
+
             try {
               // Copy entire problem directory to isolated box
               await box.copyToBox(`${newProblemDir}/*`);
@@ -519,7 +497,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
           console.error(`Failed to generate test cases for ${problemID}:`, genError);
         }
       })();
-      
+
       response.status(200).send('Problem updated successfully');
     } catch (error) {
       console.error('Error processing metadata or updating database:', error);
@@ -545,11 +523,6 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 
 const generateTestcase = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
-  if (!request.isAuthenticated() || !user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
   const { problemID, testcaseName } = request.params;
   const cacheKey = `${problemID}-${testcaseName}`;
   const userID = user.id.toString();
@@ -603,10 +576,6 @@ const generateTestcase = async (request: IRequest, response: Response) => {
 };
 
 const getAllowedLanguages = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const { problemID } = request.params;
   try {
     const problem: IProblem | null = await Problem.findOne({ problemID });
@@ -614,15 +583,15 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     const problemDir = 'problems/' + problemID;
     const metadataPath = `${problemDir}/problem.json`;
-    
+
     try {
       const metadataContent = readFileSync(metadataPath, 'utf8');
       const metadata = JSON.parse(metadataContent);
       const allowedLanguages = metadata.allowed_languages || [];
-      
+
       response.status(200).send(allowedLanguages);
     } catch (metadataErr) {
       console.error('Error reading metadata:', metadataErr);
@@ -635,11 +604,11 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
 };
 
 problemsRouter.get('/api/problems', getProblems);
-problemsRouter.get('/api/problems/:problemID', getProblemByID);
-problemsRouter.get('/api/problems/:problemID/testcases/:testcaseName', generateTestcase);
-problemsRouter.get('/api/problems/:problemID/allowed-languages', getAllowedLanguages);
+problemsRouter.get('/api/problems/:problemID', isAuthenticated, getProblemByID);
+problemsRouter.get('/api/problems/:problemID/testcases/:testcaseName', isAuthenticated, generateTestcase);
+problemsRouter.get('/api/problems/:problemID/allowed-languages', isAuthenticated, getAllowedLanguages);
 
-problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
+problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);
@@ -652,10 +621,10 @@ problemsRouter.post('/api/problems', (request: IRequest, response: Response, nex
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:problemID', deleteProblem);
-problemsRouter.patch('/api/problems/:problemID', checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.delete('/api/problems/:problemID', isAdmin, deleteProblem);
+problemsRouter.patch('/api/problems/:problemID', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
 
-problemsRouter.put('/api/problems/:problemID', (request: IRequest, response: Response, next) => {
+problemsRouter.put('/api/problems/:problemID', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);

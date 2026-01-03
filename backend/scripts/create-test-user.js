@@ -34,6 +34,22 @@ const userSchema = new mongoose.Schema({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  gitPublicKey: {
+    type: mongoose.Schema.Types.String,
+    required: false
+  },
+  studentId: {
+    type: mongoose.Schema.Types.String,
+    required: false,
+    unique: true,
+    sparse: true
+  },
+  giteaId: {
+    type: mongoose.Schema.Types.Number,
+    required: false,
+    unique: true,
+    sparse: true
   }
 });
 
@@ -75,14 +91,14 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge'
 async function createTestUser() {
   try {
     console.log('Creating test user...');
-    
+
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
     // Check if user already exists
     const existingUser = await User.findOne({ username });
-    
+
     if (existingUser) {
       console.log(`User '${username}' already exists!`);
       console.log('Please choose a different username or delete the existing user first.');
@@ -101,7 +117,7 @@ async function createTestUser() {
     });
 
     await testUser.save();
-    
+
     console.log('\n✅ Test user created successfully!');
     console.log('═══════════════════════════════════');
     console.log(`Username:     ${username}`);

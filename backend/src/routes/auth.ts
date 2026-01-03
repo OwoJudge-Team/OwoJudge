@@ -1,13 +1,9 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import passport from 'passport';
 import '../strategies/local-strategies.js';
 import { IRequest } from '../utils/request-interface.js';
 
 const authRouter: Router = Router();
-
-const authenticateUser = (request: IRequest, response: Response) => {
-  response.sendStatus(201);
-};
 
 const loginUser = (request: IRequest, response: Response, next: any) => {
   passport.authenticate('local', (err: any, user: any, info: any) => {

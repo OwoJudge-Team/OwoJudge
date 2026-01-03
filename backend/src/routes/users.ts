@@ -5,52 +5,53 @@ import { createUserValidation } from '../validations/create-user-validation';
 import { hashString } from '../utils/hash-password';
 import { getUsersValidation } from '../validations/get-user-validation';
 import { updateUserValidation } from '../validations/update-user-validation';
-import IValidationError from '../validations/validation-error';
 import { IRequest } from '../utils/request-interface';
 import { giteaService } from '../utils/gitea-service';
+import { isAdmin, isAuthenticated } from '../middleware/auth';
+import { usernameParamValidation } from '../validations/username-param-validation';
 
 const usersRouter = Router();
 
 const getAllUsers = async (request: IRequest, response: Response) => {
-  const { filter, value } = request.query ?? ({} as { filter?: string; value?: string });
-  const result = validationResult(request);
+  const errors = validationResult(request);
+  if (!errors.isEmpty()) {
+    response.status(400).send(errors.array());
+    return;
+  }
+
+  const { filter, value } = matchedData(request);
+
   if (!filter && !value) {
-    const users: IUser[] = await User.find().select('id username displayName').sort({ id: -1 });
-    response.status(200).send(users);
-    return;
-  }
-  if (!result.isEmpty()) {
-    console.log(result.array());
-    response.status(400).send(result.array());
-    return;
-  }
-  try {
-    if (!filter) {
-      response.status(400).send('Filter is required');
-      return;
+    try {
+      const users: IUser[] = await User.find().select('id username displayName').sort({ id: -1 });
+      response.status(200).send(users);
+    } catch (error) {
+      console.error(error);
+      response.status(500).send(error);
     }
+    return;
+  }
+
+  try {
     const users: IUser[] = await User.find()
       .where(filter as string)
       .equals({ $regex: `.*${value}.*`, $options: 'i' })
       .select('username displayName rating');
     response.status(200).send(users);
-    return;
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(400).send(error);
   }
 };
 
 const getUserByUsername = async (request: IRequest, response: Response) => {
-  const username: string | undefined = request.params?.username;
-  if (!username) {
-    response.status(400).send('Username is required');
+  const errors = validationResult(request);
+  if (!errors.isEmpty()) {
+    response.status(400).send(errors.array());
     return;
   }
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(403).send('Please login first');
-    return;
-  }
+
+  const { username } = matchedData(request);
   try {
     const user: IUser | null = await User.findOne({ username }).select('-password');
     if (!user) {
@@ -59,159 +60,168 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
     }
     response.status(200).send(user);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(400).send(error);
   }
 };
 
 const createUser = async (request: IRequest, response: Response) => {
-  console.log('Create User request received');
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
+  const errors = validationResult(request);
+  if (!errors.isEmpty()) {
+    response.status(400).send(errors.array());
     return;
   }
-  const result = validationResult(request);
-  if (!result.isEmpty()) {
-    response.status(400).send(result.array());
-    return;
-  }
-  const { username, password, displayName, isAdmin } = request.body as IUser;
-  const data = { username, password, displayName, isAdmin } as IUser;
-  if (data.isAdmin !== true && data.isAdmin !== false) {
-    response.status(400).send('isAdmin must be a boolean');
-    return;
-  }
-  const user = request.user as IUser;
-  if (data.isAdmin && !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
-  const newUser = new User(data);
+
+  const { username, password, displayName, isAdmin, studentId } = matchedData(request) as IUser;
+
+  let giteaUserCreated = false;
+  let giteaId: number | undefined;
+  let gitSshUrl: string | undefined;
+
   try {
-    newUser.password = hashString(newUser.password);
-    newUser.solvedProblem = 0;
-    newUser.solvedProblems = [];
-    newUser.rating = 0;
-    console.log(`Creating user: ${newUser.username}`);
-    const savedUser: IUser = await newUser.save();
+    console.log(`Creating user: ${username}`);
 
-    console.log(`User ${savedUser.username} created successfully`);
-    // Create Gitea user and repository for the new user
+    // Gitea integration first to get giteaId
     try {
-      // First create the user in Gitea
-      await giteaService.createUser({
-        username: savedUser.username,
-        email: `${savedUser.username}@owojudge.local`,
-        password: password, // Use the original password before hashing
-        fullName: savedUser.displayName || savedUser.username
+      const giteaUser = await giteaService.createUser({
+        username,
+        password,
+        email: `${username}@owojudge.local`
       });
+      giteaId = giteaUser.id;
+      giteaUserCreated = true;
 
-      // Then create their repository
-      await giteaService.createUserRepo({
-        username: savedUser.username
-      });
+      const giteaRepo = await giteaService.createUserRepo({ username });
+      gitSshUrl = giteaRepo.ssh_url;
     } catch (giteaError) {
-      console.error(`Failed to create Gitea user/repo for ${savedUser.username}:`, giteaError);
-      // Don't fail user creation if Gitea setup fails
+      console.error(`Failed to create Gitea user/repo for ${username}:`, giteaError);
+      // If Gitea creation fails, we can't proceed
+      response.status(500).send({
+        message: 'Failed to create Gitea user',
+        error: giteaError
+      });
+      return;
     }
+
+    // Create OwoJudge user
+    const newUser = new User({
+      username,
+      displayName,
+      isAdmin,
+      studentId,
+      giteaId,
+      gitSshUrl,
+      password: hashString(password)
+    });
+
+    const savedUser: IUser = await newUser.save();
+    console.log(`User ${username} created successfully`);
 
     response.status(201).send(savedUser);
   } catch (error) {
-    console.log(`Error: ${error}`);
+    console.error(`Error creating user: ${error}`);
+
+    // Rollback: Delete Gitea user if it was created
+    if (giteaUserCreated) {
+      console.log(`Rolling back Gitea user creation for ${username}...`);
+      try {
+        await giteaService.deleteUser(username);
+        console.log(`Successfully deleted Gitea user ${username}`);
+      } catch (deleteError) {
+        console.error(`Failed to rollback Gitea user ${username}:`, deleteError);
+      }
+    }
+
     response.status(400).send(error);
   }
 };
 
 const deleteUser = async (request: IRequest, response: Response) => {
-  const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
+  const errors = validationResult(request);
+  if (!errors.isEmpty()) {
+    response.status(400).send(errors.array());
     return;
   }
-  const username: string | undefined = request.params?.username;
-  if (!username) {
-    response.status(400).send('Username is required');
-    return;
-  }
+  const { username } = matchedData(request);
   try {
-    const user: IUser | null = await User.findOneAndDelete({ username });
-    if (!user) {
+    const deletedUser: IUser | null = await User.findOneAndDelete({ username });
+    if (!deletedUser) {
       response.sendStatus(404);
       return;
     }
-    response.status(201).send(user);
+    response.status(201).send(deletedUser);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(400).send(error);
   }
 };
 
 const updateUser = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
+  const errors = validationResult(request);
+  if (!errors.isEmpty()) {
+    response.status(400).send(errors.array());
     return;
   }
-  const oldUsername: string | undefined = request.params?.username;
-  const { username, password, displayName, isAdmin } = request.body as IUser;
-  const data = {} as IUser;
-  if (username) {
-    data.username = username;
-  }
-  if (password) {
-    data.password = password;
-  }
-  if (displayName) {
-    data.displayName = displayName;
-  }
+
+  const { username: oldUsername } = request.params;
   const user = request.user as IUser;
-  if ((isAdmin == true || isAdmin == false) && user.isAdmin) {
-    data.isAdmin = isAdmin;
-  } else if (isAdmin === true || isAdmin === false) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
-  if (!oldUsername) {
-    response.status(400).send('Username is required');
-    return;
-  }
+
+  // Authorization: Only admin or self can update
   if (oldUsername !== user.username && !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
+    response.status(403).send('Not authorized to update this user');
     return;
   }
+
+  const updates = matchedData(request);
+
+  // Only admin can change isAdmin, studentId, giteaId status
+  if (!user.isAdmin) {
+    delete updates.isAdmin;
+    delete updates.studentId;
+  }
+
+  if (updates.password) {
+    updates.password = hashString(updates.password);
+  }
+
   try {
-    const errorArray = validationResult(request).array();
-    for (const key in data) {
-      for (let i = 0; i < errorArray.length; i++) {
-        const error = errorArray[i] as unknown as IValidationError;
-        console.log(error);
-        if (error.path === key) {
-          throw {
-            message: 'Invalid patch data',
-            error
-          };
+    // Gitea SSH Key update logic
+    if (updates.gitPublicKey) {
+      const existingUser = await User.findOne({ username: oldUsername });
+      if (existingUser && updates.gitPublicKey !== existingUser.gitPublicKey) {
+        console.log(`New public key detected for user ${oldUsername}, adding to Gitea...`);
+        try {
+          await giteaService.addPublicKey(oldUsername, {
+            key: updates.gitPublicKey,
+            read_only: true,
+            title: `OwoJudge SSH Key - ${new Date().toISOString()}`
+          });
+        } catch (giteaError) {
+          console.error(`Failed to add public key to Gitea for ${oldUsername}:`, giteaError);
+          response.status(500).send({ message: 'Failed to add public key to Gitea', error: giteaError });
+          return;
         }
       }
     }
-    if (data.password) {
-      data.password = hashString(data.password);
-    }
-    const user: IUser | null = await User.findOneAndUpdate({ username: oldUsername }, data);
-    if (!user) {
+
+    const updatedUser = await User.findOneAndUpdate({ username: oldUsername }, updates, { new: true });
+    if (!updatedUser) {
       response.status(404).send('User not found');
       return;
     }
-    response.status(201).send(`${oldUsername} updated`);
+    response.status(200).send(`${oldUsername} updated`);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(400).send(error);
   }
 };
 
+
 usersRouter.get('/api/users', checkSchema(getUsersValidation), getAllUsers);
-usersRouter.get('/api/users/:username', getUserByUsername);
-usersRouter.post('/api/users', checkSchema(createUserValidation), createUser);
-usersRouter.delete('/api/users/:username', deleteUser);
-usersRouter.patch('/api/users/:username', checkSchema(updateUserValidation), updateUser);
+usersRouter.get('/api/users/:username', isAuthenticated, checkSchema(usernameParamValidation), getUserByUsername);
+usersRouter.post('/api/users', isAdmin, checkSchema(createUserValidation), createUser);
+usersRouter.delete('/api/users/:username', isAdmin, checkSchema(usernameParamValidation), deleteUser);
+usersRouter.patch('/api/users/:username', isAuthenticated, checkSchema(usernameParamValidation), checkSchema(updateUserValidation), updateUser);
 
 export default usersRouter;
 export { getAllUsers, getUserByUsername, createUser, deleteUser, updateUser };

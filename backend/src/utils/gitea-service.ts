@@ -9,42 +9,22 @@ interface GiteaConfig {
 interface CreateRepoOptions {
   username: string;
   repoName?: string;
-  description?: string;
-  isPrivate?: boolean;
   defaultBranch?: string;
-  readme?: string;
-  template?: boolean;
-  trustModel?: 'default' | 'collaborator' | 'committer' | 'collaboratorcommitter';
 }
 
 interface CreateUserOptions {
   username: string;
-  email: string;
   password: string;
-  fullName?: string;
-  mustChangePassword?: boolean;
+  email: string;
 }
 
 interface GiteaUser {
   id: number;
-  login: string;
-  full_name: string;
-  email: string;
-  avatar_url: string;
-  is_admin: boolean;
-  created: string;
 }
 
 interface GiteaRepo {
-  id: number;
   name: string;
-  full_name: string;
-  description: string;
-  private: boolean;
-  clone_url: string;
   ssh_url: string;
-  html_url: string;
-  default_branch: string;
 }
 
 interface GiteaApiError {
@@ -52,11 +32,32 @@ interface GiteaApiError {
   url: string;
 }
 
+interface GiteaFileContent {
+  name: string;
+  content: string;
+  size: number;
+}
+
+
+
+interface AddPublicKeyOptions {
+  key: string;
+  read_only?: boolean;
+  title?: string;
+}
+
 class GiteaService {
-  private config: GiteaConfig;
+  private _config: GiteaConfig | null = null;
 
   constructor() {
-    this.config = this.loadConfig();
+    // Don't load config here - delay until first use
+  }
+
+  private get config(): GiteaConfig {
+    if (!this._config) {
+      this._config = this.loadConfig();
+    }
+    return this._config;
   }
 
   private loadConfig(): GiteaConfig {
@@ -65,13 +66,13 @@ class GiteaService {
     const dockerPath = '/secrets/gitea_token.txt';
     const localPath = path.resolve(__dirname, '../../secrets/gitea_token.txt');
     const tokenPath = fs.existsSync(dockerPath) ? dockerPath : localPath;
-    
+
     if (!fs.existsSync(tokenPath)) {
       throw new Error(`Gitea token file not found at: ${dockerPath} or ${localPath}`);
     }
 
     const token = fs.readFileSync(tokenPath, 'utf-8').trim();
-    
+
     if (!token) {
       throw new Error('Gitea token is empty');
     }
@@ -88,7 +89,7 @@ class GiteaService {
     body?: object
   ): Promise<T> {
     const url = `${this.config.baseUrl}${endpoint}`;
-    
+
     console.log(`[Gitea] ${method} ${url}`);
     if (body) {
       console.log(`[Gitea] Request body:`, JSON.stringify(body, null, 2));
@@ -136,98 +137,93 @@ class GiteaService {
   async createUser(options: CreateUserOptions): Promise<GiteaUser> {
     const {
       username,
-      email,
       password,
-      fullName = username,
-      mustChangePassword = false
+      email
     } = options;
 
     const endpoint = '/api/v1/admin/users';
-    
+
     const payload = {
       username,
-      email,
       password,
-      full_name: fullName,
-      must_change_password: mustChangePassword
+      email
     };
-
-    return this.request<GiteaUser>(endpoint, 'POST', payload);
+    const user = await this.request<GiteaUser>(endpoint, 'POST', payload);
+    return user;
   }
 
   /**
    * Create a repository for a user (admin operation)
+   * Returns the SSH URL of the created repository
    */
   async createUserRepo(options: CreateRepoOptions): Promise<GiteaRepo> {
     const {
       username,
       repoName = `${username}-dsa`,
-      description = `${username}'s repo`,
-      isPrivate = true,
       defaultBranch = 'main',
-      readme = '(no readme)',
-      template = false,
-      trustModel = 'default'
     } = options;
 
     const endpoint = `/api/v1/admin/users/${username}/repos`;
-    
+
     const payload = {
       default_branch: defaultBranch,
-      description,
       name: repoName,
-      private: isPrivate,
-      readme,
-      template,
-      trust_model: trustModel
+      private: false,
     };
 
-    return this.request<GiteaRepo>(endpoint, 'POST', payload);
+    const repo = await this.request<GiteaRepo>(endpoint, 'POST', payload);
+    return repo
   }
 
   /**
-   * Get a user's repository
+   * Delete a user from Gitea (admin operation)
    */
-  async getUserRepo(username: string, repoName: string): Promise<GiteaRepo | null> {
-    try {
-      const endpoint = `/api/v1/repos/${username}/${repoName}`;
-      return await this.request<GiteaRepo>(endpoint);
-    } catch (error) {
-      // Return null if repo not found
-      return null;
-    }
+  async deleteUser(username: string): Promise<void> {
+    const endpoint = `/api/v1/admin/users/${username}`;
+    return this.request<void>(endpoint, 'DELETE');
   }
 
   /**
-   * List all repositories for a user
+   * Get file content from a repository
+   * @param owner Repository owner username
+   * @param repo Repository name
+   * @param filepath Path to the file in the repository
+   * @param ref Branch, tag, or commit SHA (default: main branch)
    */
-  async listUserRepos(username: string): Promise<GiteaRepo[]> {
-    const endpoint = `/api/v1/users/${username}/repos`;
-    return this.request<GiteaRepo[]>(endpoint);
+  async getFileContent(
+    owner: string,
+    repo: string,
+    filepath: string,
+    ref: string
+  ): Promise<GiteaFileContent> {
+    let endpoint = `/api/v1/repos/${owner}/${repo}/contents/${filepath}?ref=${ref}`;
+    return this.request<GiteaFileContent>(endpoint);
   }
 
   /**
-   * Delete a repository
+   * Add a public SSH key to a user's account (admin operation)
+   * @param username Username to add the key to
+   * @param options Key options including the key content, read_only flag, and title
    */
-  async deleteRepo(owner: string, repoName: string): Promise<void> {
-    const endpoint = `/api/v1/repos/${owner}/${repoName}`;
-    await this.request<void>(endpoint, 'DELETE');
-  }
+  async addPublicKey(username: string, options: AddPublicKeyOptions): Promise<void> {
+    const { key, read_only = true, title = 'OwoJudge SSH Key' } = options;
 
-  /**
-   * Check if Gitea service is healthy
-   */
-  async healthCheck(): Promise<boolean> {
-    try {
-      await this.request('/api/v1/version');
-      return true;
-    } catch {
-      return false;
-    }
+    const endpoint = `/api/v1/admin/users/${username}/keys`;
+
+    const payload = {
+      key,
+      read_only,
+      title
+    };
+
+    await this.request(endpoint, 'POST', payload);
   }
 }
+
 
 // Export singleton instance
 const giteaService = new GiteaService();
 
-export { giteaService, GiteaService, CreateUserOptions, CreateRepoOptions, GiteaUser, GiteaRepo };
+export {
+  giteaService,
+};

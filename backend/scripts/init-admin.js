@@ -32,6 +32,22 @@ const userSchema = new mongoose.Schema({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  gitPublicKey: {
+    type: mongoose.Schema.Types.String,
+    required: false
+  },
+  studentId: {
+    type: mongoose.Schema.Types.String,
+    required: false,
+    unique: true,
+    sparse: true
+  },
+  giteaId: {
+    type: mongoose.Schema.Types.Number,
+    required: false,
+    unique: true,
+    sparse: true
   }
 });
 
@@ -64,11 +80,6 @@ const randomString = (size) => {
   return crypto.randomBytes(size).toString('hex');
 };
 
-/*
-USER: admin
-PASS: 239899b1fc5b25ef0f8dce73
-*/
-
 // Get environment variables
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
 const ROOT_USERNAME = process.env.ROOT_USERNAME || 'admin';
@@ -76,14 +87,14 @@ const ROOT_USERNAME = process.env.ROOT_USERNAME || 'admin';
 async function createAdminUser() {
   try {
     console.log('Initializing admin user...');
-    
+
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
     // Check if admin user already exists
     const existingAdmin = await User.findOne({ username: ROOT_USERNAME });
-    
+
     if (existingAdmin) {
       console.log(`Admin user '${ROOT_USERNAME}' already exists`);
       console.log(`Admin Username: ${ROOT_USERNAME}`);
@@ -93,7 +104,7 @@ async function createAdminUser() {
 
     // Generate random password for admin user
     const adminPassword = 'admin';
-    
+
     // Create admin user object
     const adminUser = new User({
       username: ROOT_USERNAME,
@@ -106,7 +117,7 @@ async function createAdminUser() {
     });
 
     const savedUser = await adminUser.save();
-    
+
     console.log('Admin user created successfully!');
     console.log('Admin User Details:');
     console.log(`Username: ${ROOT_USERNAME}`);

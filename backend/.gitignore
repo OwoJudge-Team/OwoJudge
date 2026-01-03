@@ -135,3 +135,7 @@ uploads
 
 # salt
 salt.json
+
+
+# gitea token
+secrets/

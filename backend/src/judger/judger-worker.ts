@@ -34,10 +34,11 @@ interface WorkerResponse {
 }
 
 const writeUserSolution = (submission: ISubmission, dir: string) => {
-  for (const file of submission.userSolution) {
-    const filename = file.filename;
+  for (let i = 0; i < submission.userSolution.length; i++) {
+    console.log(`Writing user solution file ${i}`);
+    const file = submission.userSolution[i];
     const content = file.content;
-    fs.writeFileSync(path.join(dir, filename), content);
+    fs.writeFileSync(path.join(dir, 'main.c'), content);
   }
 }
 
@@ -470,6 +471,8 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
 const processSubmission = async (submissionID: string): Promise<void> => {
   try {
     const submission = await Submission.findById(submissionID);
+    console.log(`Processing submission ${submissionID}`);
+    console.log(submission);
     if (!submission) {
       throw new Error(`Submission ${submissionID} not found`);
     }
@@ -516,7 +519,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
         if (result === SubmissionStatus.CE) {
           submission.status = SubmissionStatus.CE;
           await submission.save();
-          
+
           // Update submission statistics
           problem.submissionDetail.compilationError += 1;
           problem.submissionDetail.submitted += 1;
@@ -533,11 +536,11 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
       // Update submission statistics based on final status
       problem.submissionDetail.submitted += 1;
-      
+
       switch (finalStatus) {
         case SubmissionStatus.AC:
           problem.submissionDetail.accepted += 1;
-          
+
           // Check if this is the user's first AC on this problem
           const previousAC = await Submission.countDocuments({
             username: submission.username,
@@ -545,12 +548,12 @@ const processSubmission = async (submissionID: string): Promise<void> => {
             status: SubmissionStatus.AC,
             _id: { $ne: submissionID }
           });
-          
+
           if (previousAC === 0) {
             // First time solving this problem
             problem.userDetail.solved += 1;
             await problem.save();
-            
+
             // Update user statistics
             user.solvedProblem += 1;
             if (!user.solvedProblems.includes(submission.problemID)) {
@@ -591,7 +594,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       console.error('Error during worker execution:', error);
       submission.status = SubmissionStatus.SE;
       await submission.save();
-      
+
       // Update submission statistics for system error
       problem.submissionDetail.submitted += 1;
       await problem.save();
@@ -622,7 +625,7 @@ if (parentPort) {
     try {
       if (message.type === 'process_submission') {
         await processSubmission(message.submissionID);
-        
+
         const response: WorkerResponse = {
           type: 'submission_complete',
           submissionID: message.submissionID

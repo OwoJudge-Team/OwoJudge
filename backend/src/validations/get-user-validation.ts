@@ -9,7 +9,8 @@ export const getUsersValidation = {
     },
     isString: {
       errorMessage: 'Filter should be a string'
-    }
+    },
+    optional: true
   },
   value: {
     isLength: {
@@ -21,6 +22,7 @@ export const getUsersValidation = {
     },
     isString: {
       errorMessage: 'Value should be a string'
-    }
+    },
+    optional: true
   }
 };

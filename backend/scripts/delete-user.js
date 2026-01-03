@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  gitPublicKey: {
+    type: mongoose.Schema.Types.String,
+    required: false
   }
 });
 
@@ -47,14 +51,14 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge'
 async function deleteUser() {
   try {
     console.log(`Deleting user '${username}'...`);
-    
+
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
     // Delete user
     const result = await User.deleteOne({ username });
-    
+
     if (result.deletedCount === 0) {
       console.log(`❌ User '${username}' not found!`);
     } else {
