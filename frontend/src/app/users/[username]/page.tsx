@@ -37,7 +37,15 @@ export default function UserDetailPage() {
         setLoading(false);
       } catch (err) {
         console.error(err);
-        setError("User not found");
+        let errorMessage = "An unexpected error occurred while loading the user.";
+        if (err instanceof Error) {
+          if (err.message === "User not found") {
+            errorMessage = "User not found.";
+          } else if (err.name === "TypeError") {
+            errorMessage = "Network error: unable to reach the server. Please check your connection and try again.";
+          }
+        }
+        setError(errorMessage);
         setLoading(false);
       }
     };
