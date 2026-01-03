@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { FaArrowUpFromBracket } from "react-icons/fa6";
+import { apiPost } from "@/utils/api";
 import { LuLoaderCircle } from "react-icons/lu";
 import Modal from "@/components/Modal";
 
@@ -11,6 +13,7 @@ const CreateProblemPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const handleBoxClick = () => {
     fileInputRef.current?.click();
@@ -27,9 +30,21 @@ const CreateProblemPage: React.FC = () => {
     if (file) {
       setLoading(true);
       try {
-        // TODO: Submit to backend
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        setModalMessage("Problem uploaded successfully!");
+        const form = new FormData();
+        form.append("problem", file);
+
+        const res = await apiPost("/api/problems", form);
+
+        if (res.ok) {
+          setModalMessage("Problem uploaded successfully!");
+        } else {
+          let msg = `Upload failed (${res.status})`;
+          try {
+            const data = await res.json();
+            if (data && data.message) msg = data.message;
+          } catch {}
+          setModalMessage(msg);
+        }
       } catch {
         setModalMessage("An error occurred while uploading the problem.");
       } finally {
@@ -41,6 +56,14 @@ const CreateProblemPage: React.FC = () => {
       setIsModalOpen(true);
     }
   };
+
+  if (!user || !user.isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-lg text-slate-300">Access denied. Admins only.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-12">

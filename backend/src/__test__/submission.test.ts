@@ -15,7 +15,9 @@ const mockSubmissions = [
         status: SubmissionStatus.AC,
         language: 'python',
         createdTime: new Date('2025-01-01T00:00:00Z'),
-        score: 100
+        score: 100,
+        time: 50,
+        memory: 1024
     },
     {
         serialNumber: 1000002,
@@ -27,7 +29,9 @@ const mockSubmissions = [
         status: SubmissionStatus.WA,
         language: 'cpp',
         createdTime: new Date('2025-01-02T00:00:00Z'),
-        score: 0
+        score: 0,
+        time: 0,
+        memory: 0
     },
     {
         serialNumber: 1000003,
@@ -39,26 +43,34 @@ const mockSubmissions = [
         status: SubmissionStatus.AC,
         language: 'python',
         createdTime: new Date('2025-01-03T00:00:00Z'),
-        score: 100
+        score: 100,
+        time: 60,
+        memory: 2048
     }
 ];
 
 const mockSubmissionFind = vi.fn();
 const mockSubmissionFindOne = vi.fn();
+const mockSubmissionSelect = vi.fn();
+const mockSubmissionCountDocuments = vi.fn();
 
 // Mock Submission model
 vi.mock('../mongoose/schemas/submission', () => ({
     Submission: {
         find: (query: any) => ({
-            select: vi.fn(() => ({
-                sort: vi.fn(() => ({
-                    skip: vi.fn(() => ({
-                        limit: vi.fn(() => mockSubmissionFind(query))
+            select: (fields: string) => {
+                mockSubmissionSelect(fields);
+                return {
+                    sort: vi.fn(() => ({
+                        skip: vi.fn(() => ({
+                            limit: vi.fn(() => mockSubmissionFind(query))
+                        }))
                     }))
-                }))
-            }))
+                };
+            }
         }),
-        findOne: (query: any) => mockSubmissionFindOne(query)
+        findOne: (query: any) => mockSubmissionFindOne(query),
+        countDocuments: (query: any) => mockSubmissionCountDocuments(query)
     },
     ISubmission: {}
 }));
@@ -88,6 +100,9 @@ vi.mock('express-validator', () => ({
     checkSchema: vi.fn(() => (req: any, res: any, next: any) => next())
 }));
 
+// Import real routes
+import { getSubmissions, getSubmissionByID } from '../routes/submission';
+
 // Helper to create mock response
 const createMockResponse = () => {
     const res: Partial<Response> = {
@@ -108,40 +123,6 @@ describe('Submission Routes', () => {
     });
 
     describe('getSubmissions', () => {
-        // Inline implementation for testing (mirrors actual route behavior)
-        const getSubmissions = async (request: IRequest, response: Response): Promise<void> => {
-            if (!request.isAuthenticated() || !request.user) {
-                response.status(401).send('Please login first');
-                return;
-            }
-
-            const user = request.user as any;
-            const query: any = user.isAdmin ? {} : { username: user.username };
-
-            const { username, problemSerialNumber, status } = request.query ?? {};
-            if (username && (user.isAdmin || username === user.username)) {
-                query.username = username;
-            }
-            if (problemSerialNumber) {
-                query.problemSerialNumber = parseInt(problemSerialNumber as string);
-            }
-            if (status) {
-                query.status = status;
-            }
-
-            try {
-                const { Submission } = await import('../mongoose/schemas/submission');
-                const submissions = await Submission.find(query)
-                    .select('serialNumber problemSerialNumber problemTitle username userHandle userID status language createdTime score')
-                    .sort({ serialNumber: -1 })
-                    .skip(0)
-                    .limit(20);
-                response.status(200).send(submissions);
-            } catch (error) {
-                response.status(400).send(error);
-            }
-        };
-
         it('should return 401 if not authenticated', async () => {
             mockRequest = {
                 isAuthenticated: () => false,
@@ -156,6 +137,7 @@ describe('Submission Routes', () => {
         it('should return only user\'s own submissions for non-admin', async () => {
             const userSubmissions = mockSubmissions.filter(s => s.username === 'testuser');
             mockSubmissionFind.mockResolvedValue(userSubmissions);
+            mockSubmissionCountDocuments.mockResolvedValue(userSubmissions.length);
 
             mockRequest = {
                 isAuthenticated: () => true,
@@ -167,6 +149,17 @@ describe('Submission Routes', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(200);
             expect(mockSubmissionFind).toHaveBeenCalledWith({ username: 'testuser' });
+            expect(mockSubmissionCountDocuments).toHaveBeenCalledWith({ username: 'testuser' });
+
+            // Verify response format
+            expect(mockResponse.send).toHaveBeenCalledWith({
+                total: userSubmissions.length,
+                submissions: userSubmissions
+            });
+
+            // Verify select includes time and memory
+            expect(mockSubmissionSelect).toHaveBeenCalledWith(expect.stringContaining('time'));
+            expect(mockSubmissionSelect).toHaveBeenCalledWith(expect.stringContaining('memory'));
         });
 
         it('should return all submissions for admin', async () => {
@@ -202,55 +195,42 @@ describe('Submission Routes', () => {
             });
         });
 
-        it('should filter by status', async () => {
+        it('should filter by status with substring match', async () => {
             const filteredSubmissions = mockSubmissions.filter(s => s.status === SubmissionStatus.AC);
             mockSubmissionFind.mockResolvedValue(filteredSubmissions);
 
             mockRequest = {
                 isAuthenticated: () => true,
                 user: { username: 'testuser', isAdmin: false } as any,
-                query: { status: SubmissionStatus.AC }
+                query: { status: 'AC' }
             };
 
             await getSubmissions(mockRequest as IRequest, mockResponse);
 
             expect(mockSubmissionFind).toHaveBeenCalledWith({
                 username: 'testuser',
-                status: SubmissionStatus.AC
+                status: { $regex: 'AC', $options: 'i' }
+            });
+        });
+
+        it('should filter by username with substring match for admin', async () => {
+            mockSubmissionFind.mockResolvedValue([]);
+
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'admin', isAdmin: true } as any,
+                query: { username: 'test' }
+            };
+
+            await getSubmissions(mockRequest as IRequest, mockResponse);
+
+            expect(mockSubmissionFind).toHaveBeenCalledWith({
+                username: { $regex: 'test', $options: 'i' }
             });
         });
     });
 
     describe('getSubmissionByID', () => {
-        // Inline implementation for testing
-        const getSubmissionByID = async (request: IRequest, response: Response): Promise<void> => {
-            if (!request.isAuthenticated() || !request.user) {
-                response.status(401).send('Please login first');
-                return;
-            }
-
-            const user = request.user as any;
-            const { serialNumber } = request.params ?? {};
-
-            try {
-                const { Submission } = await import('../mongoose/schemas/submission');
-                const submission = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
-                if (!submission) {
-                    response.status(404).send('Submission not found');
-                    return;
-                }
-
-                if (!user.isAdmin && submission.username !== user.username) {
-                    response.status(403).send('You are not authorized to view this submission');
-                    return;
-                }
-
-                response.status(200).send(submission);
-            } catch (error) {
-                response.status(400).send(error);
-            }
-        };
-
         it('should return 401 if not authenticated', async () => {
             mockRequest = {
                 isAuthenticated: () => false,

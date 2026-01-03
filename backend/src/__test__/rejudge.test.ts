@@ -102,7 +102,7 @@ describe('Rejudge API', () => {
 
             expect(mockSubmission.status).toBe(SubmissionStatus.PD);
             expect(mockSubmission.score).toBe(0);
-            expect(mockSubmission.results).toEqual([]);
+            expect(mockSubmission.results).toEqual({});
             expect(mockSubmission.save).toHaveBeenCalled();
             expect(mockSubmitUserSubmission).toHaveBeenCalledWith(mockSubmission);
             expect(statusMock).toHaveBeenCalledWith(200);
@@ -159,13 +159,13 @@ describe('Rejudge API', () => {
             // Check submission 1
             expect(mockSubmission1.status).toBe(SubmissionStatus.PD);
             expect(mockSubmission1.score).toBe(0);
-            expect(mockSubmission1.results).toEqual([]);
+            expect(mockSubmission1.results).toEqual({});
             expect(mockSubmission1.save).toHaveBeenCalled();
 
             // Check submission 2
             expect(mockSubmission2.status).toBe(SubmissionStatus.PD);
             expect(mockSubmission2.score).toBe(0);
-            expect(mockSubmission2.results).toEqual([]);
+            expect(mockSubmission2.results).toEqual({});
             expect(mockSubmission2.save).toHaveBeenCalled();
 
             expect(mockSubmitUserSubmission).toHaveBeenCalledTimes(2);

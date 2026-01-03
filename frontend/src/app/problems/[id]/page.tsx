@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { apiGet } from "@/utils/api";
 import { useParams } from "next/navigation";
 import { FaClock, FaMemory, FaSpinner } from "react-icons/fa6";
 import ProblemClient from "./problem-client";
@@ -29,10 +30,17 @@ export default function ProblemPage() {
   const [data, setData] = useState<ProblemData | null>(null);
 
   useEffect(() => {
-    fetch(`/api/problems/${id}`)
-      .then((res) => res.json())
-      .then(setData)
-      .catch(console.error);
+    const fetchProblem = async () => {
+      try {
+        const res = await apiGet(`/api/problems/${id}`);
+        const problemData = await res.json();
+        setData(problemData);
+      } catch (error) {
+        console.error("Failed to fetch problem data:", error);
+      }
+    };
+
+    fetchProblem();
   }, [id]);
 
   if (!data) {

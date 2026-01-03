@@ -446,10 +446,10 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
 
 -   **Authentication:** Required.
 -   **Query Parameters (optional):**
-    -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username.
+    -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username. Supports substring match (regex) for admins.
     -   `userID` (string): Filter submissions by user MongoDB ObjectId. Non-admins can only filter by their own userID.
     -   `problemSerialNumber` (number): Filter submissions by problem serial number (display ID).
-    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`).
+    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`). Supports substring match (regex).
     -   `minScore` (number): Filter submissions with score greater than or equal to this value.
     -   `maxScore` (number): Filter submissions with score less than or equal to this value.
     -   `index` (number): Number of records to skip (takes precedence over `offset`).
@@ -461,21 +461,26 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
     -   `GET /api/submissions?problemSerialNumber=0&maxScore=100&limit=10&offset=20`
 -   **Response Example:**
     ```json
-    [
-      {
-        "_id": "68fb7890a1b2c3d4e5f67890",
-        "serialNumber": 1000000,
-        "username": "admin",
-        "userHandle": "Admin Administrator",
-        "userID": "68fb6d6e6deaffa916ced917",
-        "problemSerialNumber": 0,
-        "problemTitle": "Problem Title",
-        "language": "g++ c++17",
-        "status": "AC",
-        "score": 100,
-        "createdTime": "2025-10-24T13:00:00.000Z"
-      }
-    ]
+    {
+      "total": 123,
+      "submissions": [
+        {
+          "_id": "68fb7890a1b2c3d4e5f67890",
+          "serialNumber": 1000000,
+          "username": "admin",
+          "userHandle": "Admin Administrator",
+          "userID": "68fb6d6e6deaffa916ced917",
+          "problemSerialNumber": 0,
+          "problemTitle": "Problem Title",
+          "language": "g++ c++17",
+          "status": "AC",
+          "score": 100,
+          "time": 0.05,
+          "memory": 2048,
+          "createdTime": "2025-10-24T13:00:00.000Z"
+        }
+      ]
+    }
     ```
 -   **Note:** The response only includes summary fields. Use `GET /api/submission/:serialNumber` to get full submission details including source code and test results.
 
@@ -499,6 +504,8 @@ Retrieves a single submission by its serial number. Non-admin users can only vie
       "language": "g++ c++17",
       "status": "AC",
       "score": 100,
+      "time": 0.05,
+      "memory": 2048,
       "createdTime": "2025-10-24T13:00:00.000Z",
       "userSolution": [
         {

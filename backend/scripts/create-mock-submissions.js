@@ -58,7 +58,7 @@ const submissionSchema = new mongoose.Schema({
   status: { type: String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
   createdTime: { type: Date, default: Date.now },
   score: { type: Number, default: 0 },
-  results: [testCaseResultSchema],
+  results: { type: mongoose.Schema.Types.Mixed, default: {} },
 });
 
 // Auto-increment serialNumber
@@ -154,7 +154,7 @@ async function createMockSubmissions() {
       }
 
       // Generate results based on problem testcases
-      const results = [];
+      const results = {};
       let testcases = problem.testcase;
 
       // If no testcases defined in DB, generate fake ones
@@ -164,30 +164,61 @@ async function createMockSubmissions() {
         for (let t = 1; t <= numTests; t++) {
           testcases.push({
             filename: `${String(t).padStart(2, '0')}`,
-            point: 0,
+            point: 10, // Assign some points
             subtask: 'main'
           });
         }
       }
 
+      // Group testcases by subtask
+      const groupedTCs = {};
       for (const tc of testcases) {
-        let tcStatus = status;
-        // If overall status is not AC, mix in some ACs for individual testcases
-        if (status !== SubmissionStatus.AC && Math.random() > 0.5) {
-           tcStatus = SubmissionStatus.AC;
-        }
-        // If overall is AC, all must be AC
-        if (status === SubmissionStatus.AC) {
-          tcStatus = SubmissionStatus.AC;
-        }
+          const subtask = tc.subtask || 'main';
+          if (!groupedTCs[subtask]) groupedTCs[subtask] = [];
+          groupedTCs[subtask].push(tc);
+      }
 
-        results.push({
-          testcase: tc.filename,
-          status: tcStatus,
-          time: Math.floor(Math.random() * 1000), // ms
-          memory: Math.floor(Math.random() * 128 * 1024), // KB
-          message: tcStatus === SubmissionStatus.AC ? 'Correct' : 'Wrong Answer'
-        });
+      for (const [subtask, tcs] of Object.entries(groupedTCs)) {
+          const groupResults = [];
+          let allAC = true;
+          let groupScore = 0;
+          let totalGroupPoints = 0;
+
+          for (const tc of tcs) {
+            totalGroupPoints += (tc.point || 0);
+            let tcStatus = status;
+            // If overall status is not AC, mix in some ACs for individual testcases
+            if (status !== SubmissionStatus.AC && Math.random() > 0.5) {
+               tcStatus = SubmissionStatus.AC;
+            }
+            // If overall is AC, all must be AC
+            if (status === SubmissionStatus.AC) {
+              tcStatus = SubmissionStatus.AC;
+            }
+            
+            if (tcStatus !== SubmissionStatus.AC) allAC = false;
+
+            groupResults.push({
+              testcase: tc.filename,
+              status: tcStatus,
+              time: Number((Math.random() * 1).toFixed(3)), // 0-1s
+              memory: Math.floor(Math.random() * 1024 * 10), // 0-10MB
+              message: tcStatus === SubmissionStatus.AC ? 'Correct' : 'Wrong Answer'
+            });
+          }
+          
+          if (allAC) {
+              groupScore = totalGroupPoints || 100;
+          } else if (status === SubmissionStatus.PS) {
+              groupScore = Math.floor(Math.random() * (totalGroupPoints || 100));
+          } else {
+              groupScore = 0;
+          }
+
+          results[subtask] = {
+              score: groupScore,
+              testcases: groupResults
+          };
       }
 
       const submission = new Submission({

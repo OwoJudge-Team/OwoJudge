@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { submissions, Submission, Result } from "@/constants/submissions";
+import { Submission, Result, StatusToCode } from "@/constants/submissions";
+import { formatISOTime } from "@/utils/time";
+import { apiGet } from "@/utils/api";
 import { getStatusColor } from "@/utils/submission-status";
 import * as Diff from "diff";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -41,14 +43,33 @@ export default function ComparePage() {
   // Using id and id2 as per the directory structure [id]/compare/[id2]
   const leftId = params.id as string;
   const rightId = params.id2 as string;
+  const [leftSub, setLeftSub] = useState<Submission | null>(null);
+  const [rightSub, setRightSub] = useState<Submission | null>(null);
 
-  const leftSub = submissions.find((sub) => sub.id.toString() === leftId);
-  const rightSub = submissions.find((sub) => sub.id.toString() === rightId);
+  useEffect(() => {
+    const fetchSubmission = async (id: string): Promise<Submission | null> => {
+      try {
+        const res = await apiGet(`/api/submission/${id}`);
+        if (!res.ok) {
+          console.error(`Failed to fetch submission ${id}:`, res.statusText);
+          return null;
+        }
+        const data = await res.json();
+        return data as Submission;
+      } catch (error) {
+        console.error(`Error fetching submission ${id}:`, error);
+        return null;
+      }
+    };
+
+    fetchSubmission(leftId).then(setLeftSub);
+    fetchSubmission(rightId).then(setRightSub);
+  }, [leftId, rightId]);
 
   // Compute Code Diff
   const codeDiff = useMemo(() => {
     if (!leftSub || !rightSub) return [];
-    return Diff.diffLines(leftSub.userSolution.content, rightSub.userSolution.content, {
+    return Diff.diffLines(leftSub.userSolution[0].content, rightSub.userSolution[0].content, {
       ignoreWhitespace: false,
     });
   }, [leftSub, rightSub]);
@@ -96,7 +117,7 @@ export default function ComparePage() {
   }
 
   // Warning if problems differ
-  const differentProblems = leftSub.problemID !== rightSub.problemID;
+  const differentProblems = leftSub.problemSerialNumber !== rightSub.problemSerialNumber;
 
   return (
     <div className="mx-auto max-w-7xl p-6 text-slate-100">
@@ -164,7 +185,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
             {side} Submission
           </span>
           <span className="rounded bg-slate-700 px-2 py-1 font-mono text-xs text-slate-300">
-            #{submission.id}
+            #{submission.serialNumber}
           </span>
         </div>
       </div>
@@ -176,7 +197,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
               submission.status
             )}`}
           >
-            {submission.status}
+            {StatusToCode[submission.status]}
           </div>
           <div>
             <div className="text-3xl font-bold text-slate-100">{submission.score}</div>
@@ -188,7 +209,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
           <div className="flex items-center gap-2 text-slate-400">
             <FaUser className="text-slate-500" /> User
           </div>
-          <div className="font-medium text-slate-200">{submission.user}</div>
+          <div className="font-medium text-slate-200">{submission.userHandle}</div>
 
           <div className="flex items-center gap-2 text-slate-400">
             <FaCode className="text-slate-500" /> Language
@@ -208,7 +229,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
           <div className="flex items-center gap-2 text-slate-400">
             <FaCalendarAlt className="text-slate-500" /> Date
           </div>
-          <div className="font-medium text-slate-200">{submission.createdTime}</div>
+          <div className="font-medium text-slate-200">{formatISOTime(submission.createdTime)}</div>
         </div>
       </div>
     </div>
@@ -331,7 +352,7 @@ function TestcaseRow({ row }: { row: PairedResult }) {
             <span
               className={`${getStatusColor(row.left.status)} rounded px-1.5 py-0.5 text-xs font-bold`}
             >
-              {row.left.status}
+              {StatusToCode[row.left.status]}
             </span>
           ) : (
             <span className="text-slate-500">-</span>
@@ -342,7 +363,7 @@ function TestcaseRow({ row }: { row: PairedResult }) {
             <span
               className={`${getStatusColor(row.right.status)} rounded px-1.5 py-0.5 text-xs font-bold`}
             >
-              {row.right.status}
+              {StatusToCode[row.right.status]}
             </span>
           ) : (
             <span className="text-slate-500">-</span>
