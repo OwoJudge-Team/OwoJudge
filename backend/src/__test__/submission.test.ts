@@ -195,21 +195,37 @@ describe('Submission Routes', () => {
             });
         });
 
-        it('should filter by status', async () => {
+        it('should filter by status with substring match', async () => {
             const filteredSubmissions = mockSubmissions.filter(s => s.status === SubmissionStatus.AC);
             mockSubmissionFind.mockResolvedValue(filteredSubmissions);
 
             mockRequest = {
                 isAuthenticated: () => true,
                 user: { username: 'testuser', isAdmin: false } as any,
-                query: { status: SubmissionStatus.AC }
+                query: { status: 'AC' }
             };
 
             await getSubmissions(mockRequest as IRequest, mockResponse);
 
             expect(mockSubmissionFind).toHaveBeenCalledWith({
                 username: 'testuser',
-                status: SubmissionStatus.AC
+                status: { $regex: 'AC', $options: 'i' }
+            });
+        });
+
+        it('should filter by username with substring match for admin', async () => {
+            mockSubmissionFind.mockResolvedValue([]);
+
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'admin', isAdmin: true } as any,
+                query: { username: 'test' }
+            };
+
+            await getSubmissions(mockRequest as IRequest, mockResponse);
+
+            expect(mockSubmissionFind).toHaveBeenCalledWith({
+                username: { $regex: 'test', $options: 'i' }
             });
         });
     });

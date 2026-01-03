@@ -398,10 +398,10 @@ Retrieves a list of submissions. Non-admin users can only view their own submiss
 
 -   **Authentication:** Required.
 -   **Query Parameters (optional):**
-    -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username.
+    -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username. Supports substring match (regex) for admins.
     -   `userID` (string): Filter submissions by user MongoDB ObjectId. Non-admins can only filter by their own userID.
     -   `problemSerialNumber` (number): Filter submissions by problem serial number (display ID).
-    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`).
+    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`). Supports substring match (regex).
     -   `minScore` (number): Filter submissions with score greater than or equal to this value.
     -   `maxScore` (number): Filter submissions with score less than or equal to this value.
     -   `index` (number): Number of records to skip (takes precedence over `offset`).
