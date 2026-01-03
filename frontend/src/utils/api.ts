@@ -2,7 +2,7 @@
  * API utility functions for making authenticated requests to the backend
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface FetchOptions extends Omit<RequestInit, "body"> {
   body?: unknown;

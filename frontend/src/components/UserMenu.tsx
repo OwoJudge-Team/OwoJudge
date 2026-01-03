@@ -92,7 +92,7 @@ const UserMenu: React.FC = () => {
           {/* Menu Items */}
           <div className="divide-y divide-slate-700/50">
             <Link
-              href={`/users/${user.id}`}
+              href={`/users/${user.username}`}
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-6 py-4 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50 hover:text-indigo-400"
             >
