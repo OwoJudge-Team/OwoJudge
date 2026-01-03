@@ -5,37 +5,21 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
-import { FaTrophy, FaCircleCheck, FaCode, FaChartPie, FaUserShield, FaLock } from "react-icons/fa6";
-
-interface User {
-  _id: string;
-  username: string;
-  displayName: string;
-  isAdmin: boolean;
-  rating: number;
-  solvedProblem: number;
-  solvedProblems: (string | number)[];
-}
-
-interface UserStats {
-  submissions: number;
-  acceptedSubmissions: number;
-}
+import { User } from "@/types/user";
+import { FaTrophy, FaCircleCheck, FaUserShield, FaLock } from "react-icons/fa6";
 
 export default function UserDetailPage() {
   const params = useParams();
-  const username = params.username; // This is the username from the route /users/[username]
+  const username = params.username;
 
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<UserStats>({ submissions: 0, acceptedSubmissions: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   useEffect(() => {
-    const fetchUserAndStats = async () => {
+    const fetchUser = async () => {
       try {
-        // 1. Fetch User Profile
         const userRes = await apiGet(`/api/users/${username}`);
 
         if (userRes.status === 401) {
@@ -50,27 +34,6 @@ export default function UserDetailPage() {
 
         const userData = await userRes.json();
         setUser(userData);
-
-        // 2. Fetch Submission Stats (Parallel)
-        // We can't use Promise.all efficiently if we want to be safe, but let's try
-        try {
-          const [totalRes, acRes] = await Promise.all([
-            apiGet(`/api/submissions?username=${username}&limit=1`),
-            apiGet(`/api/submissions?username=${username}&status=AC&limit=1`),
-          ]);
-
-          const totalData = await totalRes.json();
-          const acData = await acRes.json();
-
-          setStats({
-            submissions: totalData.total || 0,
-            acceptedSubmissions: acData.total || 0,
-          });
-        } catch (statsErr) {
-          console.error("Failed to fetch stats:", statsErr);
-          // Don't fail the whole page if stats fail
-        }
-
         setLoading(false);
       } catch (err) {
         console.error(err);
@@ -80,7 +43,7 @@ export default function UserDetailPage() {
     };
 
     if (username) {
-      fetchUserAndStats();
+      fetchUser();
     }
   }, [username]);
 
@@ -137,24 +100,19 @@ export default function UserDetailPage() {
             <p className="mb-6 text-slate-400">
               {error || "The user you're looking for doesn't exist."}
             </p>
-            <CoolLink href="/users" text="← Back to Users" />
+            <CoolLink href="/users" text="Back to Users" direction="left" />
           </div>
         </div>
       </div>
     );
   }
 
-  const acceptanceRate =
-    stats.submissions > 0
-      ? ((stats.acceptedSubmissions / stats.submissions) * 100).toFixed(1)
-      : "0";
-
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-5xl">
         {/* Back Navigation */}
         <div className="mb-6">
-          <CoolLink href="/users" text="← Back to Users" />
+          <CoolLink href="/users" text="Back to Users" direction="left" />
         </div>
 
         {/* User Profile Header */}
@@ -175,7 +133,7 @@ export default function UserDetailPage() {
         </div>
 
         {/* Statistics Grid */}
-        <div className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
           {/* Rating Card */}
           <div className="rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-lg">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-400">
@@ -190,25 +148,6 @@ export default function UserDetailPage() {
               <FaCircleCheck className="text-emerald-500" /> Solved
             </div>
             <div className="text-3xl font-bold text-emerald-400">{user.solvedProblem}</div>
-          </div>
-
-          {/* Submissions Card */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-lg">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-400">
-              <FaCode className="text-blue-500" /> Submissions
-            </div>
-            <div className="text-3xl font-bold text-blue-400">{stats.submissions}</div>
-          </div>
-
-          {/* Acceptance Rate Card */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-lg">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-400">
-              <FaChartPie className="text-purple-500" /> AC Rate
-            </div>
-            <div className="text-3xl font-bold text-purple-400">{acceptanceRate}%</div>
-            <div className="mt-1 text-xs text-slate-500">
-              {stats.acceptedSubmissions} / {stats.submissions}
-            </div>
           </div>
         </div>
 

@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
-
-interface User {
-  _id: string;
-  username: string;
-  displayName: string;
-}
+import { User } from "@/types/user";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -62,9 +57,7 @@ export default function UsersPage() {
                   className="group transition-all duration-150 hover:bg-slate-700/50"
                 >
                   <td className="px-6 py-4">
-                    <div className="text-lg font-bold text-slate-400">
-                      {index + 1}
-                    </div>
+                    <div className="text-lg font-bold text-slate-400">{index + 1}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
