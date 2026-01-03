@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
-import { Problem, IProblem } from '../mongoose/schemas/problems';
+import { Problem, IProblem, ProblemStatus } from '../mongoose/schemas/problems';
 import { updateProblemValidation } from '../validations/update-problem-validation';
 import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
@@ -14,9 +14,43 @@ import { generateSingleTestcase } from '../utils/generate-testcase';
 import { IsolateManager } from '../utils/isolate-manager';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Submission, ISubmission } from '../mongoose/schemas/submission';
+import { SubmissionStatus } from '../utils/submission-status';
+import { submitUserSubmission } from '../judger/judger';
 import { isAdmin, isAuthenticated } from '../middleware/auth';
 
 const execAsync = promisify(exec);
+
+// Simple mutex to prevent race conditions on problem directories
+class ProblemLock {
+  private static locks = new Map<string, Promise<void>>();
+
+  static async acquire(id: string): Promise<() => void> {
+    const previousLock = this.locks.get(id) || Promise.resolve();
+    let release: () => void = () => { };
+    const newLock = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    // Chain the new lock to the previous one
+    // We want the next acquirer to wait for this newLock to resolve
+    // Use .catch() to ensure the chain continues even if previousLock rejected
+    const nextPromise = previousLock.catch(() => { }).then(() => newLock);
+
+    // Update the map with the promise that resolves when WE are done
+    this.locks.set(id, nextPromise);
+
+    // Wait for our turn
+    await previousLock.catch(() => { }); // Ignore errors from previous
+
+    return () => {
+      release();
+      if (this.locks.get(id) === nextPromise) {
+        this.locks.delete(id);
+      }
+    };
+  }
+}
 
 const problemsRouter = Router();
 const userRequestCounts = new Map<string, Map<string, number>>();
@@ -33,7 +67,8 @@ const storage = multer.diskStorage({
     next(null, 'uploads/');
   },
   filename: (request: Request, file: Express.Multer.File, next: (error: Error | null, filename: string) => void) => {
-    next(null, `${file.originalname}`);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    next(null, `${uniqueSuffix}-${file.originalname}`);
   }
 });
 
@@ -52,9 +87,41 @@ const upload = multer({
 const getProblems = async (request: IRequest, response: Response) => {
   try {
     const problems: IProblem[] = await Problem.find()
-      .select('id problemID title createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail')
-      .sort({ createdTime: -1 });
-    response.status(200).send(problems);
+      .select('id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota')
+      .sort({ serialNumber: -1 });
+
+    // Calculate remaining daily quota for the logged-in user
+    const user = request.user as IUser;
+    if (user && user.quotaUsage) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let userModified = false;
+
+      const problemsWithQuota = problems.map(problem => {
+        const problemObj = problem.toObject();
+        if (problemObj.dailyQuota && problemObj.dailyQuota > 0) {
+          const problemID = problem.id.toString();
+          const usage = user.quotaUsage.get(problemID);
+          if (usage) {
+            if (usage.date < today) {
+              user.quotaUsage.set(problemID, { count: 0, date: today });
+              userModified = true;
+            } else {
+              problemObj.dailyQuota = Math.max(0, problemObj.dailyQuota - usage.count);
+            }
+          }
+        }
+        return problemObj;
+      });
+
+      if (userModified) {
+        await user.save();
+      }
+
+      response.status(200).send(problemsWithQuota);
+    } else {
+      response.status(200).send(problems);
+    }
   } catch (error) {
     if (error) {
       response.status(400).send(error);
@@ -63,15 +130,21 @@ const getProblems = async (request: IRequest, response: Response) => {
 };
 
 const getProblemByID = async (request: IRequest, response: Response) => {
-  const { problemID } = request.params;
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
   try {
-    const problem: IProblem | null = await Problem.findOne({ problemID });
+    const problem: IProblem | null = await Problem.findOne({ serialNumber });
     if (!problem) {
       response.sendStatus(404);
       return;
     }
 
-    const problemDir = 'problems/' + problemID;
+    const problemDir = 'problems/' + serialNumber;
 
     try {
       // Read sample testcases from tests/mapping file
@@ -123,6 +196,24 @@ const getProblemByID = async (request: IRequest, response: Response) => {
         sampleTestcases: sampleTestcases || []
       };
 
+      // Calculate remaining daily quota for the logged-in user
+      const user = request.user as IUser;
+      if (user && user.quotaUsage && fullProblem.dailyQuota && fullProblem.dailyQuota > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const problemID = problem.id.toString();
+        const usage = user.quotaUsage.get(problemID);
+
+        if (usage) {
+          if (usage.date < today) {
+            user.quotaUsage.set(problemID, { count: 0, date: today });
+            await user.save();
+          } else {
+            fullProblem.dailyQuota = Math.max(0, fullProblem.dailyQuota - usage.count);
+          }
+        }
+      }
+
       response.status(200).send(fullProblem);
     } catch (metadataErr) {
       console.error('Error reading metadata:', metadataErr);
@@ -162,6 +253,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
   const fileName = (filePath as string).split('/').reverse()[0];
   const targetPath = 'problems/' + fileName;
   try {
+    // Check if problem with same fileName exists (unlikely with unique filenames, but good for sanity)
     const problem = await Problem.findOne({ fileName });
     if (problem) {
       response.status(403).send('Problem with this filename already exists');
@@ -171,24 +263,32 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
     console.log(targetPath);
 
     spawnSync('mv', [filePath as string, targetPath]);
+
+    const stats = fs.statSync(targetPath);
+    console.log(`File size at ${targetPath}: ${stats.size}`);
+
+    // Create a directory for this specific upload to avoid conflicts
+    const extractDir = 'problems/' + fileName.replace('.tar.gz', '');
+    fs.mkdirSync(extractDir, { recursive: true });
+
     await tar.x({
       file: targetPath,
-      cwd: 'problems/'
+      cwd: extractDir,
+      strip: 1 // Strip the top-level directory from the tarball
     });
 
-    const problemDir = 'problems/' + fileName.replace('.tar.gz', '');
+    const problemDir = extractDir;
+    // Cleanup macOS metadata files that might cause issues with cp
+    spawnSync('find', [problemDir, '-name', '._*', '-delete']);
+
     const metadataPath = `${problemDir}/problem.json`;
     try {
       const metadataContent = readFileSync(metadataPath, 'utf8');
       const metadata = JSON.parse(metadataContent);
 
-      if (metadata.code.includes('.') || metadata.code.includes('/')) {
-        throw new Error('Problem ID cannot contain `.` or `/`');
-      }
-
+      let newProblem: IProblem;
       try {
-        const newProblem = new Problem({
-          problemID: metadata.code,
+        newProblem = new Problem({
           createdTime: metadata.createdTime || new Date(),
           title: metadata.title,
           fileName: fileName,
@@ -217,76 +317,118 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
         await newProblem.save();
       } catch (dupError) {
         console.error('Error creating problem:', dupError);
+        // Cleanup extracted files on error
+        fs.rmSync(problemDir, { recursive: true, force: true });
         response.status(403).send('Error creating problem');
         return;
       }
-      console.log(`Problem ${metadata.code} saved to database`);
 
-      // Generate test cases asynchronously using tps gen in isolated environment
-      // This runs in the background and doesn't block the response
-      (async () => {
-        try {
-          console.log(`Starting async test generation for ${metadata.code} in isolated environment`);
+      // Move extracted directory to final location
+      const finalProblemDir = 'problems/' + newProblem.serialNumber;
 
-          await IsolateManager.withBox(async (box) => {
-            const genBoxDir = box.getBoxDir();
-            const workDir = path.join('judging', 'tps-gen-' + metadata.code);
+      // Acquire lock for this problem ID to prevent race conditions
+      const releaseLock = await ProblemLock.acquire(newProblem.serialNumber.toString());
 
-            // Ensure work directory exists
-            fs.mkdirSync(workDir, { recursive: true });
-
-            try {
-              // Copy entire problem directory to isolated box
-              await box.copyToBox(`${problemDir}/*`);
-
-              const genMetaFile = path.join(workDir, 'tps-gen.meta');
-
-              // Run tps gen inside isolate with generous limits
-              await box.run('tps gen', {
-                processes: 50,
-                timeLimit: 600,
-                wallTimeLimit: 3600,
-                memoryLimit: 2048000,
-                metaFile: genMetaFile,
-                stderr: 'tps-gen.error',
-                fullEnv: true,
-                dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
-                cwd: '/box'
-              }, 4000000);
-
-              // Copy generated tests directory back to problem directory
-              const generatedTestsDir = path.join(genBoxDir, 'tests');
-              const targetTestsDir = path.join(problemDir, 'tests');
-
-              if (fs.existsSync(generatedTestsDir)) {
-                // Remove old tests directory if exists and copy new one
-                if (fs.existsSync(targetTestsDir)) {
-                  fs.rmSync(targetTestsDir, { recursive: true, force: true });
-                }
-                await execAsync(`cp -r ${generatedTestsDir} ${targetTestsDir}`);
-                console.log(`Test cases generated and copied successfully for ${metadata.code}`);
-              } else {
-                throw new Error('Tests directory not generated by tps gen');
-              }
-            } finally {
-              // Clean up work directory
-              if (fs.existsSync(workDir)) {
-                fs.rmSync(workDir, { recursive: true, force: true });
-              }
-            }
-          });
-        } catch (genError) {
-          console.error(`Failed to generate test cases for ${metadata.code}:`, genError);
+      try {
+        if (fs.existsSync(finalProblemDir)) {
+          fs.rmSync(finalProblemDir, { recursive: true, force: true });
         }
-      })();
+        fs.renameSync(problemDir, finalProblemDir);
 
+        console.log(`Problem ${newProblem.serialNumber} saved to database`);
+
+        // Generate test cases asynchronously using tps gen in isolated environment
+        // This runs in the background and doesn't block the response
+        // We keep the lock held during this process to prevent other requests from modifying the directory
+        (async () => {
+          try {
+            console.log(`Starting async test generation for ${newProblem.serialNumber} in isolated environment`);
+
+            await IsolateManager.withBox(async (box) => {
+              const genBoxDir = box.getBoxDir();
+              const workDir = path.join('judging', 'tps-gen-' + newProblem.serialNumber);
+
+              // Ensure work directory exists
+              fs.mkdirSync(workDir, { recursive: true });
+
+              try {
+                // Copy entire problem directory to isolated box
+                await box.copyToBox(finalProblemDir);
+
+                const genMetaFile = path.join(workDir, 'tps-gen.meta');
+
+                // Run tps gen inside isolate with generous limits
+                await box.run('tps gen', {
+                  processes: 50,
+                  timeLimit: 600,
+                  wallTimeLimit: 3600,
+                  memoryLimit: 2048000,
+                  metaFile: genMetaFile,
+                  stderr: 'tps-gen.error',
+                  fullEnv: true,
+                  dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+                  cwd: '/box'
+                }, 4000000);
+
+                // Copy generated tests directory back to problem directory
+                const generatedTestsDir = path.join(genBoxDir, 'tests');
+                const targetTestsDir = path.join(finalProblemDir, 'tests');
+
+                if (fs.existsSync(generatedTestsDir)) {
+                  // Remove old tests directory if exists and copy new one
+                  if (fs.existsSync(targetTestsDir)) {
+                    fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                  }
+
+                  // Ensure parent directory exists and is writable
+                  if (fs.existsSync(finalProblemDir)) {
+                    try {
+                      fs.chmodSync(finalProblemDir, 0o755);
+                    } catch (e) {
+                      console.warn(`Failed to chmod ${finalProblemDir}:`, e);
+                    }
+                  } else {
+                    // This should not happen as we are holding the lock, but just in case
+                    fs.mkdirSync(finalProblemDir, { recursive: true });
+                  }
+
+                  await fs.promises.cp(generatedTestsDir, targetTestsDir, { recursive: true });
+                  console.log(`Test cases generated and copied successfully for ${newProblem.serialNumber}`);
+
+                  // Update problem status to Ready
+                  await Problem.findByIdAndUpdate(newProblem._id, { status: ProblemStatus.Ready });
+                } else {
+                  throw new Error('Tests directory not generated by tps gen');
+                }
+              } finally {
+                // Clean up work directory
+                if (fs.existsSync(workDir)) {
+                  fs.rmSync(workDir, { recursive: true, force: true });
+                }
+              }
+            });
+          } catch (genError) {
+            console.error(`Failed to generate test cases for ${newProblem.serialNumber}:`, genError);
+            await Problem.findByIdAndUpdate(newProblem._id, { status: ProblemStatus.Error });
+          } finally {
+            releaseLock();
+          }
+        })();
+      } catch (error) {
+        releaseLock();
+        throw error;
+      }
+
+      response.status(201).json(newProblem);
+      return;
     } catch (error) {
       console.error('Error reading or parsing metadata.json:', error);
+      // Cleanup extracted files on error
+      if (fs.existsSync(problemDir)) {
+        fs.rmSync(problemDir, { recursive: true, force: true });
+      }
       throw error;
     }
-
-    response.status(200).send('File uploaded and extracted successfully');
-    return;
   } catch (error) {
     console.log(error);
     const problemDir = 'problems/' + fileName.replace('.tar.gz', '');
@@ -306,17 +448,31 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
 };
 
 const deleteProblem = async (request: IRequest, response: Response) => {
-  const { problemID } = request.params;
+  const user = request.user as IUser;
+  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
+    response.status(401).send('Please login as an admin first');
+    return;
+  }
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
+  // Acquire lock to ensure no other operations (like async test generation) are running
+  const releaseLock = await ProblemLock.acquire(serialNumber.toString());
+
   try {
-    const problem: IProblem | null = await Problem.findOne({ problemID });
+    const problem: IProblem | null = await Problem.findOne({ serialNumber });
     if (!problem) {
       response.sendStatus(404);
       return;
     }
 
-    const fileName = problem.problemID;
+    const fileName = problem.serialNumber.toString();
     const problemDir = 'problems/' + fileName;
-    const tarFilePath = 'problems/' + fileName + '.tar.gz';
+    const tarFilePath = 'problems/' + problem.fileName; // Use stored fileName for tarball
 
     try {
       if (problemDir.indexOf('..') !== -1 || tarFilePath.indexOf('..') !== -1) {
@@ -327,16 +483,24 @@ const deleteProblem = async (request: IRequest, response: Response) => {
     } catch (fsError) {
       console.error('Error deleting problem files:', fsError);
     }
-    await Problem.findOneAndDelete({ problemID });
-    response.status(200).send(problem);
+    await Problem.findOneAndDelete({ serialNumber });
+    response.status(201).send(problem);
   } catch (error) {
     console.log(error);
     response.status(400).send(error);
+  } finally {
+    releaseLock();
   }
 };
 
 const updateProblem = async (request: IRequest, response: Response) => {
-  const { problemID } = request.params;
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
   const data = matchedData(request);
   console.log(data);
   try {
@@ -346,12 +510,12 @@ const updateProblem = async (request: IRequest, response: Response) => {
         error: validationResult(request).array()
       };
     }
-    let problem: IProblem | null = await Problem.findOneAndUpdate({ problemID }, data);
+    let problem: IProblem | null = await Problem.findOneAndUpdate({ serialNumber }, data);
     if (!problem) {
       response.sendStatus(404);
       return;
     }
-    problem = await Problem.findOne({ problemID }).select('problemID title createdTime');
+    problem = await Problem.findOne({ serialNumber }).select('serialNumber title createdTime');
     response.status(201).send(problem);
   } catch (error) {
     console.log(error);
@@ -360,7 +524,13 @@ const updateProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblemWithFile = async (request: IRequest, response: Response): Promise<void> => {
-  const { problemID } = request.params;
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send('No file uploaded');
@@ -379,126 +549,174 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
   const newProblemDir = 'problems/' + newProblemDirName;
 
   try {
-    const existingProblem: IProblem | null = await Problem.findOne({ problemID });
+    const existingProblem: IProblem | null = await Problem.findOne({ serialNumber });
     if (!existingProblem) {
       spawnSync('rm', ['-f', filePath]);
       response.status(404).send('Problem not found');
       return;
     }
 
-    // Clean up old files
-    const oldProblemDir = 'problems/' + existingProblem.problemID;
-    const oldTarFilePath = 'problems/' + existingProblem.problemID + '.tar.gz';
-    const problemsBaseDir = path.resolve('problems');
-    const resolvedOldProblemDir = path.resolve(oldProblemDir);
-    const resolvedOldTarFilePath = path.resolve(oldTarFilePath);
-    if (
-      resolvedOldProblemDir.startsWith(problemsBaseDir + path.sep) &&
-      resolvedOldTarFilePath.startsWith(problemsBaseDir + path.sep)
-    ) {
-      spawnSync('rm', ['-rf', oldProblemDir]);
-      spawnSync('rm', ['-f', oldTarFilePath]);
-    }
-
     spawnSync('mv', [filePath, targetPath]);
+
+    // Create a directory for this specific upload to avoid conflicts
+    const extractDir = 'problems/' + fileName.replace('.tar.gz', '');
+    fs.mkdirSync(extractDir, { recursive: true });
+
     await tar.x({
       file: targetPath,
-      cwd: 'problems/'
+      cwd: extractDir,
+      strip: 1
     });
+
+    const newProblemDir = extractDir;
+
+    // Cleanup macOS metadata files that might cause issues with cp
+    spawnSync('find', [newProblemDir, '-name', '._*', '-delete']);
 
     const metadataPath = `${newProblemDir}/problem.json`;
     try {
       const metadataContent = readFileSync(metadataPath, 'utf8');
       const metadata = JSON.parse(metadataContent);
 
-      if (metadata.code !== problemID) {
-        throw new Error(`Problem code in metadata (${metadata.code}) does not match URL parameter (${problemID}).`);
+      // Clean up old files
+      const oldProblemDir = 'problems/' + existingProblem.serialNumber;
+      const oldTarFilePath = 'problems/' + existingProblem.fileName;
+      const problemsBaseDir = path.resolve('problems');
+      const resolvedOldProblemDir = path.resolve(oldProblemDir);
+      const resolvedOldTarFilePath = path.resolve(oldTarFilePath);
+      if (
+        resolvedOldProblemDir.startsWith(problemsBaseDir + path.sep) &&
+        resolvedOldTarFilePath.startsWith(problemsBaseDir + path.sep)
+      ) {
+        spawnSync('rm', ['-rf', oldProblemDir]);
+        spawnSync('rm', ['-f', oldTarFilePath]);
       }
 
-      const updateData = {
-        problemID: metadata.code,
-        createdTime: metadata.createdTime || new Date(),
-        title: metadata.title,
-        fileName: fileName,
-        timeLimit: metadata.time_limit,
-        memoryLimit: metadata.memory_limit,
-        scorePolicy: metadata.score_policy,
-        fullScore: metadata.full_score,
-        tags: metadata.tags || [],
-        testcase: metadata.testcase,
-        problemRelatedTags: metadata.problemRelatedTags || [],
-        submissionDetail: {
-          ...existingProblem.submissionDetail,
-          ...(metadata.submissionDetail || {})
-        },
-        userDetail: {
-          ...existingProblem.userDetail,
-          ...(metadata.userDetail || {})
+      // Move new dir to final location
+      const finalProblemDir = 'problems/' + serialNumber;
+
+      // Acquire lock for this problem ID
+      const releaseLock = await ProblemLock.acquire(serialNumber.toString());
+
+      try {
+        if (fs.existsSync(finalProblemDir)) {
+          fs.rmSync(finalProblemDir, { recursive: true, force: true });
         }
-      };
 
-      await Problem.findOneAndUpdate({ problemID }, updateData, { new: true, runValidators: true });
-      console.log(`Problem ${problemID} updated successfully`);
+        // Ensure parent directory exists (should be 'problems/')
+        const parentDir = path.dirname(finalProblemDir);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
 
-      // Generate test cases asynchronously using tps gen in isolated environment
-      // This runs in the background and doesn't block the response
-      (async () => {
-        try {
-          console.log(`Starting async test generation for ${problemID} in isolated environment`);
+        fs.renameSync(newProblemDir, finalProblemDir);
 
-          await IsolateManager.withBox(async (box) => {
-            const genBoxDir = box.getBoxDir();
-            const workDir = path.join('judging', 'tps-gen-' + problemID);
+        const updateData = {
+          createdTime: metadata.createdTime || new Date(),
+          title: metadata.title,
+          fileName: fileName,
+          timeLimit: metadata.time_limit,
+          memoryLimit: metadata.memory_limit,
+          scorePolicy: metadata.score_policy,
+          fullScore: metadata.full_score,
+          tags: metadata.tags || [],
+          testcase: metadata.testcase,
+          problemRelatedTags: metadata.problemRelatedTags || [],
+          submissionDetail: {
+            ...existingProblem.submissionDetail,
+            ...(metadata.submissionDetail || {})
+          },
+          userDetail: {
+            ...existingProblem.userDetail,
+            ...(metadata.userDetail || {})
+          },
+          status: ProblemStatus.Waiting
+        };
 
-            // Ensure work directory exists
-            fs.mkdirSync(workDir, { recursive: true });
+        await Problem.findByIdAndUpdate(existingProblem._id, updateData, { new: true, runValidators: true });
 
-            try {
-              // Copy entire problem directory to isolated box
-              await box.copyToBox(`${newProblemDir}/*`);
+        // Generate test cases asynchronously using tps gen in isolated environment
+        // This runs in the background and doesn't block the response
+        (async () => {
+          try {
+            console.log(`Starting async test generation for ${serialNumber} in isolated environment`);
 
-              const genMetaFile = path.join(workDir, 'tps-gen.meta');
+            await IsolateManager.withBox(async (box) => {
+              const genBoxDir = box.getBoxDir();
+              const workDir = path.join('judging', 'tps-gen-' + serialNumber);
 
-              // Run tps gen inside isolate with generous limits
-              await box.run('tps gen', {
-                processes: 50,
-                timeLimit: 600,
-                wallTimeLimit: 3600,
-                memoryLimit: 2048000,
-                metaFile: genMetaFile,
-                stderr: 'tps-gen.error',
-                fullEnv: true,
-                dirs: ['/usr/bin', '/bin', '/lib', '/lib64', '/etc'],
-                cwd: '/box'
-              }, 4000000);
+              // Ensure work directory exists
+              fs.mkdirSync(workDir, { recursive: true });
 
-              // Copy generated tests directory back to problem directory
-              const generatedTestsDir = path.join(genBoxDir, 'tests');
-              const targetTestsDir = path.join(newProblemDir, 'tests');
+              try {
+                // Copy entire problem directory to isolated box
+                await box.copyToBox(finalProblemDir);
 
-              if (fs.existsSync(generatedTestsDir)) {
-                // Remove old tests directory if exists and copy new one
-                if (fs.existsSync(targetTestsDir)) {
-                  fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                const genMetaFile = path.join(workDir, 'tps-gen.meta');
+
+                // Run tps gen inside isolate with generous limits
+                await box.run('tps gen', {
+                  processes: 50,
+                  timeLimit: 600,
+                  wallTimeLimit: 3600,
+                  memoryLimit: 2048000,
+                  metaFile: genMetaFile,
+                  stderr: 'tps-gen.error',
+                  fullEnv: true,
+                  dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+                  cwd: '/box'
+                }, 4000000);
+
+                // Copy generated tests directory back to problem directory
+                const generatedTestsDir = path.join(genBoxDir, 'tests');
+                const targetTestsDir = path.join(finalProblemDir, 'tests');
+
+                if (fs.existsSync(generatedTestsDir)) {
+                  // Remove old tests directory if exists and copy new one
+                  if (fs.existsSync(targetTestsDir)) {
+                    fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                  }
+
+                  // Ensure parent directory exists and is writable
+                  if (fs.existsSync(finalProblemDir)) {
+                    try {
+                      fs.chmodSync(finalProblemDir, 0o755);
+                    } catch (e) {
+                      console.warn(`Failed to chmod ${finalProblemDir}:`, e);
+                    }
+                  } else {
+                    // This should not happen as we are holding the lock, but just in case
+                    fs.mkdirSync(finalProblemDir, { recursive: true });
+                  }
+
+                  await fs.promises.cp(generatedTestsDir, targetTestsDir, { recursive: true });
+                  console.log(`Test cases generated and copied successfully for ${serialNumber}`);
+
+                  // Update problem status to Ready
+                  await Problem.findByIdAndUpdate(existingProblem._id, { status: ProblemStatus.Ready });
+                } else {
+                  throw new Error('Tests directory not generated by tps gen');
                 }
-                await execAsync(`cp -r ${generatedTestsDir} ${targetTestsDir}`);
-                console.log(`Test cases generated and copied successfully for ${problemID}`);
-              } else {
-                throw new Error('Tests directory not generated by tps gen');
+              } finally {
+                // Clean up work directory
+                if (fs.existsSync(workDir)) {
+                  fs.rmSync(workDir, { recursive: true, force: true });
+                }
               }
-            } finally {
-              // Clean up work directory
-              if (fs.existsSync(workDir)) {
-                fs.rmSync(workDir, { recursive: true, force: true });
-              }
-            }
-          });
-        } catch (genError) {
-          console.error(`Failed to generate test cases for ${problemID}:`, genError);
-        }
-      })();
+            });
+          } catch (genError) {
+            console.error(`Failed to generate test cases for ${serialNumber}:`, genError);
+            await Problem.findByIdAndUpdate(existingProblem._id, { status: ProblemStatus.Error });
+          } finally {
+            releaseLock();
+          }
+        })();
+      } catch (error) {
+        releaseLock();
+        throw error;
+      }
 
-      response.status(200).send('Problem updated successfully');
+      response.status(201).send('Problem updated successfully');
     } catch (error) {
       console.error('Error processing metadata or updating database:', error);
       throw error; // Re-throw to be caught by the outer catch block for cleanup
@@ -523,10 +741,17 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 
 const generateTestcase = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
-  const { problemID, testcaseName } = request.params;
-  const cacheKey = `${problemID}-${testcaseName}`;
+  const { testcaseName } = request.params;
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
+  const cacheKey = `${serialNumber}-${testcaseName}`;
   const userID = user.id.toString();
-  const testcaseSetPath = path.join(generatedTestcasesPath, problemID, testcaseName);
+  const testcaseSetPath = path.join(generatedTestcasesPath, serialNumber.toString(), testcaseName);
 
   try {
     // Ensure directories exist
@@ -555,7 +780,7 @@ const generateTestcase = async (request: IRequest, response: Response) => {
     let output: string;
     if (shouldGenerateNew) {
       // Generate a new testcase and save it to disk
-      output = await generateSingleTestcase(problemID, testcaseName);
+      output = await generateSingleTestcase(serialNumber.toString(), testcaseName);
       const newTestcasePath = path.join(testcaseSetPath, `${existingTestcasesCount}.in`);
       fs.writeFileSync(newTestcasePath, output);
     } else {
@@ -570,21 +795,27 @@ const generateTestcase = async (request: IRequest, response: Response) => {
     response.setHeader('Content-Type', 'text/plain');
     response.status(200).send(output);
   } catch (error) {
-    console.error(`Error generating testcase for ${problemID} - ${testcaseName}:`, error);
+    console.error(`Error generating testcase for ${serialNumber} - ${testcaseName}:`, error);
     response.status(500).send(`Failed to generate testcase: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
   }
 };
 
 const getAllowedLanguages = async (request: IRequest, response: Response) => {
-  const { problemID } = request.params;
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
   try {
-    const problem: IProblem | null = await Problem.findOne({ problemID });
+    const problem: IProblem | null = await Problem.findOne({ serialNumber });
     if (!problem) {
       response.sendStatus(404);
       return;
     }
 
-    const problemDir = 'problems/' + problemID;
+    const problemDir = 'problems/' + serialNumber;
     const metadataPath = `${problemDir}/problem.json`;
 
     try {
@@ -603,10 +834,56 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
   }
 };
 
+export const rejudgeProblem = async (request: IRequest, response: Response) => {
+  if (!request.isAuthenticated() || !request.user) {
+    response.status(401).send('Please login first');
+    return;
+  }
+  const user = request.user as IUser;
+  if (!user.isAdmin) {
+    response.status(403).send('You are not authorized to rejudge problems');
+    return;
+  }
+
+  const serialNumber = parseInt(request.params.serialNumber);
+
+  if (isNaN(serialNumber)) {
+    response.status(400).send('Invalid problem ID');
+    return;
+  }
+
+  try {
+    const problem: IProblem | null = await Problem.findOne({ serialNumber });
+    if (!problem) {
+      response.sendStatus(404);
+      return;
+    }
+
+    const submissions: ISubmission[] = await Submission.find({ problemSerialNumber: serialNumber });
+
+    // Process submissions in chunks to avoid overwhelming the database/judger
+    for (const submission of submissions) {
+      submission.status = SubmissionStatus.PD;
+      submission.score = 0;
+      submission.results = {};
+      await submission.save();
+
+      // We don't await the submission process here to avoid timeout
+      // The judger queue handle it eventually
+      submitUserSubmission(submission);
+    }
+
+    response.status(200).send(`Rejudge triggered for ${submissions.length} submissions.`);
+  } catch (error) {
+    console.log(error);
+    response.status(500).send('Internal Server Error');
+  }
+};
+
 problemsRouter.get('/api/problems', getProblems);
-problemsRouter.get('/api/problems/:problemID', isAuthenticated, getProblemByID);
-problemsRouter.get('/api/problems/:problemID/testcases/:testcaseName', isAuthenticated, generateTestcase);
-problemsRouter.get('/api/problems/:problemID/allowed-languages', isAuthenticated, getAllowedLanguages);
+problemsRouter.get('/api/problems/:serialNumber', isAuthenticated, getProblemByID);
+problemsRouter.get('/api/problems/:serialNumber/testcases/:testcaseName', isAuthenticated, generateTestcase);
+problemsRouter.get('/api/problems/:serialNumber/allowed-languages', isAuthenticated, getAllowedLanguages);
 
 problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
@@ -621,10 +898,11 @@ problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Resp
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:problemID', isAdmin, deleteProblem);
-problemsRouter.patch('/api/problems/:problemID', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.delete('/api/problems/:serialNumber', isAdmin, deleteProblem);
+problemsRouter.patch('/api/problems/:serialNumber', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.post('/api/problems/:serialNumber/rejudge', rejudgeProblem);
 
-problemsRouter.put('/api/problems/:problemID', isAdmin, (request: IRequest, response: Response, next) => {
+problemsRouter.put('/api/problems/:serialNumber', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);

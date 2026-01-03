@@ -11,7 +11,7 @@ const contestsRouter = Router();
 
 const getAllContests = async (request: IRequest, response: Response) => {
   try {
-    const contests: IContest[] = await Contest.find().sort({ contestID: -1 });
+    const contests: IContest[] = await Contest.find().sort({ _id: -1 });
     response.status(200).send(contests);
   } catch (error) {
     console.log(error);
@@ -20,13 +20,13 @@ const getAllContests = async (request: IRequest, response: Response) => {
 };
 
 const getContestByID = async (request: IRequest, response: Response) => {
-  const contestID: string | undefined = request.params?.contestID;
-  if (!contestID) {
+  const id: string | undefined = request.params?.id;
+  if (!id) {
     response.status(400).send('Contest ID is required');
     return;
   }
   try {
-    const contest: IContest | null = await Contest.findOne({ contestID }).populate('problems');
+    const contest: IContest | null = await Contest.findById(id).populate('problems');
     if (!contest) {
       response.sendStatus(404);
       return;
@@ -44,9 +44,8 @@ const createContest = async (request: IRequest, response: Response) => {
     response.status(400).send(result.array());
     return;
   }
-  const { contestID, title, description, startTime, endTime, problems } = request.body;
+  const { title, description, startTime, endTime, problems } = request.body;
   const newContest = new Contest({
-    contestID,
     title,
     description,
     startTime,
@@ -63,14 +62,14 @@ const createContest = async (request: IRequest, response: Response) => {
 };
 
 const updateContest = async (request: IRequest, response: Response) => {
-  const contestID: string | undefined = request.params?.contestID;
-  if (!contestID) {
+  const id: string | undefined = request.params?.id;
+  if (!id) {
     response.status(400).send('Contest ID is required');
     return;
   }
   const data = request.body;
   try {
-    const updatedContest = await Contest.findOneAndUpdate({ contestID }, data, { new: true });
+    const updatedContest = await Contest.findByIdAndUpdate(id, data, { new: true });
     if (!updatedContest) {
       response.status(404).send('Contest not found');
       return;
@@ -83,13 +82,13 @@ const updateContest = async (request: IRequest, response: Response) => {
 };
 
 const deleteContest = async (request: IRequest, response: Response) => {
-  const contestID: string | undefined = request.params?.contestID;
-  if (!contestID) {
+  const id: string | undefined = request.params?.id;
+  if (!id) {
     response.status(400).send('Contest ID is required');
     return;
   }
   try {
-    const contest = await Contest.findOneAndDelete({ contestID });
+    const contest = await Contest.findByIdAndDelete(id);
     if (!contest) {
       response.sendStatus(404);
       return;
@@ -102,13 +101,13 @@ const deleteContest = async (request: IRequest, response: Response) => {
 };
 
 const getStandings = async (request: IRequest, response: Response) => {
-  const contestID: string | undefined = request.params?.contestID;
-  if (!contestID) {
+  const id: string | undefined = request.params?.id;
+  if (!id) {
     response.status(400).send('Contest ID is required');
     return;
   }
   try {
-    const contest: IContest | null = await Contest.findOne({ contestID });
+    const contest: IContest | null = await Contest.findById(id);
     if (!contest) {
       response.sendStatus(404);
       return;
@@ -134,25 +133,25 @@ const getStandings = async (request: IRequest, response: Response) => {
 };
 
 const updateStandings = async (request: IRequest, response: Response) => {
-  const contestID: string | undefined = request.params?.contestID;
-  if (!contestID) {
+  const id: string | undefined = request.params?.id;
+  if (!id) {
     response.status(400).send('Contest ID is required');
     return;
   }
 
   try {
-    const contest: IContest | null = await Contest.findOne({ contestID });
+    const contest: IContest | null = await Contest.findById(id);
     if (!contest) {
       response.sendStatus(404);
       return;
     }
 
     // Get all problem IDs in the contest
-    const problemIDs = contest.problems.map(p => p.name);
-
+    const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
+    
     // Find all submissions for these problems within the contest timeframe
     const submissions = await Submission.find({
-      problemID: { $in: problemIDs },
+      problemSerialNumber: { $in: problemSerialNumbers },
       createdTime: {
         $gte: contest.startTime,
         $lte: contest.endTime
@@ -164,7 +163,7 @@ const updateStandings = async (request: IRequest, response: Response) => {
 
     for (const submission of submissions) {
       const username = submission.username;
-      const problemID = submission.problemID;
+      const serialNumber = submission.problemSerialNumber;
       const score = submission.score || 0;
 
       if (!standingsMap.has(username)) {
@@ -180,8 +179,8 @@ const updateStandings = async (request: IRequest, response: Response) => {
       const userStanding = standingsMap.get(username)!;
 
       // Find if this problem already has a score
-      const existingProblemScore = userStanding.problemScores.find(ps => ps.problemID === problemID);
-
+      const existingProblemScore = userStanding.problemScores.find(ps => ps.serialNumber === serialNumber);
+      
       if (existingProblemScore) {
         // Update if this submission has a better score
         if (score > existingProblemScore.score) {
@@ -192,7 +191,7 @@ const updateStandings = async (request: IRequest, response: Response) => {
       } else {
         // Add new problem score
         userStanding.problemScores.push({
-          problemID,
+          serialNumber,
           score,
           lastSubmissionTime: submission.createdTime
         });
@@ -220,17 +219,17 @@ const updateStandings = async (request: IRequest, response: Response) => {
 };
 
 contestsRouter.get('/api/contests', getAllContests);
-contestsRouter.get('/api/contests/:contestID', getContestByID);
-contestsRouter.get('/api/contests/:contestID/standings', getStandings);
+contestsRouter.get('/api/contests/:id', getContestByID);
+contestsRouter.get('/api/contests/:id/standings', getStandings);
 contestsRouter.post('/api/contests', isAdmin, checkSchema(createContestValidation), createContest);
-contestsRouter.post('/api/contests/:contestID/standings/update', isAuthenticated, updateStandings);
+contestsRouter.post('/api/contests/:id/standings/update', isAuthenticated, updateStandings);
 contestsRouter.patch(
-  '/api/contests/:contestID',
+  '/api/contests/:id',
   isAdmin,
   checkSchema(updateContestValidation),
   updateContest
 );
-contestsRouter.delete('/api/contests/:contestID', isAdmin, deleteContest);
+contestsRouter.delete('/api/contests/:id', isAdmin, deleteContest);
 
 export default contestsRouter;
 export { getAllContests, getContestByID, createContest, updateContest, deleteContest, getStandings, updateStandings };

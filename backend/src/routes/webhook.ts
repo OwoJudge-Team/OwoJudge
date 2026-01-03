@@ -3,6 +3,7 @@ import { validationResult, checkSchema, matchedData } from 'express-validator';
 import { giteaService } from '../utils/gitea-service';
 import { Submission, ISubmission, IUserSolution } from '../mongoose/schemas/submission';
 import { User } from '../mongoose/schemas/users';
+import { Problem } from '../mongoose/schemas/problems';
 import { giteaWebhookValidation } from '../validations/gitea-webhook-validation';
 import { submitUserSubmission } from '../judger/judger';
 
@@ -32,11 +33,11 @@ interface GiteaWebhookPayload {
 }
 
 /**
- * Extract problem ID and validate language from filename
- * Expected format: [id].c (only C files are supported for git submissions)
- * Returns { problemID, language } or null if file is invalid/unsupported
+ * Extract problem serial number and validate language from filename
+ * Expected format: [serialnumber].c (only C files are supported for git submissions)
+ * Returns { problemSerialNumber, language } or null if file is invalid/unsupported
  */
-const extractProblemInfo = (filename: string): { problemID: string; language: string } | null => {
+const extractProblemInfo = (filename: string): { problemSerialNumber: number; language: string } | null => {
     // Extract extension
     const ext = filename.split('.').pop()?.toLowerCase();
 
@@ -45,14 +46,19 @@ const extractProblemInfo = (filename: string): { problemID: string; language: st
         return null;
     }
 
-    // Extract problem ID (everything before the extension)
-    const match = filename.match(/(.*)\.c$/);
+    // Extract problem serial number (everything before the extension)
+    const match = filename.match(/^(\d+)\.c$/);
     if (!match) {
         return null;
     }
 
+    const serialNumber = parseInt(match[1], 10);
+    if (isNaN(serialNumber)) {
+        return null;
+    }
+
     return {
-        problemID: match[1],
+        problemSerialNumber: serialNumber,
         language: 'gcc c17'
     };
 };
@@ -115,8 +121,8 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
 
             console.log(`[Webhook] Changed files: ${changedFiles.join(', ')}`);
 
-            // Group files by problem ID (only valid C files)
-            const filesByProblemID: Map<string, { filepaths: string[]; language: string }> = new Map();
+            // Group files by problem serial number (only valid C files)
+            const filesByProblemSerialNumber: Map<number, { filepaths: string[]; language: string }> = new Map();
 
             for (const filepath of changedFiles) {
                 // Extract filename from path
@@ -124,24 +130,24 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
                 const problemInfo = extractProblemInfo(filename);
 
                 if (problemInfo) {
-                    if (!filesByProblemID.has(problemInfo.problemID)) {
-                        filesByProblemID.set(problemInfo.problemID, { filepaths: [], language: problemInfo.language });
+                    if (!filesByProblemSerialNumber.has(problemInfo.problemSerialNumber)) {
+                        filesByProblemSerialNumber.set(problemInfo.problemSerialNumber, { filepaths: [], language: problemInfo.language });
                     }
-                    filesByProblemID.get(problemInfo.problemID)!.filepaths.push(filepath);
-                    console.log(`[Webhook] File ${filename} matched to problem ID: ${problemInfo.problemID}`);
+                    filesByProblemSerialNumber.get(problemInfo.problemSerialNumber)!.filepaths.push(filepath);
+                    console.log(`[Webhook] File ${filename} matched to problem serial number: ${problemInfo.problemSerialNumber}`);
                 } else {
-                    console.log(`[Webhook] File ${filename} is not a valid C file or does not match pattern [id].c, skipping`);
+                    console.log(`[Webhook] File ${filename} is not a valid C file or does not match pattern [serialnumber].c, skipping`);
                 }
             }
 
-            if (filesByProblemID.size === 0) {
-                console.log('[Webhook] No valid C files with problem ID pattern found, skipping');
+            if (filesByProblemSerialNumber.size === 0) {
+                console.log('[Webhook] No valid C files with problem serial number pattern found, skipping');
                 continue;
             }
 
-            // Create a submission for each problem ID
-            for (const [problemID, { filepaths, language }] of filesByProblemID.entries()) {
-                console.log(`[Webhook] Processing problem ID: ${problemID} with ${filepaths.length} file(s)`);
+            // Create a submission for each problem serial number
+            for (const [problemSerialNumber, { filepaths, language }] of filesByProblemSerialNumber.entries()) {
+                console.log(`[Webhook] Processing problem serial number: ${problemSerialNumber} with ${filepaths.length} file(s)`);
 
                 const userSolution: IUserSolution[] = [];
 
@@ -171,21 +177,52 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
                 }
 
                 if (userSolution.length === 0) {
-                    console.log(`[Webhook] No valid files found for problem ${problemID}, skipping submission`);
+                    console.log(`[Webhook] No valid files found for problem ${problemSerialNumber}, skipping submission`);
                     continue;
                 }
 
+                // Fetch problem to get the title
+                const problem = await Problem.findOne({ serialNumber: problemSerialNumber });
+                if (!problem) {
+                    console.error(`[Webhook] Problem with serial number ${problemSerialNumber} not found, skipping submission`);
+                    continue;
+                }
+
+                console.log(`[Webhook] owoUser found:`, JSON.stringify({
+                    _id: owoUser._id,
+                    username: owoUser.username,
+                    displayName: owoUser.displayName,
+                    giteaId: owoUser.giteaId
+                }, null, 2));
+
+                console.log(`[Webhook] problem found:`, JSON.stringify({
+                    serialNumber: problem.serialNumber,
+                    title: problem.title
+                }, null, 2));
+
                 const submissionData: Partial<ISubmission> = {
-                    problemID: problemID,
+                    problemSerialNumber: problemSerialNumber,
+                    problemTitle: problem.title,
                     username: submissionUsername,
+                    userHandle: owoUser.displayName,
+                    userID: owoUser._id as any,
                     language: language,
                     userSolution: userSolution
                 };
 
-                console.log(`[Webhook] Creating submission for problem ${problemID} by ${submissionUsername}`);
+                console.log(`[Webhook] Submission data to be saved:`, JSON.stringify({
+                    problemSerialNumber: submissionData.problemSerialNumber,
+                    problemTitle: submissionData.problemTitle,
+                    username: submissionData.username,
+                    userHandle: submissionData.userHandle,
+                    userID: submissionData.userID,
+                    language: submissionData.language
+                }, null, 2));
 
-                const newSubmission: ISubmission = new Submission(submissionData);
-                const savedSubmission: ISubmission = await newSubmission.save();
+                console.log(`[Webhook] Creating submission for problem ${problemSerialNumber} (${problem.title}) by ${submissionUsername}`);
+
+                const newSubmission = new Submission(submissionData);
+                const savedSubmission = await newSubmission.save();
                 submitUserSubmission(savedSubmission);
                 console.log(`[Webhook] Submission created: ${savedSubmission.serialNumber}`);
 

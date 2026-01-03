@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import mongoose from 'mongoose';
-import crypto from 'crypto';
-import fs from 'fs';
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 // Define the User schema
 const userSchema = new mongoose.Schema({
@@ -61,11 +62,11 @@ let salt;
 const readSalt = () => {
   try {
     // Use absolute path relative to the backend directory
-    const saltPath = new URL('../salt.json', import.meta.url).pathname;
+    const saltPath = path.join(__dirname, '../salt.json');
     const SALT = JSON.parse(fs.readFileSync(saltPath, 'utf-8')).salt;
     salt = SALT;
   } catch (error) {
-    const saltPath = new URL('../salt.json', import.meta.url).pathname;
+    const saltPath = path.join(__dirname, '../salt.json');
     salt = crypto.randomBytes(32).toString('hex');
     fs.writeFileSync(saltPath, JSON.stringify({ salt }, null, 4));
   }
@@ -113,22 +114,22 @@ async function createTestUser() {
       isAdmin,
       solvedProblem: 0,
       solvedProblems: [],
-      rating: 1200
+      rating: 0
     });
 
     await testUser.save();
-
-    console.log('\n✅ Test user created successfully!');
-    console.log('═══════════════════════════════════');
+    
+    console.log('\nTest user created successfully!');
+    console.log('-----------------------------------');
     console.log(`Username:     ${username}`);
     console.log(`Password:     ${password}`);
     console.log(`Display Name: ${displayName}`);
     console.log(`Admin:        ${isAdmin}`);
-    console.log(`Rating:       1200`);
-    console.log('═══════════════════════════════════');
+    console.log(`Rating:       0`);
+    console.log('-----------------------------------');
     console.log('\nYou can now login with these credentials!');
   } catch (error) {
-    console.error('❌ Error creating test user:', error);
+    console.error('Error creating test user:', error);
     process.exit(1);
   } finally {
     await mongoose.disconnect();

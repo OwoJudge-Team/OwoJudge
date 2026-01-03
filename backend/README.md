@@ -68,3 +68,60 @@ We welcome contributions from the community! If you'd like to contribute, please
 3. Make your changes and commit them with clear messages.
 4. Push your changes to your forked repository.
 5. Open a pull request to the main repository, describing your changes and why they should be merged.
+
+## Development Scripts
+
+We provide several scripts to generate mock data for testing and development purposes. These scripts can be run inside the backend container.
+
+### Generating Mock Data
+
+You can generate mock users, problems, and submissions using the following commands:
+
+1. **Create Mock Users**
+  Generates random users with ratings and solved problem counts.
+  ```bash
+  # Create 10 mock users (default)
+  docker compose exec backend node scripts/create-mock-users.js
+
+  # Create 50 mock users with a custom password
+  docker compose exec backend node scripts/create-mock-users.js 50 mypassword
+  ```
+
+2. **Create Mock Problems**
+  Generates random problems with realistic metadata and creates the necessary file structure in `problems/`.
+  ```bash
+  # Create 10 mock problems (default)
+  docker compose exec backend node scripts/create-mock-problems.js
+
+  # Create 20 mock problems
+  docker compose exec backend node scripts/create-mock-problems.js 20
+  ```
+
+3. **Create Mock Submissions**
+  Generates random submissions linking existing users to problems.
+  *Note: Run this AFTER creating users and problems.*
+  ```bash
+  # Create 20 mock submissions (default)
+  docker compose exec backend node scripts/create-mock-submissions.js
+
+  # Create 100 mock submissions
+  docker compose exec backend node scripts/create-mock-submissions.js 100
+  ```
+
+4. **Create Mock Contests**
+  Generates random contests with start and end times.
+  ```bash
+  # Create 5 mock contests (default)
+  docker compose exec backend node scripts/create-mock-contests.js
+
+  # Create 10 mock contests
+  docker compose exec backend node scripts/create-mock-contests.js 10
+  ```
+
+### Helper Scripts
+
+- **Create Single Test User**:
+  ```bash
+  # Create an admin user
+  docker compose exec backend node scripts/create-test-user.js admin adminpass "Admin User" true
+  ```

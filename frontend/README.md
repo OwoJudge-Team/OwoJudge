@@ -38,7 +38,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8787
 pnpm dev
 ```
 
-The application will be available at [http://localhost:3000](http://localhost:3000)
+The application will be available at [http://localhost:8787](http://localhost:8787)
 
 ## Project Structure
 

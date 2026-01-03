@@ -6,6 +6,22 @@ export interface Problem {
   acNum: number; // number of ACs
   status: "unseen" | "wrong" | "correct"; // user's submission status
   tryCount?: number; // number of attempts (only for wrong status)
+  serialNumber?: number; // serial number for problem
+  fullScore?: number; // full score for the problem
+  submissionDetail?: {
+    accepted: number;
+    compilationError: number;
+    memoryLimitExceeded: number;
+    processLimitExceeded: number;
+    runtimeError: number;
+    submitted: number;
+    timeLimitExceeded: number;
+    wrongAnswer: number;
+  };
+  userDetail?: {
+    solved: number;
+    attempted: number;
+  };
 }
 
 export const problems: Problem[] = [

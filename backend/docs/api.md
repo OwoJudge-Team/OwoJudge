@@ -43,24 +43,31 @@ Endpoints for managing user accounts.
 
 ### `GET /api/users`
 
-Retrieves a list of users. Can be filtered by query parameters.
+Retrieves a list of all users.
 
 -   **Query Parameters:**
-    -   `filter` (string): The field to filter on (e.g., `username`, `displayName`).
-    -   `value` (string): The value to search for.
--   **Example:** `GET /api/users?filter=username&value=matt`
-
-Returns users matching the specified filter.
-
-```
-[
-  {
-    "_id": "68fb6bcfda3d0a2b7bd1b2c3",
-    "username": "admin",
-    "displayName": "Admin Administrator"
-  }
-]
-```
+    -   `filter` (optional): The field to filter on (e.g., `username`, `displayName`).
+    -   `value` (optional): The value to search for (case-insensitive regex).
+-   **Response Example (No filter):**
+    ```json
+    [
+      {
+        "_id": "68fb6d6e6deaffa916ced917",
+        "username": "admin",
+        "displayName": "Admin Administrator"
+      }
+    ]
+    ```
+-   **Response Example (With filter):**
+    ```json
+    [
+      {
+        "username": "admin",
+        "displayName": "Admin Administrator",
+        "rating": 1500
+      }
+    ]
+    ```
 
 ### `GET /api/users/:username`
 
@@ -68,92 +75,70 @@ Retrieves a specific user by their username.
 
 -   **Authentication:** Required.
 -   **Responses:**
-    -   `200 OK`: Returns the user object (excluding the password).
+    -   `200 OK`: Returns the user object.
     -   `404 Not Found`: If the user does not exist.
 
-Response Example:
-
-```
-{
-  "_id": "68fb6d6e6deaffa916ced917",
-  "username": "admin",
-  "displayName": "Admin Administrator",
-  "isAdmin": true,
-  "solvedProblem": 0,
-  "solvedProblems": [],
-  "rating": 0,
-  "__v": 0
-}
-```
+-   **Response Example:**
+    ```json
+    {
+      "_id": "68fb6d6e6deaffa916ced917",
+      "username": "admin",
+      "displayName": "Admin Administrator",
+      "isAdmin": true,
+      "solvedProblem": 0,
+      "solvedProblems": [],
+      "rating": 1500
+    }
+    ```
 
 ### `POST /api/users`
 
 Creates a new user.
 
 -   **Authentication:** Admin only.
--   **Request Body:** `IUser` object.
-
-Provide username, password, displayName, isAdmin fields in json format.
-
-```
-{
-  "username": "newuser",
-  "password": "securepassword",
-  "displayName": "New User",
-  "isAdmin": false
-}
-```
-
-Responses:
--   `201 Created`: User created successfully.
--   `400 Bad Request`: Invalid user data.
--   `401 Unauthorized`: If the requester is not an admin.
-
-```
-{
-  "errorLabelSet": {},
-  "errorResponse": {
-    "index": 0,
-    "code": 11000,
-    "errmsg": "E11000 duplicate key error collection: judge.users index: username_1 dup key: { username: \"newuser\" }",
-    "keyPattern": {
-      "username": 1
-    },
-    "keyValue": {
-      "username": "newuser"
+-   **Request Body:**
+    ```json
+    {
+      "username": "newuser",
+      "password": "securepassword",
+      "displayName": "New User",
+      "isAdmin": false
     }
-  },
-  "index": 0,
-  "code": 11000,
-  "keyPattern": {
-    "username": 1
-  },
-  "keyValue": {
-    "username": "newuser"
-  }
-}
-```
+    ```
+-   **Responses:**
+    -   `201 Created`: User created successfully. Returns the user object.
+    -   `400 Bad Request`: Invalid user data.
+    -   `401 Unauthorized`: If the requester is not an admin.
 
 ### `PATCH /api/users/:username`
 
 Updates a user's information.
 
 -   **Authentication:** Admin or the user themselves.
--   **Request Body:** Partial `IUser` object.
-
-You can update fields like `username`, `displayName`, `password`, and `isAdmin`.
-
-Responses:
--   `200 OK`: User updated successfully.
--   `400 Bad Request`: Invalid update data.
--   `401 Unauthorized`: If the requester is neither an admin nor the user themselves.
--   `404 Not Found`: If the user does not exist.
+-   **Request Body:** Partial user object.
+    ```json
+    {
+      "username": "newusername",
+      "password": "newpassword",
+      "displayName": "New Display Name",
+      "isAdmin": true
+    }
+    ```
+-   **Responses:**
+    -   `201 Created`: User updated successfully.
+    -   `400 Bad Request`: Invalid update data.
+    -   `401 Unauthorized`: If the requester is neither an admin nor the user themselves.
+    -   `404 Not Found`: If the user does not exist.
 
 ### `DELETE /api/users/:username`
 
 Deletes a user.
 
 -   **Authentication:** Admin only.
+-   **Responses:**
+    -   `201 Created`: User deleted successfully. Returns the deleted user object.
+    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `404 Not Found`: If the user does not exist.
 
 ## Problems
 
@@ -162,46 +147,52 @@ Endpoints for managing programming problems.
 ### `GET /api/problems`
 
 Retrieves a list of all problems.
-```
-[
-  {
-    "submissionDetail": {
-      "accepted": 0,
-      "submitted": 0,
-      "timeLimitExceeded": 0,
-      "memoryLimitExceeded": 0,
-      "wrongAnswer": 0,
-      "runtimeError": 0,
-      "compilationError": 0,
-      "processLimitExceeded": 0
-    },
-    "userDetail": {
-      "solved": 0,
-      "attempted": 0
-    },
-    "_id": "68fb738f149ff1b7927a14a6",
-    "problemID": "tps-example",
-    "createdTime": "2025-10-24T12:39:43.750Z",
-    "title": "Problem Title",
-    "timeLimit": 1,
-    "memoryLimit": 2048,
-    "tags": [
-      "basic"
-    ],
-    "problemRelatedTags": [
-      "math"
+
+-   **Response Example:**
+    ```json
+    [
+      {
+        "submissionDetail": {
+          "accepted": 0,
+          "submitted": 0,
+          "timeLimitExceeded": 0,
+          "memoryLimitExceeded": 0,
+          "wrongAnswer": 0,
+          "runtimeError": 0,
+          "compilationError": 0,
+          "processLimitExceeded": 0
+        },
+        "userDetail": {
+          "solved": 0,
+          "attempted": 0
+        },
+        "_id": "68fb738f149ff1b7927a14a6",
+        "serialNumber": 0,
+        "status": "ready",
+        "createdTime": "2025-10-24T12:39:43.750Z",
+        "title": "Problem Title",
+        "timeLimit": 1,
+        "memoryLimit": 2048,
+        "tags": [
+          "basic"
+        ],
+        "problemRelatedTags": [
+          "math"
+        ],
+        "fullScore": 100,
+        "dailyQuota": 3
+      }
     ]
-  }
-]
-```
+    ```
+-   **Note:** `dailyQuota` represents the remaining daily submissions allowed for the authenticated user for that specific problem.
 
-### `GET /api/problems/:problemID`
+### `GET /api/problems/:serialNumber`
 
-Retrieves a single problem by its ID, including its description and sample test cases.
+Retrieves a single problem by its serial number, including its description and sample test cases.
 
 -   **Authentication:** Required.
 
-```
+```json
 {
   "submissionDetail": {
     "accepted": 0,
@@ -218,7 +209,8 @@ Retrieves a single problem by its ID, including its description and sample test 
     "attempted": 0
   },
   "_id": "68fb738f149ff1b7927a14a6",
-  "problemID": "tps-example",
+  "serialNumber": 0,
+  "status": "ready",
   "createdTime": "2025-10-24T12:39:43.750Z",
   "title": "Problem Title",
   "timeLimit": 1,
@@ -232,6 +224,7 @@ Retrieves a single problem by its ID, including its description and sample test 
   "problemRelatedTags": [
     "math"
   ],
+  "dailyQuota": 3,
   "__v": 0,
   "description": "# TPS example problem (a + b)\n\n## Story\n\nThis is an example problem for the TPS (Testlib Problem Specification) format. The problem is a simple addition problem where the task is to read two integers from the input and output their sum.\n\n## Description\n\nGiven two integers \\( a \\) and \\( b \\), output their sum.\n\n## Input\n\nThe input consists of a single line containing two integers \\( a \\) and \\( b \\) separated by a space.\n\n## Output\n\nOutput a single integer which is the sum of \\( a \\) and \\( b \\).\n\n## Constraints\n\n- \\( 1 \\leq a, b \\leq 100 \\)",
   "sampleTestcases": [
@@ -243,6 +236,7 @@ Retrieves a single problem by its ID, including its description and sample test 
   ]
 }
 ```
+-   **Note:** `dailyQuota` represents the remaining daily submissions allowed for the current user.
 
 ### `POST /api/problems`
 
@@ -253,38 +247,113 @@ Creates a new problem by uploading a `.tar.gz` file containing the problem data.
 
 Please modify from tps-example in the docs/example.
 
-Responses:
--   `201 Created`: Problem created successfully.
--   `400 Bad Request`: Invalid problem data.
--   `401 Unauthorized`: If the requester is not an admin.
+-   **Response Example:**
+    ```json
+    {
+      "_id": "68fb738f149ff1b7927a14a6",
+      "serialNumber": 0,
+      "title": "Problem Title",
+      "status": "waiting",
+      "createdTime": "2025-10-24T12:39:43.750Z",
+      "timeLimit": 1,
+      "memoryLimit": 2048,
+      "tags": ["basic"],
+      "problemRelatedTags": ["math"]
+    }
+    ```
+-   **Note:** Test case generation starts in the background. The problem status will be `waiting` initially and will change to `ready` (or `error`) once processing is complete. Submissions are only allowed when the status is `ready`.
 
-### `PUT /api/problems/:problemID`
+-   **Status Codes:**
+    -   `201 Created`: Problem created successfully.
+    -   `400 Bad Request`: Invalid problem data or file format.
+    -   `401 Unauthorized`: If the requester is not an admin.
+
+### `PUT /api/problems/:serialNumber`
 
 Updates an existing problem by uploading a new `.tar.gz` file.
 
 -   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
 -   **Request:** `multipart/form-data` with a single file field named `problem`.
 
-### `PATCH /api/problems/:problemID`
+-   **Response Example:**
+    `Problem updated successfully`
 
-Updates specific fields of a problem.
+-   **Note:** Similar to creation, test case generation runs in the background and the problem status will be set to `waiting` during this time.
+
+-   **Status Codes:**
+    -   `201 Created`: Problem updated successfully.
+    -   `400 Bad Request`: Invalid problem data.
+    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `404 Not Found`: If the problem does not exist.
+
+### `PATCH /api/problems/:serialNumber`
+
+Updates specific metadata fields of a problem.
 
 -   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
 -   **Request Body:** Partial `IProblem` object.
 
-### `DELETE /api/problems/:problemID`
+-   **Response Example:**
+    ```json
+    {
+      "serialNumber": 0,
+      "title": "Updated Problem Title",
+      "createdTime": "2025-10-24T12:39:43.750Z"
+    }
+    ```
+
+-   **Status Codes:**
+    -   `201 Created`: Problem updated successfully.
+    -   `400 Bad Request`: Invalid update data.
+    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `404 Not Found`: If the problem does not exist.
+
+### `DELETE /api/problems/:serialNumber`
 
 Deletes a problem and its associated files.
 
 -   **Authentication:** Admin only.
 
-### `GET /api/problems/:problemID/allowed-languages`
+-   **Response Example:**
+    ```json
+    {
+      "serialNumber": 0,
+      "title": "Problem Title",
+      "status": "ready"
+    }
+    ```
+
+-   **Status Codes:**
+    -   `201 Created`: Problem deleted successfully.
+    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `404 Not Found`: If the problem does not exist.
+
+### `POST /api/problems/:serialNumber/rejudge`
+
+Triggers a rejudge for all submissions associated with the problem.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
+-   **Response Example:**
+    `Rejudge triggered for X submissions.`
+-   **Status Codes:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Problem does not exist.
+
+### `GET /api/problems/:serialNumber/allowed-languages`
 
 Retrieves the list of programming languages allowed for submissions to a specific problem.
 
 -   **Authentication:** Required.
 -   **Parameters:**
-    -   `problemID` (string): The unique identifier of the problem.
+    -   `serialNumber` (number): The serial number of the problem.
 -   **Response:** Array of allowed language identifiers.
 -   **Example Response:**
     ```json
@@ -302,16 +371,16 @@ Retrieves the list of programming languages allowed for submissions to a specifi
 -   **Status Codes:**
     -   `200 OK`: Successfully retrieved allowed languages.
     -   `401 Unauthorized`: User not authenticated.
-    -   `404 Not Found`: Problem with given ID does not exist.
+    -   `404 Not Found`: Problem with given serial number does not exist.
     -   `500 Internal Server Error`: Failed to read problem metadata.
 
-### `GET /api/problems/:problemID/testcases/:testcaseName`
+### `GET /api/problems/:serialNumber/testcases/:testcaseName`
 
 Generates or retrieves a test case for a specific problem.
 
 -   **Authentication:** Required.
 -   **Parameters:**
-    -   `problemID` (string): The unique identifier of the problem.
+    -   `serialNumber` (number): The serial number of the problem.
     -   `testcaseName` (string): The name of the test case to generate.
 -   **Response:** Plain text test case input.
 -   **Status Codes:**
@@ -325,43 +394,125 @@ Endpoints for managing code submissions.
 
 ### `GET /api/submissions`
 
-Retrieves a list of submissions.
+Retrieves a list of submissions. Non-admin users can only view their own submissions unless they specify their own username/userID in filters. Admins can view all submissions.
 
 -   **Authentication:** Required.
 -   **Query Parameters (optional):**
-    -   `username` (string): Filter submissions by username.
-    -   `problemID` (string): Filter submissions by problem ID.
-    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`).
--   **Example:** `GET /api/submissions?username=admin&problemID=tps-example`
+    -   `username` (string): Filter submissions by username. Non-admins can only filter by their own username.
+    -   `userID` (string): Filter submissions by user MongoDB ObjectId. Non-admins can only filter by their own userID.
+    -   `problemSerialNumber` (number): Filter submissions by problem serial number (display ID).
+    -   `status` (string): Filter submissions by status (e.g., `AC`, `WA`, `TLE`, `CE`, `RE`, `MLE`, `PS`).
+    -   `minScore` (number): Filter submissions with score greater than or equal to this value.
+    -   `maxScore` (number): Filter submissions with score less than or equal to this value.
+    -   `index` (number): Number of records to skip (takes precedence over `offset`).
+    -   `offset` (number): Number of records to skip (default: 0).
+    -   `limit` (number): Number of records to return (default: 20).
+-   **Examples:** 
+    -   `GET /api/submissions?username=admin&problemSerialNumber=1001`
+    -   `GET /api/submissions?status=AC&minScore=50`
+    -   `GET /api/submissions?problemSerialNumber=0&maxScore=100&limit=10&offset=20`
 -   **Response Example:**
     ```json
-    [
-      {
-        "_id": "68fb7890a1b2c3d4e5f67890",
-        "username": "admin",
-        "problemID": "tps-example",
-        "language": "g++ c++17",
-        "status": "AC",
-        "score": 100,
-        "createdTime": "2025-10-24T13:00:00.000Z",
-        "userSolution": [
-          {
-            "filename": "main.cpp",
-            "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
-          }
-        ],
-        "results": [
-          {
-            "testcase": "0-01",
-            "status": "AC",
-            "time": 0.01,
-            "memory": 1024,
-            "message": "ok"
-          }
-        ]
-      }
-    ]
+    {
+      "total": 123,
+      "submissions": [
+        {
+          "_id": "68fb7890a1b2c3d4e5f67890",
+          "serialNumber": 1000000,
+          "username": "admin",
+          "userHandle": "Admin Administrator",
+          "userID": "68fb6d6e6deaffa916ced917",
+          "problemSerialNumber": 0,
+          "problemTitle": "Problem Title",
+          "language": "g++ c++17",
+          "status": "AC",
+          "score": 100,
+          "time": 0.05,
+          "memory": 2048,
+          "createdTime": "2025-10-24T13:00:00.000Z"
+        }
+      ]
+    }
     ```
+-   **Note:** The response only includes summary fields. Use `GET /api/submission/:serialNumber` to get full submission details including source code and test results.
+
+### `GET /api/submission/:serialNumber`
+
+Retrieves a single submission by its serial number. Non-admin users can only view their own submissions.
+
+-   **Authentication:** Required.
+-   **Parameters:**
+    -   `serialNumber` (number): The unique serial number of the submission (starts from 1000000).
+-   **Response Example:**
+    ```json
+    {
+      "_id": "68fb7890a1b2c3d4e5f67890",
+      "serialNumber": 1000000,
+      "username": "admin",
+      "userHandle": "Admin Administrator",
+      "userID": "68fb6d6e6deaffa916ced917",
+      "problemSerialNumber": 0,
+      "problemTitle": "Problem Title",
+      "language": "g++ c++17",
+      "status": "AC",
+      "score": 100,
+      "time": 0.05,
+      "memory": 2048,
+      "createdTime": "2025-10-24T13:00:00.000Z",
+      "userSolution": [
+        {
+          "filename": "main.cpp",
+          "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
+        }
+      ],
+      "results": {
+        "sample": {
+          "score": 0,
+          "testcases": [
+            {
+              "testcase": "0-01",
+              "status": "AC",
+              "time": 0.01,
+              "memory": 1024,
+              "message": "ok"
+            },
+            {
+              "testcase": "0-02",
+              "status": "AC",
+              "time": 0.01,
+              "memory": 1024,
+              "message": "ok"
+            }
+          ]
+        },
+        "subtask1": {
+          "score": 100,
+          "testcases": [
+            {
+              "testcase": "1-01",
+              "status": "AC",
+              "time": 0.02,
+              "memory": 2048,
+              "message": "ok"
+            }
+          ]
+        }
+      }
+    }
+    ```
+-   **Note:** The `results` field contains an object where keys are group/subtask names (e.g., `"sample"`, `"subtask1"`) and values are objects containing:
+    -   `score` (number): Points earned for this group (0 if any test case failed, otherwise the group's assigned score).
+    -   `testcases` (array): Array of individual test case results within this group, each containing:
+        -   `testcase` (string): Test case identifier.
+        -   `status` (string): Result status (`AC`, `WA`, `TLE`, `MLE`, `RE`, etc.).
+        -   `time` (number): Execution time in seconds.
+        -   `memory` (number): Memory usage in KB.
+        -   `message` (string, optional): Additional message from the checker.
+-   **Status Codes:**
+    -   `200 OK`: Submission retrieved successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not authorized to view this submission.
+    -   `404 Not Found`: Submission does not exist.
 
 ### `POST /api/submissions`
 
@@ -369,14 +520,14 @@ Creates a new code submission for a problem.
 
 -   **Authentication:** Required.
 -   **Request Body:** Submission object with the following fields:
-    -   `problemID` (string, required): The ID of the problem to submit to.
+    -   `problemSerialNumber` (number, required): The serial number of the problem to submit to.
     -   `language` (string, required): Programming language identifier (e.g., `"g++ c++17"`, `"python3"`, `"gcc c17"`).
     -   `userSolution` (array, required): Array of source code files.
         -   Each file has `filename` and `content` properties.
 -   **Request Example:**
     ```json
     {
-      "problemID": "tps-example",
+      "problemSerialNumber": 0,
       "language": "g++ c++17",
       "userSolution": [
         {
@@ -390,8 +541,12 @@ Creates a new code submission for a problem.
     ```json
     {
       "_id": "68fb7890a1b2c3d4e5f67890",
+      "serialNumber": 1000000,
       "username": "admin",
-      "problemID": "tps-example",
+      "userHandle": "Admin Administrator",
+      "userID": "68fb6d6e6deaffa916ced917",
+      "problemSerialNumber": 0,
+      "problemTitle": "Problem Title",
       "language": "g++ c++17",
       "status": "PD",
       "score": 0,
@@ -402,14 +557,31 @@ Creates a new code submission for a problem.
           "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
         }
       ],
-      "results": []
+      "results": {}
     }
     ```
 -   **Status Codes:**
     -   `201 Created`: Submission created and queued successfully.
-    -   `400 Bad Request`: Invalid submission data.
+    -   `400 Bad Request`: Invalid submission data or problem is not ready (status is not `ready`).
     -   `401 Unauthorized`: User not authenticated.
     -   `404 Not Found`: Problem does not exist.
+    -   `429 Too Many Requests`: Daily submission quota exceeded.
+    -   `500 Internal Server Error`: Failed to creating submission.
+
+### `POST /api/submissions/:serialNumber/rejudge`
+
+Triggers a rejudge for a specific submission. The submission status will be reset to `PD`, score to `0`, and results cleared.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The unique serial number of the submission.
+-   **Response Example:**
+    Returns the updated submission object.
+-   **Status Codes:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Submission does not exist.
 
 **Note:** The submission status will initially be `PD` (Pending) or `QU` (Queued), and will be updated asynchronously by the judger system. Poll the GET endpoint to check the final status.
 
@@ -426,51 +598,44 @@ Retrieves a list of all contests.
     [
       {
         "_id": "68fb7a00b2c3d4e5f6789012",
-        "contestID": "contest-2025-fall",
         "title": "Fall Programming Contest 2025",
         "description": "Annual fall programming contest featuring algorithmic challenges.",
         "startTime": "2025-11-01T09:00:00.000Z",
         "endTime": "2025-11-01T14:00:00.000Z",
-        "problems": ["tps-example", "problem-2", "problem-3"],
-        "participants": ["user1", "user2", "admin"],
-        "visibility": "public",
+        "problems": [
+          {
+            "serialNumber": 0,
+            "score": 100
+          }
+        ],
+        "standings": [],
         "createdTime": "2025-10-24T13:30:00.000Z"
       }
     ]
     ```
 
-### `GET /api/contests/:contestID`
+### `GET /api/contests/:id`
 
 Retrieves a single contest by its ID.
 
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest.
+    -   `id` (string): The unique identifier of the contest.
 -   **Response Example:**
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025",
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
       "problems": [
         {
-          "problemID": "tps-example",
-          "title": "Problem Title",
-          "tags": ["basic"]
+          "serialNumber": 0,
+          "score": 100
         }
       ],
-      "participants": ["user1", "user2", "admin"],
-      "visibility": "public",
-      "createdTime": "2025-10-24T13:30:00.000Z",
-      "standings": [
-        {
-          "username": "user1",
-          "score": 100,
-          "solvedProblems": 1
-        }
-      ]
+      "standings": [],
+      "createdTime": "2025-10-24T13:30:00.000Z"
     }
     ```
 -   **Status Codes:**
@@ -482,54 +647,121 @@ Retrieves a single contest by its ID.
 Creates a new contest.
 
 -   **Authentication:** Admin only.
--   **Request Body:** Contest object with the following fields:
-    -   `contestID` (string, required): Unique identifier for the contest.
+-   **Request Body:**
     -   `title` (string, required): Contest title.
-    -   `description` (string, optional): Contest description.
+    -   `description` (string, required): Contest description.
     -   `startTime` (Date, required): Contest start time.
     -   `endTime` (Date, required): Contest end time.
-    -   `problems` (array of strings, required): Array of problem IDs.
-    -   `visibility` (string, optional): `"public"` or `"private"` (default: `"public"`).
+    -   `problems` (array of objects, required): Array of problem objects with `serialNumber` and `score`.
 -   **Request Example:**
     ```json
     {
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025",
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
-      "problems": ["tps-example", "problem-2", "problem-3"],
-      "visibility": "public"
+      "problems": [
+        {
+          "serialNumber": 0,
+          "score": 100
+        }
+      ]
     }
     ```
 -   **Response Example (201 Created):**
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025",
       "description": "Annual fall programming contest featuring algorithmic challenges.",
       "startTime": "2025-11-01T09:00:00.000Z",
       "endTime": "2025-11-01T14:00:00.000Z",
-      "problems": ["tps-example", "problem-2", "problem-3"],
-      "participants": [],
-      "visibility": "public",
+      "problems": [
+        {
+          "serialNumber": 0,
+          "score": 100
+        }
+      ],
+      "standings": [],
       "createdTime": "2025-10-24T13:30:00.000Z"
     }
     ```
 -   **Status Codes:**
     -   `201 Created`: Contest created successfully.
     -   `400 Bad Request`: Invalid contest data.
-    -   `401 Unauthorized`: User is not an admin.
-    -   `403 Forbidden`: Contest with this ID already exists.
+    -   `401 Unauthorized`: If the requester is not an admin.
 
-### `PATCH /api/contests/:contestID`
+### `GET /api/contests/:id/standings`
+
+Retrieves the standings for a specific contest.
+
+-   **Responses:**
+    -   `200 OK`: Returns an array of user standings, sorted by score (descending) and then by last submission time (ascending).
+    -   `404 Not Found`: If the contest does not exist.
+
+-   **Response Example:**
+    ```json
+    [
+      {
+        "username": "user1",
+        "totalScore": 200,
+        "solvedCount": 2,
+        "problemScores": [
+          {
+            "serialNumber": 0,
+            "score": 100,
+            "lastSubmissionTime": "2025-11-01T10:00:00.000Z"
+          },
+          {
+            "serialNumber": 1,
+            "score": 100,
+            "lastSubmissionTime": "2025-11-01T11:00:00.000Z"
+          }
+        ],
+        "lastSubmissionTime": "2025-11-01T11:00:00.000Z"
+      }
+    ]
+    ```
+
+### `POST /api/contests/:id/standings/update`
+
+Recalculates the standings for a specific contest based on submissions within the contest timeframe.
+
+-   **Authentication:** Admin only.
+-   **Responses:**
+    -   `200 OK`: Standings updated successfully. Returns the updated standings.
+    -   `401 Unauthorized`: If the user is not an admin.
+    -   `404 Not Found`: If the contest does not exist.
+
+-   **Response Example:**
+    ```json
+    {
+      "message": "Standings updated successfully",
+      "standings": [
+        {
+          "username": "user1",
+          "totalScore": 200,
+          "solvedCount": 2,
+          "problemScores": [
+            {
+              "serialNumber": 0,
+              "score": 100,
+              "lastSubmissionTime": "2025-11-01T10:00:00.000Z"
+            }
+          ],
+          "lastSubmissionTime": "2025-11-01T11:00:00.000Z"
+        }
+      ]
+    }
+    ```
+
+### `PATCH /api/contests/:id`
 
 Updates an existing contest.
 
 -   **Authentication:** Admin only.
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest to update.
+    -   `id` (string): The unique identifier of the contest to update.
 -   **Request Body:** Partial contest object with fields to update.
 -   **Request Example:**
     ```json
@@ -542,7 +774,6 @@ Updates an existing contest.
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025 - Updated",
       "endTime": "2025-11-01T15:00:00.000Z"
     }
@@ -553,18 +784,17 @@ Updates an existing contest.
     -   `401 Unauthorized`: User is not an admin.
     -   `404 Not Found`: Contest does not exist.
 
-### `DELETE /api/contests/:contestID`
+### `DELETE /api/contests/:id`
 
 Deletes a contest.
 
 -   **Authentication:** Admin only.
 -   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest to delete.
+    -   `id` (string): The unique identifier of the contest to delete.
 -   **Response Example (200 OK):**
     ```json
     {
       "_id": "68fb7a00b2c3d4e5f6789012",
-      "contestID": "contest-2025-fall",
       "title": "Fall Programming Contest 2025"
     }
     ```
@@ -573,98 +803,4 @@ Deletes a contest.
     -   `401 Unauthorized`: User is not an admin.
     -   `404 Not Found`: Contest does not exist.
 
-### `GET /api/contests/:contestID/standings`
-
-Retrieves the current standings/leaderboard for a contest.
-
--   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest.
--   **Response Example:**
-    ```json
-    [
-      {
-        "username": "user1",
-        "totalScore": 300,
-        "solvedCount": 3,
-        "problemScores": [
-          {
-            "problemID": "tps-example",
-            "score": 100,
-            "lastSubmissionTime": "2025-11-01T10:30:00.000Z"
-          },
-          {
-            "problemID": "problem-2",
-            "score": 100,
-            "lastSubmissionTime": "2025-11-01T11:15:00.000Z"
-          },
-          {
-            "problemID": "problem-3",
-            "score": 100,
-            "lastSubmissionTime": "2025-11-01T12:00:00.000Z"
-          }
-        ],
-        "lastSubmissionTime": "2025-11-01T12:00:00.000Z"
-      },
-      {
-        "username": "user2",
-        "totalScore": 200,
-        "solvedCount": 2,
-        "problemScores": [
-          {
-            "problemID": "tps-example",
-            "score": 100,
-            "lastSubmissionTime": "2025-11-01T10:45:00.000Z"
-          },
-          {
-            "problemID": "problem-2",
-            "score": 100,
-            "lastSubmissionTime": "2025-11-01T11:30:00.000Z"
-          }
-        ],
-        "lastSubmissionTime": "2025-11-01T11:30:00.000Z"
-      }
-    ]
-    ```
--   **Status Codes:**
-    -   `200 OK`: Standings retrieved successfully.
-    -   `400 Bad Request`: Contest ID not provided.
-    -   `404 Not Found`: Contest does not exist.
-
 **Note:** Standings are sorted by total score (descending), with ties broken by earliest last submission time.
-
-### `POST /api/contests/:contestID/standings/update`
-
-Recalculates and updates the standings for a contest based on all submissions within the contest timeframe.
-
--   **Authentication:** Admin only.
--   **Parameters:**
-    -   `contestID` (string): The unique identifier of the contest.
--   **Response Example (200 OK):**
-    ```json
-    {
-      "message": "Standings updated successfully",
-      "standings": [
-        {
-          "username": "user1",
-          "totalScore": 300,
-          "solvedCount": 3,
-          "problemScores": [
-            {
-              "problemID": "tps-example",
-              "score": 100,
-              "lastSubmissionTime": "2025-11-01T10:30:00.000Z"
-            }
-          ],
-          "lastSubmissionTime": "2025-11-01T12:00:00.000Z"
-        }
-      ]
-    }
-    ```
--   **Status Codes:**
-    -   `200 OK`: Standings updated successfully.
-    -   `400 Bad Request`: Contest ID not provided.
-    -   `401 Unauthorized`: User is not an admin.
-    -   `404 Not Found`: Contest does not exist.
-    -   `500 Internal Server Error`: Server error.
-
-**Note:** This endpoint recalculates standings from scratch based on all submissions made during the contest period. For each problem, it keeps the highest score achieved by each user.

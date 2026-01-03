@@ -74,14 +74,26 @@ const createUser = async (request: IRequest, response: Response) => {
 
   const { username, password, displayName, isAdmin, studentId } = matchedData(request) as IUser;
 
-  let giteaUserCreated = false;
-  let giteaId: number | undefined;
-  let gitSshUrl: string | undefined;
-
   try {
     console.log(`Creating user: ${username}`);
 
-    // Gitea integration first to get giteaId
+    // Step 1: Create OwoJudge user first (without Gitea data)
+    const newUser = new User({
+      username,
+      displayName,
+      isAdmin,
+      studentId,
+      password: hashString(password)
+      // giteaId and gitSshUrl will be filled in later
+    });
+
+    const savedUser: IUser = await newUser.save();
+    console.log(`Judge user ${username} created successfully`);
+
+    // Step 2: Create Gitea user and repo
+    let giteaId: number;
+    let gitSshUrl: string;
+
     try {
       const giteaUser = await giteaService.createUser({
         username,
@@ -89,13 +101,23 @@ const createUser = async (request: IRequest, response: Response) => {
         email: `${username}@owojudge.local`
       });
       giteaId = giteaUser.id;
-      giteaUserCreated = true;
+      console.log(`Gitea user created with ID: ${giteaId}`);
 
       const giteaRepo = await giteaService.createUserRepo({ username });
       gitSshUrl = giteaRepo.ssh_url;
+      console.log(`Gitea repo created with SSH URL: ${gitSshUrl}`);
     } catch (giteaError) {
       console.error(`Failed to create Gitea user/repo for ${username}:`, giteaError);
-      // If Gitea creation fails, we can't proceed
+
+      // Rollback: Delete judge user since Gitea integration failed
+      console.log(`Rolling back judge user creation for ${username}...`);
+      try {
+        await User.findOneAndDelete({ username });
+        console.log(`Successfully deleted judge user ${username}`);
+      } catch (deleteError) {
+        console.error(`Failed to rollback judge user ${username}:`, deleteError);
+      }
+
       response.status(500).send({
         message: 'Failed to create Gitea user',
         error: giteaError
@@ -103,36 +125,16 @@ const createUser = async (request: IRequest, response: Response) => {
       return;
     }
 
-    // Create OwoJudge user
-    const newUser = new User({
-      username,
-      displayName,
-      isAdmin,
-      studentId,
-      giteaId,
-      gitSshUrl,
-      password: hashString(password)
-    });
-
-    const savedUser: IUser = await newUser.save();
-    console.log(`User ${username} created successfully`);
+    // Step 3: Update judge user with Gitea data
+    savedUser.giteaId = giteaId;
+    savedUser.gitSshUrl = gitSshUrl;
+    await savedUser.save();
+    console.log(`Judge user ${username} updated with Gitea data`);
 
     response.status(201).send(savedUser);
   } catch (error) {
-    console.error(`Error creating user: ${error}`);
-
-    // Rollback: Delete Gitea user if it was created
-    if (giteaUserCreated) {
-      console.log(`Rolling back Gitea user creation for ${username}...`);
-      try {
-        await giteaService.deleteUser(username);
-        console.log(`Successfully deleted Gitea user ${username}`);
-      } catch (deleteError) {
-        console.error(`Failed to rollback Gitea user ${username}:`, deleteError);
-      }
-    }
-
-    response.status(400).send(error);
+    console.error(error);
+    response.status(500).send(error);
   }
 };
 
@@ -152,7 +154,7 @@ const deleteUser = async (request: IRequest, response: Response) => {
     response.status(201).send(deletedUser);
   } catch (error) {
     console.error(error);
-    response.status(400).send(error);
+    response.status(500).send(error);
   }
 };
 

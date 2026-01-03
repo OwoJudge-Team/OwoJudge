@@ -1,32 +1,10 @@
 export const createSubmissionValidation = {
-  problemID: {
-    isLength: {
-      options: {
-        min: 4,
-        max: 16
-      },
-      errorMessage: 'Length of problemID must between 4 to 16 characters'
+  problemSerialNumber: {
+    isInt: {
+      errorMessage: 'ProblemSerialNumber should be an integer'
     },
     notEmpty: {
-      errorMessage: 'ProblemID should not be empty'
-    },
-    isString: {
-      errorMessage: 'ProblemID should be a string'
-    }
-  },
-  username: {
-    isLength: {
-      options: {
-        min: 4,
-        max: 32
-      },
-      errorMessage: 'Length of username must between 4 to 32 characters'
-    },
-    notEmpty: {
-      errorMessage: 'Username should not be empty'
-    },
-    isString: {
-      errorMessage: 'Username should be a string'
+      errorMessage: 'ProblemSerialNumber should not be empty'
     }
   },
   language: {

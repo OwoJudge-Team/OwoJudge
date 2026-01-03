@@ -37,7 +37,7 @@ export const createApp = (): Application => {
   const app: Application = express();
 
   app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: 'http://gitea:3000',
     credentials: true,
   }));
 
@@ -57,7 +57,7 @@ export const createApp = (): Application => {
         maxAge: oneHour * 24 // One Day
       },
       store: MongoStore.create({
-        client: mongoose.connection.getClient()
+        client: mongoose.connection.getClient() as any
       })
     })
   );

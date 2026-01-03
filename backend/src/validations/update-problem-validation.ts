@@ -101,5 +101,14 @@ export const updateProblemValidation = {
     isString: {
       errorMessage: 'Subtask in testcase should be a string'
     }
+  },
+  dailyQuota: {
+    optional: true,
+    isInt: {
+      options: {
+        min: 0
+      },
+      errorMessage: 'Daily quota should be a non-negative integer'
+    }
   }
 };

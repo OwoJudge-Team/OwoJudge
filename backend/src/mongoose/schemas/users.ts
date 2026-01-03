@@ -1,6 +1,6 @@
 import mongoose, { ObjectId } from 'mongoose';
 
-interface IUser {
+interface IUser extends mongoose.Document {
   username: string;
   displayName: string;
   password: string;
@@ -13,17 +13,18 @@ interface IUser {
   giteaId?: number;
   gitSshUrl?: string;
   id: ObjectId;
+  quotaUsage: Map<string, { count: number; date: Date }>;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
   username: {
     type: mongoose.Schema.Types.String,
-    require: true,
+    required: true,
     unique: true
   },
   displayName: {
     type: mongoose.Schema.Types.String,
-    require: true
+    required: true
   },
   password: {
     type: mongoose.Schema.Types.String,
@@ -67,8 +68,16 @@ const userSchema = new mongoose.Schema<IUser>({
   gitSshUrl: {
     type: mongoose.Schema.Types.String,
     required: false
+  },
+  quotaUsage: {
+    type: Map,
+    of: new mongoose.Schema({
+      count: { type: Number, required: true },
+      date: { type: Date, required: true }
+    }),
+    default: {}
   }
 });
 
-export const User = mongoose.model('User', userSchema);
+export const User = mongoose.model<IUser>('User', userSchema);
 export { IUser };

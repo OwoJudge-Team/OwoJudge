@@ -1,9 +1,12 @@
 "use client";
 
-import React from "react";
-import contests from "@/constants/contests";
-import { formatISOTime, compareToCurrentTime } from "@/utils/time";
-import { problems as allProblems } from "@/constants/problems";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiGet } from "@/utils/api";
+// import contests from "@/constants/contests";
+import { Contest, Standing } from "@/constants/contests";
+import { formatISOTime } from "@/utils/time";
+import { Problem } from "@/constants/problems";
 import { useParams } from "next/navigation";
 import {
   FaChartPie,
@@ -18,24 +21,77 @@ import CoolLink from "@/components/cool-link";
 export default function ContestPage() {
   const id = useParams().id;
 
-  const contest = contests.find((sub) => sub._id === id);
+  const problemScores = new Map<number, number>();
+  const [contest, setContest] = useState<Contest | null>(null);
+  const [userStanding, setUserStanding] = useState<Standing | null>(null);
+  const [rank, setRank] = useState<number>(0);
+  const [problems, setProblems] = useState<Problem[]>([]);
+
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchContest = async () => {
+      try {
+        const contestRes = await apiGet(`/api/contests/${id}`);
+        const contestData: Contest = await contestRes.json();
+
+        if (!contestData) {
+          return;
+        }
+
+        const standingRes = await apiGet(`/api/contests/${id}/standings`);
+        const standingData: Standing[] = await standingRes.json();
+
+        contestData.standings = standingData;
+        setContest(contestData);
+
+        if (user) {
+          const userStand = standingData.find((s) => s.username === user.username) || null;
+          setUserStanding(userStand);
+
+          problemScores.clear();
+          if (userStand) {
+            for (const [serialNumber, score] of Object.entries(userStand.problemScores)) {
+              problemScores.set(Number(serialNumber), Number(score));
+            }
+          }
+
+          const userRank = standingData.findIndex((s) => s.username === user.username) + 1 || 0;
+          setRank(userRank);
+        }
+
+        const problemIDs = new Set(contestData.problems.map((p) => p.serialNumber));
+        const problemsRes = await apiGet(`/api/problems`);
+        const allProblems: Problem[] = await problemsRes.json();
+        const contestProblems = allProblems.filter((p) => problemIDs.has(p.serialNumber ?? -1));
+        setProblems(contestProblems);
+      } catch (error) {
+        console.error("Failed to fetch contest:", error);
+      }
+    };
+
+    fetchContest();
+  }, [id, user]);
 
   if (!contest) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <p className="text-lg text-gray-600">Loading contest...</p>
+          <p className="text-lg text-slate-300">Loading contest...</p>
         </div>
       </div>
     );
   }
 
-  const user = contest.standings.find((u) => u.username === "alice");
-  const rank = contest.standings.findIndex((u) => u.username === "alice") + 1;
-  const problemIDs = new Set(contest.problems.map((p) => p.problemID));
-  // Find the problems in this contest, call GET /api/problems/:problemID for each problem in real implementation
-  const problems = allProblems.filter((p) => problemIDs.has(p.id));
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-lg text-slate-300">Please login to view the contest.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl p-6">
@@ -59,10 +115,12 @@ export default function ContestPage() {
           <div></div>
           <div className="text-s mb-4 text-slate-400">Rank</div>
 
-          <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">{user?.score}</div>
+          <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">
+            {userStanding?.totalScore ?? 0}
+          </div>
           <div className="text-6xl font-light text-slate-400">/</div>
           <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">
-            {user?.solvedProblems}
+            {userStanding?.solvedCount ?? 0}
           </div>
           <div className="text-6xl font-light text-slate-400">/</div>
           <div className="rounded-lg p-3 text-5xl font-semibold text-slate-100">{rank}</div>
@@ -96,45 +154,48 @@ export default function ContestPage() {
           </thead>
           <tbody className="divide-y divide-slate-700/50">
             {problems.map((p) => (
-              <tr key={p.id} className="group transition-all duration-150 hover:bg-slate-700/50">
+              <tr
+                key={p.serialNumber}
+                className="group transition-all duration-150 hover:bg-slate-700/50"
+              >
                 <td className="px-6 py-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
-                    {p.id}
+                    {p.serialNumber}
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <CoolLink href={`/problems/${p.id}`} text={p.title} />
+                  <CoolLink href={`/problems/${p.serialNumber}`} text={p.title} />
                 </td>
                 <td className="px-6 py-4">
                   <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
                     <FaChartPie />
-                    {p.quota}
+                    {p.quota ?? 0}
                   </span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
                       <FaStar />
-                      {p.score}
+                      {problemScores.get(p.serialNumber ?? -1) ?? 0}
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
                     <FaUserGroup />
-                    {p.acNum.toLocaleString()}
+                    {p.submissionDetail!.accepted.toLocaleString()}
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  {p.status === "correct" ? (
+                  {p.userDetail?.solved ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
                       <FaCircleCheck />
                       Solved
                     </span>
-                  ) : p.status === "wrong" ? (
+                  ) : p.userDetail?.attempted ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
                       <FaCircleXmark />
-                      {p.tryCount} {p.tryCount === 1 ? "Try" : "Tries"}
+                      {p.userDetail?.attempted} {p.userDetail?.attempted === 1 ? "Try" : "Tries"}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">

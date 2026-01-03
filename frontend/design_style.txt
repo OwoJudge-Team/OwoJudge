@@ -488,5 +488,224 @@ Examples:
 
 ---
 
+## Problem Detail Page Components
+
+### Problem Header
+
+**Problem ID Badge**
+```tsx
+<span className="inline-flex items-center rounded-lg bg-slate-700/60 px-4 py-1.5 text-sm font-semibold text-slate-300">
+  Problem {id}
+</span>
+```
+
+**Problem Title**
+```tsx
+<h1 className="text-3xl font-bold text-slate-100">{title}</h1>
+```
+
+### Info Stat Cards
+
+**Container (3-column grid)**
+```tsx
+<div className="grid grid-cols-3 gap-4 p-6">
+```
+
+**Time Limit Card**
+```tsx
+<div className="group rounded-lg border border-slate-700 bg-slate-700/30 p-4 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-800/50 transition-all duration-150 group-hover:bg-blue-800/70">
+      <FaClock className="h-5 w-5 text-blue-200" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Time Limit
+      </p>
+      <p className="text-xl font-bold text-slate-100">
+        {value} <span className="text-sm font-medium text-slate-400">ms</span>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
+**Memory Limit Card**
+```tsx
+<div className="group rounded-lg border border-slate-700 bg-slate-700/30 p-4 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-800/50 transition-all duration-150 group-hover:bg-purple-800/70">
+      <FaMemory className="h-5 w-5 text-purple-200" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Memory Limit
+      </p>
+      <p className="text-xl font-bold text-slate-100">
+        {value} <span className="text-sm font-medium text-slate-400">KB</span>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
+**Score Policy Card**
+```tsx
+<div className="group rounded-lg border border-slate-700 bg-slate-700/30 p-4 transition-all duration-150 hover:bg-slate-700/50">
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-800/50 transition-all duration-150 group-hover:bg-amber-800/70">
+      <FaTrophy className="h-5 w-5 text-amber-200" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Score Policy
+      </p>
+      <p className="text-xl font-bold capitalize text-slate-100">{policy}</p>
+    </div>
+  </div>
+</div>
+```
+
+### Info Stat Card Pattern
+- Border: `border border-slate-700`
+- Background: `bg-slate-700/30`
+- Hover: `hover:bg-slate-700/50`
+- Transition: `transition-all duration-150`
+- Icon container: `h-10 w-10` + colored background with /50 opacity
+- Icon hover: increase opacity to /70
+- Label: `text-xs font-semibold uppercase tracking-wider text-slate-400`
+- Value: `text-xl font-bold text-slate-100`
+- Unit: `text-sm font-medium text-slate-400`
+
+Color mapping:
+- Time Limit: Blue (`bg-blue-800/50`, `text-blue-200`, FaClock)
+- Memory Limit: Purple (`bg-purple-800/50`, `text-purple-200`, FaMemory)
+- Score Policy: Amber (`bg-amber-800/50`, `text-amber-200`, FaTrophy)
+
+### Tag Pills
+
+**Tag Container**
+```tsx
+<div className="border-t border-slate-700/50 px-6 py-4">
+  <div className="flex flex-wrap items-center gap-2">
+    <FaTag className="h-3.5 w-3.5 text-slate-400" />
+    {tags.map((tag) => (
+      <span className="inline-flex items-center rounded-lg bg-indigo-800/50 px-3 py-1.5 text-xs font-semibold text-indigo-200">
+        {tag}
+      </span>
+    ))}
+  </div>
+</div>
+```
+
+**Tag Pill Style**
+- Background: `bg-indigo-800/50`
+- Text: `text-indigo-200`
+- Rounded: `rounded-lg`
+- Padding: `px-3 py-1.5`
+- Font: `text-xs font-semibold`
+
+### Problem Statement Section
+
+**Markdown Container with Prose**
+```tsx
+<div className="prose prose-invert prose-slate max-w-none p-8 prose-headings:text-slate-100 prose-p:text-slate-300 prose-strong:text-slate-200 prose-code:text-indigo-300 prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-slate-700">
+  <ReactMarkdown>{content}</ReactMarkdown>
+</div>
+```
+
+**Prose Styling Guidelines**
+- Base: `prose-invert prose-slate`
+- Headings: `prose-headings:text-slate-100`
+- Paragraphs: `prose-p:text-slate-300`
+- Strong text: `prose-strong:text-slate-200`
+- Inline code: `prose-code:text-indigo-300`
+- Code blocks: `prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-slate-700`
+
+**Code Block Syntax Highlighting**
+```tsx
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+<SyntaxHighlighter
+  style={vscDarkPlus}
+  language={lang}
+  customStyle={{
+    backgroundColor: "rgb(15 23 42 / 0.5)",
+    padding: "1rem",
+    margin: 0,
+    borderRadius: "0.5rem",
+    border: "1px solid rgb(51 65 85)",
+  }}
+>
+  {code}
+</SyntaxHighlighter>
+```
+
+### Submit Solution Section
+
+**Code Textarea**
+```tsx
+<textarea
+  className="min-h-[320px] w-full rounded-lg border border-slate-600 bg-slate-900/50 p-4 font-mono text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+  placeholder="// Write your solution here..."
+/>
+```
+
+**Submit Button**
+```tsx
+<button className="group inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 transition-all duration-150 hover:bg-indigo-500 hover:shadow-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600 disabled:hover:shadow-indigo-600/30">
+  <FaPaperPlane className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+  Submit Solution
+</button>
+```
+
+### Status Message Alerts
+
+**Success Alert**
+```tsx
+<div className="flex items-center gap-2 rounded-lg bg-emerald-800/50 px-4 py-3 text-sm font-semibold text-emerald-200">
+  <FaCircleCheck className="h-4 w-4" />
+  {message}
+</div>
+```
+
+**Error Alert**
+```tsx
+<div className="flex items-center gap-2 rounded-lg bg-rose-800/50 px-4 py-3 text-sm font-semibold text-rose-200">
+  <FaCircleExclamation className="h-4 w-4" />
+  {error}
+</div>
+```
+
+### Loading State
+
+**Centered Loading Spinner**
+```tsx
+<div className="flex min-h-screen items-center justify-center bg-background">
+  <div className="text-center">
+    <FaSpinner className="mb-4 inline-block h-12 w-12 animate-spin text-indigo-500" />
+    <p className="text-lg text-slate-300">Loading problem...</p>
+  </div>
+</div>
+```
+
+### Section Headers
+
+**Section Title with Icon**
+```tsx
+<h2 className="flex items-center gap-2 text-xl font-bold text-slate-100">
+  <FaFileLines className="h-5 w-5 text-indigo-400" />
+  Section Title
+</h2>
+```
+
+Common section icons:
+- Problem Statement: FaFileLines
+- Submit Solution: FaPaperPlane
+- Test Cases: FaListCheck
+- Editorial: FaLightbulb
+
+---
+
 This design system creates a professional, desktop-focused interface with vibrant colored accents on a dark slate background. All interactive elements have smooth transitions and clear visual feedback.
 

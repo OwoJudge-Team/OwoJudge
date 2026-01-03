@@ -1,12 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 interface ProblemInContest {
-    name: string;
+    serialNumber: number;
     score: number;
 }
 
 interface ProblemScore {
-    problemID: string;
+    serialNumber: number;
     score: number;
     lastSubmissionTime?: Date;
 }
@@ -20,7 +20,6 @@ interface UserStanding {
 }
 
 interface IContest extends Document {
-  contestID: string;
   title: string;
   description: string;
   startTime: Date;
@@ -30,11 +29,6 @@ interface IContest extends Document {
 }
 
 const contestSchema: Schema = new Schema({
-  contestID: {
-    type: Schema.Types.String,
-    required: true,
-    unique: true
-  },
   title: {
     type: Schema.Types.String,
     required: true
@@ -53,7 +47,7 @@ const contestSchema: Schema = new Schema({
   },
   problems: [
     {
-        name: Schema.Types.String,
+        serialNumber: Schema.Types.Number,
         score: Schema.Types.Number
     }
   ],
@@ -73,7 +67,7 @@ const contestSchema: Schema = new Schema({
       },
       problemScores: [
         {
-          problemID: Schema.Types.String,
+          serialNumber: Schema.Types.Number,
           score: Schema.Types.Number,
           lastSubmissionTime: Schema.Types.Date
         }

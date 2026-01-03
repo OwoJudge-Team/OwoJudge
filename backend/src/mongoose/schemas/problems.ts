@@ -1,9 +1,16 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { Counter } from './counters';
 
 enum ScorePolicy {
   Sum = 'sum',
   Max = 'max',
   Min = 'min'
+}
+
+export enum ProblemStatus {
+  Ready = 'ready',
+  Waiting = 'waiting',
+  Error = 'error'
 }
 
 interface ITestcase {
@@ -13,13 +20,16 @@ interface ITestcase {
 }
 
 interface IProblem extends Document {
-  problemID: string;
+  serialNumber: number;
   createdTime: Date;
   title: string;
+  fileName: string;
   timeLimit: number;
   memoryLimit: number;
   processes: number;
   fullScore: number;
+  dailyQuota?: number;
+  status: ProblemStatus;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
   tags?: string[];
@@ -41,13 +51,16 @@ interface IProblem extends Document {
 }
 
 const problemSchema = new Schema<IProblem>({
-  problemID: { type: String, required: true, unique: true },
+  serialNumber: { type: Number, unique: true },
   createdTime: { type: Date, required: true, default: Date.now },
+  fileName: { type: String, required: true },
   title: { type: String, required: true },
   timeLimit: { type: Number, required: true },
   memoryLimit: { type: Number, required: true },
   processes: { type: Number, required: true, default: 1 },
   fullScore: { type: Number, required: true },
+  dailyQuota: { type: Number },
+  status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   tags: [String],
   problemRelatedTags: [String],
@@ -64,6 +77,45 @@ const problemSchema = new Schema<IProblem>({
   userDetail: {
     solved: { type: Number, default: 0 },
     attempted: { type: Number, default: 0 }
+  }
+});
+
+// Auto-increment serialNumber using pre-save hook
+problemSchema.pre('save', async function() {
+  if (this.isNew && this.serialNumber === undefined) {
+    // Check if counter exists to handle existing data
+    const counterExists = await Counter.exists({ _id: 'problemSerialNumber' });
+    
+    if (!counterExists) {
+      // Find the highest existing serialNumber
+      const lastProblem = await mongoose.model('Problem').findOne(
+        {}, 
+        { serialNumber: 1 }, 
+        { sort: { serialNumber: -1 } }
+      );
+      const maxSerial = lastProblem?.serialNumber ?? -1;
+      
+      try {
+        // Initialize counter so the next increment gives maxSerial + 1
+        // We set seq to maxSerial + 1. 
+        // The update below will increment it to maxSerial + 2.
+        // Then we subtract 1 to get maxSerial + 1.
+        await Counter.create({
+          _id: 'problemSerialNumber',
+          seq: maxSerial + 1
+        });
+      } catch (error) {
+        // Ignore duplicate key error if another process initialized it concurrently
+      }
+    }
+
+    const counter = await Counter.findByIdAndUpdate(
+      { _id: 'problemSerialNumber' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    // We want to start from 0, so we subtract 1 from the sequence
+    this.serialNumber = counter.seq - 1;
   }
 });
 

@@ -6,10 +6,21 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  safelist: ["bg-green-600/50", "bg-red-600/50", "bg-blue-600/50", "bg-purple-600/50"],
+  safelist: [
+    "bg-green-600/50",
+    "bg-red-600/50",
+    "bg-blue-600/50",
+    "bg-purple-600/50",
+    "bg-yellow-400/50",
+    "bg-orange-500/50",
+    "bg-zinc-600/50",
+    "bg-lime-500/50",
+    "bg-pink-500/50",
+  ],
   theme: {
     extend: {
       colors: {
+        code: "oklch(0.2491 0.0335 264.3)",
         background: "var(--background)",
         foreground: "var(--foreground)",
         primary: {

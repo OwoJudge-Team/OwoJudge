@@ -55,5 +55,5 @@ export const createUserValidation = {
       errorMessage: 'studentId should be a string'
     },
     optional: true
-  }
+  },
 };
