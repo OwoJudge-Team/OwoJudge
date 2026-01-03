@@ -42,7 +42,8 @@ export default function UserDetailPage() {
           if (err.message === "User not found") {
             errorMessage = "User not found.";
           } else if (err.name === "TypeError") {
-            errorMessage = "Network error: unable to reach the server. Please check your connection and try again.";
+            errorMessage =
+              "Network error: unable to reach the server. Please check your connection and try again.";
           }
         }
         setError(errorMessage);
@@ -152,7 +153,9 @@ export default function UserDetailPage() {
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
                   <FaCircleCheck className="text-emerald-500" /> Solved
                 </div>
-                <div className="text-3xl font-bold text-emerald-400">{user.solvedProblem}</div>
+                <div className="text-3xl font-bold text-emerald-400">
+                  {user.solvedProblemsCount}
+                </div>
               </div>
             </div>
           </div>

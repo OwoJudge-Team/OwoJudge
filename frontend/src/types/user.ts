@@ -4,6 +4,6 @@ export interface User {
   displayName: string;
   isAdmin: boolean;
   rating: number;
-  solvedProblem: number;
+  solvedProblemsCount: number;
   solvedProblems: (string | number)[];
 }
