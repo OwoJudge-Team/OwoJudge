@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Submission, Result, TestCaseResult, StatusToCode } from "@/constants/submissions";
+import { Submission, Result, TestCaseResult, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { apiGet } from "@/utils/api";
 import { getStatusColor } from "@/utils/submission-status";

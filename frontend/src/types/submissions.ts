@@ -56,12 +56,13 @@ export interface Result {
 export interface Submission {
   serialNumber: number;
   userHandle: string;
+  username: string;
   userID: number;
   problemSerialNumber: number;
   problemTitle: string;
   language: string;
   status: Status;
-  score?: number;
+  score: number;
   createdTime: string;
   time: string;
   memory: string;

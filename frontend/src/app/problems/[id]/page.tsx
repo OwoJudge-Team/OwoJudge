@@ -2,24 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { apiGet } from "@/utils/api";
 import { useParams } from "next/navigation";
+import { Problem } from "@/types/problems";
 import { FaClock, FaMemory, FaSpinner } from "react-icons/fa6";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
-
-interface ProblemData {
-  _id: string;
-  id: string;
-  title: string;
-  timeLimit: number;
-  memoryLimit: number;
-  scorePolicy: string;
-  description?: string;
-  sampleTestcases?: { filename: string; point: number; subtask: string }[];
-  tags?: string[];
-  problemRelatedTags?: string[];
-  submissionDetail?: unknown;
-  userDetail?: unknown;
-}
 
 const SHOW_SUBMIT = false;
 
@@ -27,7 +13,7 @@ export default function ProblemPage() {
   const params = useParams();
   const id = params.id;
 
-  const [data, setData] = useState<ProblemData | null>(null);
+  const [data, setData] = useState<Problem | null>(null);
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -60,7 +46,7 @@ export default function ProblemPage() {
         {/* Redesigned Header with Card Background */}
         <div className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
           <div className="mb-4 flex items-baseline gap-4">
-            <span className="text-3xl font-light text-slate-400">#{data.id}</span>
+            <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
             <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
           </div>
 
@@ -89,7 +75,7 @@ export default function ProblemPage() {
         {/* Submit Section (Controlled by Dev Variable) */}
         {SHOW_SUBMIT && (
           <div className="mt-8">
-            <ProblemClient displayID={data.id} />
+            <ProblemClient displayID={String(data.serialNumber)} />
           </div>
         )}
       </div>

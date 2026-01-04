@@ -1,6 +1,6 @@
 "use client";
 
-import { Problem } from "@/constants/problems";
+import { Problem } from "@/types/problems";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/utils/api";
 import Modal from "@/components/Modal";
@@ -167,12 +167,13 @@ const CreateContestPage = () => {
                     ) : (
                       selectedProblems.map((problemId) => {
                         const problem = problems.find((p) => p.serialNumber === problemId);
+                        if (!problem) return null;
                         return (
                           <span
                             key={problemId}
                             className="inline-flex items-center gap-1 rounded-full bg-indigo-600 px-3 py-1 text-sm text-slate-100"
                           >
-                            {problem?.title}
+                            {problem.title}
                             <span
                               onClick={(e) => {
                                 e.stopPropagation();

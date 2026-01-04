@@ -3,7 +3,7 @@
 import React, { useEffect, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { apiGet } from "@/utils/api";
-import { Submission, StatusToCode } from "@/constants/submissions";
+import { Submission, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
