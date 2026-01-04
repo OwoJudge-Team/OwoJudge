@@ -110,12 +110,8 @@ export default function ComparePage() {
         const paired = Array.from(set)
           .sort()
           .map((tc) => {
-            const leftRes = flatLeft.find(
-              (r) => r.groupName === groupName && r.testcase === tc
-            );
-            const rightRes = flatRight.find(
-              (r) => r.groupName === groupName && r.testcase === tc
-            );
+            const leftRes = flatLeft.find((r) => r.groupName === groupName && r.testcase === tc);
+            const rightRes = flatRight.find((r) => r.groupName === groupName && r.testcase === tc);
             return {
               testcase: tc,
               left: leftRes as TestCaseResult,
