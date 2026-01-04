@@ -6,7 +6,7 @@ const os = require('os');
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 
 // Problem templates with various themes
 const problemTitles = [
@@ -73,7 +73,7 @@ function generateRandomProblem(index) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-    
+
   const timeLimit = [1000, 2000, 3000, 5000][Math.floor(Math.random() * 4)]; // 1-5 seconds
   const memoryLimit = [256, 512, 1024][Math.floor(Math.random() * 3)]; // 256MB-1GB
   const processes = Math.random() > 0.9 ? 2 : 1; // 10% chance of multi-process
@@ -81,7 +81,7 @@ function generateRandomProblem(index) {
   const tags = getRandomElements(tagOptions.flat(), Math.floor(Math.random() * 3) + 2);
   const problemRelatedTags = getRandomElements(difficulties, 1);
   const dailyQuota = [5, 10, 20][Math.floor(Math.random() * 3)]; // 30% chance of having a quota
-  
+
   return {
     dirName,
     title,
@@ -109,13 +109,13 @@ function copyDir(src, dest) {
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
   }
-  
+
   const entries = fs.readdirSync(src, { withFileTypes: true });
-  
+
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
-    
+
     if (entry.isDirectory()) {
       copyDir(srcPath, destPath);
     } else {
@@ -135,7 +135,7 @@ async function login() {
     if (!response.ok) {
       throw new Error(`Login failed: ${response.status} ${response.statusText}`);
     }
-    
+
     // Get cookies
     const cookies = response.headers.get('set-cookie');
     return cookies;
@@ -148,7 +148,7 @@ async function login() {
 async function createMockProblems() {
   try {
     console.log(`Creating ${count} mock problems via API...`);
-    
+
     const cookie = await login();
     console.log('Logged in successfully');
 
@@ -159,20 +159,20 @@ async function createMockProblems() {
       let tempDir = null;
       try {
         const problemData = generateRandomProblem(i);
-        
+
         // Create temp dir
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-problem-'));
         const problemDir = path.join(tempDir, problemData.dirName);
-        
+
         if (fs.existsSync(TEMPLATE_PATH)) {
           // Copy template
           copyDir(TEMPLATE_PATH, problemDir);
-          
+
           // Update problem.json
           const problemJsonPath = path.join(problemDir, 'problem.json');
           if (fs.existsSync(problemJsonPath)) {
             const problemJson = JSON.parse(fs.readFileSync(problemJsonPath, 'utf-8'));
-            
+
             problemJson.code = problemData.dirName; // Still needed for internal structure but ignored by DB
             problemJson.title = problemData.title;
             problemJson.score_policy = problemData.scorePolicy;
@@ -182,10 +182,10 @@ async function createMockProblems() {
             problemJson.memory_limit = problemData.memoryLimit;
             problemJson.process_limit = problemData.processes;
             problemJson.dailyQuota = problemData.dailyQuota;
-            
+
             fs.writeFileSync(problemJsonPath, JSON.stringify(problemJson, null, 4));
           }
-          
+
           // Update description.md
           const descPath = path.join(problemDir, 'statement/description.md');
           if (fs.existsSync(descPath)) {
@@ -193,7 +193,7 @@ async function createMockProblems() {
             descContent = `# ${problemData.title}\n\n` + descContent.replace(/^# .*\n/, '');
             fs.writeFileSync(descPath, descContent);
           }
-          
+
           // Create tarball
           const tarballPath = path.join(tempDir, `${problemData.dirName}.tar.gz`);
           await tar.c(
@@ -204,13 +204,13 @@ async function createMockProblems() {
             },
             [problemData.dirName]
           );
-          
+
           // Upload
           const formData = new FormData();
           const fileContent = fs.readFileSync(tarballPath);
           const blob = new Blob([fileContent], { type: 'application/gzip' });
           formData.append('problem', blob, `${problemData.dirName}.tar.gz`);
-          
+
           const uploadResp = await fetch(`${API_URL}/problems`, {
             method: 'POST',
             headers: {
@@ -218,7 +218,7 @@ async function createMockProblems() {
             },
             body: formData
           });
-          
+
           if (!uploadResp.ok) {
             const text = await uploadResp.text();
             throw new Error(`API Error: ${uploadResp.status} - ${text}`);
@@ -229,7 +229,7 @@ async function createMockProblems() {
             title: problemData.title,
             difficulty: problemData.problemRelatedTags[0] || 'N/A'
           });
-          
+
           console.log(`Info: Created problem ${i + 1}/${count}: ${problemData.title}`);
         } else {
           throw new Error(`Template path not found at ${TEMPLATE_PATH}`);

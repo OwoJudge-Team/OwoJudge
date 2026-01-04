@@ -1,37 +1,104 @@
 "use client";
 
-import React, { useState } from "react";
-import { FaUser, FaIdCard, FaEnvelope, FaKey, FaLock, FaShieldHalved } from "react-icons/fa6";
+import React, { useState, useEffect } from "react";
+import { FaUser, FaIdCard, FaKey, FaLock, FaShieldHalved } from "react-icons/fa6";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiGet, apiFetch } from "@/utils/api";
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+
   // User info state
   const [handle, setHandle] = useState("");
   const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
-  const [role] = useState("user");
-  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("user");
   const [sshPublicKey, setSshPublicKey] = useState("");
 
   // Password change state
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const fetchUserData = async () => {
+        try {
+          const res = await apiGet(`/api/users/${user.username}`);
+          if (!res.ok) throw new Error("Failed to fetch user data");
+          const userData = await res.json();
+
+          setHandle(userData.username || "");
+          setStudentId(userData.studentId || "");
+          setName(userData.displayName || "");
+          setRole(userData.isAdmin ? "admin" : "user");
+          setSshPublicKey(userData.gitPublicKey || "");
+          setLoading(false);
+        } catch (err) {
+          console.error(err);
+          setMessage({ text: "Failed to load user settings.", type: "error" });
+          setLoading(false);
+        }
+      };
+      fetchUserData();
+    }
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement update logic
-    console.log("Update user:", {
-      handle,
-      studentId,
-      name,
-      role,
-      email,
-      sshPublicKey,
-      currentPassword,
-      newPassword,
-      confirmPassword,
-    });
+    setMessage(null);
+
+    if (newPassword && newPassword !== confirmPassword) {
+      setMessage({ text: "New passwords do not match.", type: "error" });
+      return;
+    }
+
+    if (!user) return;
+
+    const updates: Record<string, string> = {};
+    if (name) updates.displayName = name;
+
+    // Only send if not empty
+    if (newPassword) updates.password = newPassword;
+    if (sshPublicKey) updates.gitPublicKey = sshPublicKey;
+
+    try {
+      const res = await apiFetch(`/api/users/${user.username}`, {
+        method: "PATCH",
+        body: updates,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        setMessage({ text: "Settings updated successfully.", type: "success" });
+        // Clear password fields
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        const errData = await res.json();
+        // Backend might send array of errors or string
+        const errorMsg = Array.isArray(errData)
+          ? errData.map((e) => e.msg).join(", ")
+          : errData.message || "Update failed";
+        setMessage({ text: errorMsg, type: "error" });
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ text: "An error occurred while updating settings.", type: "error" });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-lg text-slate-300">Loading settings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-12">
@@ -39,10 +106,15 @@ export default function SettingsPage() {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-100">Settings</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Manage your account information and settings
-          </p>
         </div>
+
+        {message && (
+          <div
+            className={`mb-6 rounded-lg p-4 text-sm font-medium ${message.type === "success" ? "border border-emerald-800 bg-emerald-900/50 text-emerald-200" : "border border-rose-800 bg-rose-900/50 text-rose-200"}`}
+          >
+            {message.text}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* User Information Card */}
@@ -65,10 +137,9 @@ export default function SettingsPage() {
                     type="text"
                     id="handle"
                     value={handle}
-                    onChange={(e) => setHandle(e.target.value)}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Enter your handle"
-                    required
+                    disabled
+                    className="w-full cursor-not-allowed rounded-lg border border-slate-600 bg-slate-900/30 px-4 py-2.5 text-sm text-slate-400 focus:outline-none"
+                    title="Username cannot be changed"
                   />
                 </div>
 
@@ -84,9 +155,10 @@ export default function SettingsPage() {
                     type="text"
                     id="studentId"
                     value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Enter your student ID"
+                    disabled
+                    className="w-full cursor-not-allowed rounded-lg border border-slate-600 bg-slate-900/30 px-4 py-2.5 text-sm text-slate-400 focus:outline-none"
+                    placeholder="Not set"
+                    title="Contact admin to change Student ID"
                   />
                 </div>
               </div>
@@ -99,7 +171,7 @@ export default function SettingsPage() {
                     className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
                   >
                     <FaUser className="h-3.5 w-3.5 text-slate-400" />
-                    Name
+                    Display Name
                   </label>
                   <input
                     type="text"
@@ -107,7 +179,7 @@ export default function SettingsPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Enter your name"
+                    placeholder="Enter your display name"
                     required
                   />
                 </div>
@@ -124,26 +196,6 @@ export default function SettingsPage() {
                     {role}
                   </div>
                 </div>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                >
-                  <FaEnvelope className="h-3.5 w-3.5 text-slate-400" />
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                  placeholder="Enter your email"
-                  required
-                />
               </div>
 
               {/* SSH Public Key */}
@@ -189,7 +241,7 @@ export default function SettingsPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Enter new password"
+                    placeholder="Enter new password (optional)"
                   />
                 </div>
 
@@ -217,29 +269,6 @@ export default function SettingsPage() {
           {/* Submit Section */}
           <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
             <div className="space-y-5 p-6">
-              {/* Current Password */}
-              <div>
-                <label
-                  htmlFor="currentPassword"
-                  className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                >
-                  <FaLock className="h-3.5 w-3.5 text-slate-400" />
-                  Current Password
-                  <span className="ml-auto text-xs text-rose-400">
-                    * Required to submit changes
-                  </span>
-                </label>
-                <input
-                  type="password"
-                  id="currentPassword"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                  placeholder="Enter current password to confirm changes"
-                  required
-                />
-              </div>
-
               {/* Submit Button */}
               <button
                 type="submit"
