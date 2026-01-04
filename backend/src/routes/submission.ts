@@ -166,8 +166,8 @@ export const createSubmission = async (request: IRequest, response: Response): P
   }
 };
 
-submissionRouter.get('/api/submissions', getSubmissions);
-submissionRouter.get('/api/submission/:serialNumber', getSubmissionByID);
-submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
+submissionRouter.get('/api/submissions', isAuthenticated, getSubmissions);
+submissionRouter.get('/api/submission/:serialNumber', isAuthenticated, getSubmissionByID);
+submissionRouter.post('/api/submissions', isAuthenticated, checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;

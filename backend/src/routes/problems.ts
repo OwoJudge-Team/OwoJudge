@@ -854,8 +854,8 @@ problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Resp
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:serialNumber', deleteProblem);
-problemsRouter.patch('/api/problems/:serialNumber', checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.delete('/api/problems/:serialNumber', isAdmin, deleteProblem);
+problemsRouter.patch('/api/problems/:serialNumber', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
 
 problemsRouter.put('/api/problems/:serialNumber', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {

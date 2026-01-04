@@ -5,21 +5,11 @@ import { Problem, IProblem } from '../mongoose/schemas/problems';
 import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
+import { isAdmin } from '../middleware/auth';
 
 const rejudgeRouter: Router = Router();
 
 export const rejudgeSubmissions = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge submissions');
-    return;
-  }
-
   const { serialNumbers } = request.body;
 
   if (!Array.isArray(serialNumbers)) {
@@ -51,17 +41,6 @@ export const rejudgeSubmissions = async (request: IRequest, response: Response):
 };
 
 export const rejudgeProblems = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge problems');
-    return;
-  }
-
   const { serialNumbers } = request.body;
 
   if (!Array.isArray(serialNumbers)) {
@@ -99,17 +78,6 @@ export const rejudgeProblems = async (request: IRequest, response: Response): Pr
 };
 
 export const rejudgeSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge submissions');
-    return;
-  }
-
   const { serialNumber } = request.params;
 
   try {
@@ -134,16 +102,6 @@ export const rejudgeSubmission = async (request: IRequest, response: Response): 
 };
 
 export const rejudgeProblem = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge problems');
-    return;
-  }
-
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -179,9 +137,9 @@ export const rejudgeProblem = async (request: IRequest, response: Response): Pro
   }
 };
 
-rejudgeRouter.post('/api/rejudge/submissions', rejudgeSubmissions);
-rejudgeRouter.post('/api/rejudge/problems', rejudgeProblems);
-rejudgeRouter.post('/api/rejudge/submission/:serialNumber', rejudgeSubmission);
-rejudgeRouter.post('/api/rejudge/problem/:serialNumber', rejudgeProblem);
+rejudgeRouter.post('/api/rejudge/submissions', isAdmin, rejudgeSubmissions);
+rejudgeRouter.post('/api/rejudge/problems', isAdmin, rejudgeProblems);
+rejudgeRouter.post('/api/rejudge/submission/:serialNumber', isAdmin, rejudgeSubmission);
+rejudgeRouter.post('/api/rejudge/problem/:serialNumber', isAdmin, rejudgeProblem);
 
 export default rejudgeRouter;
