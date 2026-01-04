@@ -36,12 +36,21 @@ export interface UserSolution {
   content: string;
 }
 
-export interface Result {
+export interface TestCaseResult {
   testcase: string;
   status: Status;
   time: number;
   memory: number;
   message: string;
+}
+
+export interface GroupResult {
+  score: number;
+  testcases: TestCaseResult[];
+}
+
+export interface Result {
+  [groupName: string]: GroupResult;
 }
 
 export interface Submission {
@@ -57,5 +66,5 @@ export interface Submission {
   time: string;
   memory: string;
   userSolution: Array<UserSolution>;
-  results: Result[];
+  results: Result;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { apiGet } from "@/utils/api";
 import { Submission, StatusToCode } from "@/constants/submissions";
@@ -133,26 +133,38 @@ export default function SubmissionPage() {
               </tr>
             </thead>
             <tbody>
-              {results.length === 0 ? (
+              {!results ? (
                 <tr>
                   <td className="px-4 py-5" colSpan={4}>
                     <div className="text-sm text-slate-500">No testcase details available.</div>
                   </td>
                 </tr>
               ) : (
-                results.map((r, index) => (
-                  <tr key={index} className="border-t border-slate-700 text-slate-100">
-                    <td className="px-4 py-3 text-sm">{r.testcase}</td>
-                    <td className="px-4 py-3 text-sm">{r.time.toFixed(3)} s</td>
-                    <td className="px-4 py-3 text-sm">{r.memory} MB</td>
-                    <td className={`px-4 py-3 text-sm font-medium`}>
-                      <div
-                        className={`${getStatusColor(r.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                Object.entries(results).map(([groupName, groupResult]) => (
+                  <Fragment key={groupName}>
+                    <tr className="border-t border-slate-700 bg-slate-700/30">
+                      <td colSpan={4} className="px-4 py-3 font-semibold text-slate-200">
+                        {groupName}
+                      </td>
+                    </tr>
+                    {groupResult.testcases.map((testcase, index) => (
+                      <tr
+                        key={`${groupName}-${index}`}
+                        className="border-t border-slate-700 text-slate-100"
                       >
-                        {StatusToCode[r.status]}
-                      </div>
-                    </td>
-                  </tr>
+                        <td className="px-4 py-3 text-sm">{testcase.testcase}</td>
+                        <td className="px-4 py-3 text-sm">{testcase.time.toFixed(3)} s</td>
+                        <td className="px-4 py-3 text-sm">{testcase.memory} MB</td>
+                        <td className={`px-4 py-3 text-sm font-medium`}>
+                          <div
+                            className={`${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                          >
+                            {StatusToCode[testcase.status]}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))
               )}
             </tbody>
