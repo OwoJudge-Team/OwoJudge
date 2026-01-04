@@ -4,14 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Submission, StatusToCode, SubmissionStatus } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
-import { apiGet } from "@/utils/api";
-import { FaClock, FaFloppyDisk, FaSpinner } from "react-icons/fa6";
+import { apiGet, apiPost } from "@/utils/api";
+import { FaClock, FaFloppyDisk, FaSpinner, FaRotateRight } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
 import Paginator from "@/components/Paginator";
 
 const SubmissionPage: React.FC = () => {
-  const [view, setView] = useState<"global" | "user">("global"); // Switch between global/user submissions
+  const [view, setView] = useState<"global" | "user">("global");
   const [searchUser, setSearchUser] = useState("");
   const [searchProblem, setSearchProblem] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -19,38 +19,92 @@ const SubmissionPage: React.FC = () => {
   const [submissions, setSubmissions] = useState<Array<Submission>>([]);
   const [limit, setLimit] = useState<number>(20);
   const [offset, setOffset] = useState<number>(0);
+  const [selectedSubmissions, setSelectedSubmissions] = useState<Set<number>>(new Set());
+  const [isRejudging, setIsRejudging] = useState(false);
 
   const context = useAuth();
   const user = context?.user;
 
-  useEffect(() => {
-    const fetchSubmissions = async () => {
-      try {
-        const params = new URLSearchParams();
-        params.set("limit", String(limit));
-        params.set("offset", String(offset));
-        if (view === "user" && user && user.isAdmin) {
-          params.set("username", String(user.username));
-        } else if (searchUser && user && user.isAdmin) {
-          params.set("username", searchUser);
-        }
-        if (searchProblem) {
-          params.set("problemSerialNumber", searchProblem);
-        }
-        if (filterStatus) {
-          params.set("status", filterStatus);
-        }
-        const res = await apiGet(`/api/submissions?${params.toString()}`);
-        const data = await res.json();
-        setTotalCount(data.total);
-        setSubmissions(data.submissions ?? []);
-      } catch (error) {
-        console.error("Failed to fetch submissions:", error);
+  const fetchSubmissions = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      params.set("offset", String(offset));
+      if (view === "user" && user && user.isAdmin) {
+        params.set("username", String(user.username));
+      } else if (searchUser && user && user.isAdmin) {
+        params.set("username", searchUser);
       }
-    };
+      if (searchProblem) {
+        params.set("problemSerialNumber", searchProblem);
+      }
+      if (filterStatus) {
+        params.set("status", filterStatus);
+      }
+      const res = await apiGet(`/api/submissions?${params.toString()}`);
+      const data = await res.json();
+      setTotalCount(data.total);
+      setSubmissions(data.submissions ?? []);
+      // Clear selection when data refreshes to avoid selecting non-visible items or stale IDs
+      setSelectedSubmissions(new Set());
+    } catch (error) {
+      console.error("Failed to fetch submissions:", error);
+    }
+  };
 
+  useEffect(() => {
     fetchSubmissions();
   }, [limit, offset, view, searchUser, searchProblem, filterStatus, user]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      const allIds = new Set(submissions.map((s) => s.serialNumber));
+      setSelectedSubmissions(allIds);
+    } else {
+      setSelectedSubmissions(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: number) => {
+    const newSelected = new Set(selectedSubmissions);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedSubmissions(newSelected);
+  };
+
+  const handleBatchRejudge = async () => {
+    if (selectedSubmissions.size === 0) return;
+    if (!confirm(`Rejudge ${selectedSubmissions.size} submissions?`)) return;
+
+    setIsRejudging(true);
+    try {
+      const res = await apiPost(
+        "/api/rejudge/submissions",
+        {
+          serialNumbers: Array.from(selectedSubmissions),
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (res.ok) {
+        alert("Batch rejudge triggered successfully.");
+        fetchSubmissions();
+      } else {
+        const err = await res.text();
+        alert(`Rejudge failed: ${err}`);
+      }
+    } catch (error) {
+      console.error("Rejudge error:", error);
+      alert("An error occurred during rejudge.");
+    } finally {
+      setIsRejudging(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -71,27 +125,41 @@ const SubmissionPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-neutral-light p-8">
       <div className="mx-auto max-w-6xl">
-        {/* View Switch (Global/User Submissions) */}
-        {user.isAdmin && (
-          <div className="mb-4 flex items-center">
+        <div className="mb-4 flex items-center justify-between">
+          {/* View Switch (Global/User Submissions) */}
+          {user.isAdmin && (
+            <div className="flex items-center">
+              <button
+                onClick={() => setView("global")}
+                className={`mr-4 rounded-lg px-4 py-2 ${
+                  view === "global" ? "bg-slate-700 text-slate-100" : "text-slate-300"
+                } transition`}
+              >
+                Global Submissions
+              </button>
+              <button
+                onClick={() => setView("user")}
+                className={`rounded-lg px-4 py-2 ${
+                  view === "user" ? "bg-slate-700 text-slate-100" : "text-slate-300"
+                } transition`}
+              >
+                My Submissions
+              </button>
+            </div>
+          )}
+
+          {/* Batch Actions */}
+          {user.isAdmin && selectedSubmissions.size > 0 && (
             <button
-              onClick={() => setView("global")}
-              className={`mr-4 rounded-lg px-4 py-2 ${
-                view === "global" ? "bg-slate-700 text-slate-100" : "text-slate-300"
-              } transition`}
+              onClick={handleBatchRejudge}
+              disabled={isRejudging}
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-800"
             >
-              Global Submissions
+              <FaRotateRight className={isRejudging ? "animate-spin" : ""} />
+              Rejudge Selected ({selectedSubmissions.size})
             </button>
-            <button
-              onClick={() => setView("user")}
-              className={`rounded-lg px-4 py-2 ${
-                view === "user" ? "bg-slate-700 text-slate-100" : "text-slate-300"
-              } transition`}
-            >
-              My Submissions
-            </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Filters */}
         <div className="mb-6 rounded-lg bg-background p-4 shadow-lg">
@@ -137,6 +205,18 @@ const SubmissionPage: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-primary-light text-slate-400">
               <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {user.isAdmin && (
+                  <th className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500"
+                      onChange={handleSelectAll}
+                      checked={
+                        submissions.length > 0 && selectedSubmissions.size === submissions.length
+                      }
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-4">#</th>
                 <th className="px-6 py-4">Timestamp</th>
                 <th className="px-6 py-4">User</th>
@@ -149,6 +229,16 @@ const SubmissionPage: React.FC = () => {
             <tbody className="divide-y divide-slate-700/50">
               {submissions.map((submission) => (
                 <tr key={submission.serialNumber} className="transition hover:bg-neutral">
+                  {user.isAdmin && (
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500"
+                        checked={selectedSubmissions.has(submission.serialNumber)}
+                        onChange={() => handleSelectOne(submission.serialNumber)}
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <CoolLink
                       href={`/submissions/${submission.serialNumber}`}
