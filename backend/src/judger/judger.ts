@@ -3,7 +3,6 @@ import { SubmissionStatus } from '../utils/submission-status';
 import { Worker } from 'worker_threads';
 import * as path from 'path';
 import * as os from 'os';
-import mongoose from 'mongoose';
 
 interface WorkerMessage {
   type: 'process_submission';
@@ -29,11 +28,11 @@ class JudgerManager {
     this.availableWorkers = [];
     this.submissionQueue = [];
     this.workerCount = Math.max(1, numWorkers); // Ensure at least 1 worker
-    
+
     const workerData = {
       mongoUri: process.env.MONGO_URI || 'mongodb://mongodb:27017/judge'
     };
-    
+
     for (let i = 0; i < this.workerCount; i++) {
       // Use compiled JavaScript files for Workers
       const worker = new Worker(path.join(__dirname, 'judger-worker.js'), {
@@ -51,7 +50,7 @@ class JudgerManager {
 
   async initialize(): Promise<void> {
     console.log(`Initializing judger with ${this.workerCount} workers...`);
-    
+
     // Workers are already created in the constructor
     // Start polling for new submissions
     this.startPolling();
@@ -63,7 +62,7 @@ class JudgerManager {
     const workerData = {
       mongoUri: process.env.MONGO_URI || 'mongodb://mongodb:27017/judge'
     };
-    
+
     const worker = new Worker(path.join(__dirname, 'judger-worker.js'), {
       workerData
     });
@@ -109,7 +108,7 @@ class JudgerManager {
   private async handleWorkerError(worker: Worker): Promise<void> {
     // Remove worker from available workers
     this.availableWorkers = this.availableWorkers.filter(w => w !== worker);
-    
+
     // Remove worker from workers array
     const workerIndex = this.workers.indexOf(worker);
     if (workerIndex !== -1) {
@@ -164,13 +163,13 @@ class JudgerManager {
 
         for (const submission of pendingSubmissions) {
           const submissionID = (submission._id as any).toString();
-          
+
           // Check if already in queue
           if (!this.submissionQueue.includes(submissionID)) {
             // Mark as queued to prevent race conditions
             submission.status = SubmissionStatus.QU;
             await submission.save();
-            
+
             // Add to queue
             this.submissionQueue.push(submissionID);
             console.log(`Added submission ${submissionID} to queue`);
@@ -188,7 +187,7 @@ class JudgerManager {
 
   async submitSubmission(submission: ISubmission): Promise<void> {
     const submissionID = (submission._id as any).toString();
-    
+
     // Update status to queued
     submission.status = SubmissionStatus.QU;
     await submission.save();
@@ -227,7 +226,7 @@ class JudgerManager {
     }
 
     // Terminate all workers
-    const terminationPromises = this.workers.map(worker => 
+    const terminationPromises = this.workers.map(worker =>
       new Promise<void>((resolve) => {
         worker.terminate().then(() => resolve()).catch(() => resolve());
       })
@@ -280,7 +279,7 @@ export const shutdownJudger = async (): Promise<void> => {
 
 export const getJudgerStatus = (): { queueLength: number; availableWorkers: number; totalWorkers: number; cpuCores: number } | null => {
   if (!judgerManager) return null;
-  
+
   const status = judgerManager.getQueueStatus();
   return {
     ...status,

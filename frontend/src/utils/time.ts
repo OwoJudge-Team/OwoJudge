@@ -7,32 +7,29 @@ const formatISOTime = (isoString: string) => {
   }).format(date);
 };
 
-const compareToCurrentTime = (date: string) => {
-  const d1 = new Date(date).getTime();
-  const d2 = new Date().getTime();
+// Compare start and end time to current time
+// Return values:
+// 3: Current time not within start and end time
+// 2: Current time within start and end time, less than one hour to end time
+// 1: Current time within start and end time, less than one day to end time
+// 0: Current time within start and end time, more than one day to end time
+const compareToCurrentTime = (start: string, end: string) => {
+  const d1 = new Date(start).getTime();
+  const d2 = new Date(end).getTime();
+  const d3 = new Date().getTime();
 
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
   const ONE_HOUR_MS = 60 * 60 * 1000;
 
-  // 1. After current time
-  if (d1 < d2) {
+  if (d3 < d1 || d3 > d2) {
     return 3;
-  }
-
-  const difference = d1 - d2;
-
-  // 2. One hour before current time
-  if (difference <= ONE_HOUR_MS) {
+  } else if (d2 - d3 <= ONE_HOUR_MS) {
     return 2;
-  }
-
-  // 2. One day before current time
-  if (difference <= ONE_DAY_MS) {
+  } else if (d2 - d3 <= ONE_DAY_MS) {
     return 1;
+  } else {
+    return 0;
   }
-
-  // 3. Before one day of current time
-  return 0;
 };
 
 export { formatISOTime, compareToCurrentTime };

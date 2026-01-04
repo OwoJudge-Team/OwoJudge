@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { query, validationResult, matchedData, checkSchema } from 'express-validator';
+import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Problem, IProblem, ProblemStatus } from '../mongoose/schemas/problems';
 import { updateProblemValidation } from '../validations/update-problem-validation';
-import { IUser, User } from '../mongoose/schemas/users';
+import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import multer from 'multer';
 import { readFileSync } from 'fs';
@@ -18,6 +18,7 @@ import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
 import { submitUserSubmission } from '../judger/judger';
 import { DolosManager } from '../utils/dolos-manager';
+import { isAdmin, isAuthenticated } from '../middleware/auth';
 
 const execAsync = promisify(exec);
 
@@ -130,10 +131,6 @@ const getProblems = async (request: IRequest, response: Response) => {
 };
 
 const getProblemByID = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -241,11 +238,6 @@ const getProblemByID = async (request: IRequest, response: Response) => {
 /// │   └── ...
 /// └── ...
 const createProblem = async (request: IRequest, response: Response): Promise<void> => {
-  const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send('No file uploaded');
@@ -305,6 +297,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
           memoryLimit: metadata.memory_limit,
           scorePolicy: metadata.score_policy,
           fullScore: metadata.full_score,
+          dailyQuota: metadata.dailyQuota,
           tags: metadata.tags || [],
           testcase: metadata.testcase,
           problemRelatedTags: metadata.problemRelatedTags || [],
@@ -503,10 +496,6 @@ const deleteProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblem = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user || !request.user.isAdmin) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -537,11 +526,6 @@ const updateProblem = async (request: IRequest, response: Response) => {
 };
 
 const updateProblemWithFile = async (request: IRequest, response: Response): Promise<void> => {
-  const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -637,6 +621,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
           memoryLimit: metadata.memory_limit,
           scorePolicy: metadata.score_policy,
           fullScore: metadata.full_score,
+          dailyQuota: metadata.dailyQuota,
           tags: metadata.tags || [],
           testcase: metadata.testcase,
           problemRelatedTags: metadata.problemRelatedTags || [],
@@ -759,11 +744,6 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
 
 const generateTestcase = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
-  if (!request.isAuthenticated() || !user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
   const { testcaseName } = request.params;
   const serialNumber = parseInt(request.params.serialNumber);
 
@@ -824,10 +804,6 @@ const generateTestcase = async (request: IRequest, response: Response) => {
 };
 
 const getAllowedLanguages = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -861,63 +837,7 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
   }
 };
 
-export const rejudgeProblem = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge problems');
-    return;
-  }
-
-  const serialNumber = parseInt(request.params.serialNumber);
-
-  if (isNaN(serialNumber)) {
-    response.status(400).send('Invalid problem ID');
-    return;
-  }
-
-  try {
-    const problem: IProblem | null = await Problem.findOne({ serialNumber });
-    if (!problem) {
-      response.sendStatus(404);
-      return;
-    }
-
-    const submissions: ISubmission[] = await Submission.find({ problemSerialNumber: serialNumber });
-
-    // Process submissions in chunks to avoid overwhelming the database/judger
-    for (const submission of submissions) {
-      submission.status = SubmissionStatus.PD;
-      submission.score = 0;
-      submission.results = {};
-      await submission.save();
-
-      // We don't await the submission process here to avoid timeout
-      // The judger queue handle it eventually
-      submitUserSubmission(submission);
-    }
-
-    response.status(200).send(`Rejudge triggered for ${submissions.length} submissions.`);
-  } catch (error) {
-    console.log(error);
-    response.status(500).send('Internal Server Error');
-  }
-};
-
 const getPlagiarismReport = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to view plagiarism reports');
-    return;
-  }
-
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -938,13 +858,13 @@ const getPlagiarismReport = async (request: IRequest, response: Response) => {
   }
 };
 
+problemsRouter.get('/api/problems/:serialNumber/plagiarism', isAdmin, getPlagiarismReport);
 problemsRouter.get('/api/problems', getProblems);
-problemsRouter.get('/api/problems/:serialNumber/plagiarism', getPlagiarismReport);
-problemsRouter.get('/api/problems/:serialNumber', getProblemByID);
-problemsRouter.get('/api/problems/:serialNumber/testcases/:testcaseName', generateTestcase);
-problemsRouter.get('/api/problems/:serialNumber/allowed-languages', getAllowedLanguages);
+problemsRouter.get('/api/problems/:serialNumber', isAuthenticated, getProblemByID);
+problemsRouter.get('/api/problems/:serialNumber/testcases/:testcaseName', isAuthenticated, generateTestcase);
+problemsRouter.get('/api/problems/:serialNumber/allowed-languages', isAuthenticated, getAllowedLanguages);
 
-problemsRouter.post('/api/problems', (request: IRequest, response: Response, next) => {
+problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);
@@ -957,11 +877,10 @@ problemsRouter.post('/api/problems', (request: IRequest, response: Response, nex
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:serialNumber', deleteProblem);
-problemsRouter.patch('/api/problems/:serialNumber', checkSchema(updateProblemValidation), updateProblem);
-problemsRouter.post('/api/problems/:serialNumber/rejudge', rejudgeProblem);
+problemsRouter.delete('/api/problems/:serialNumber', isAdmin, deleteProblem);
+problemsRouter.patch('/api/problems/:serialNumber', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
 
-problemsRouter.put('/api/problems/:serialNumber', (request: IRequest, response: Response, next) => {
+problemsRouter.put('/api/problems/:serialNumber', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);

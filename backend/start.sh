@@ -12,9 +12,10 @@ setup_cgroups() {
         # Create the isolate master cgroup directory
         mkdir -p /sys/fs/cgroup/isolate
         # echo $$ > /sys/fs/cgroup/isolate/cgroup.procs
+        ls -al /sys/fs/cgroup/isolate/cgroup.subtree_control
         
         # Now enable controllers in the isolate cgroup (which is now empty of processes)
-        echo "+memory +cpu +pids +cpuset +io" > /sys/fs/cgroup/isolate/cgroup.subtree_control
+        echo "+memory +cpu +pids +cpuset +io" | tee /sys/fs/cgroup/isolate/cgroup.subtree_control
 
         # Verify controllers are enabled
         echo "Enabled controllers: $(cat /sys/fs/cgroup/isolate/cgroup.controllers)"
@@ -40,7 +41,7 @@ setup_cgroups() {
 # Run cgroup setup
 setup_cgroups
 
-cat > /usr/local/etc/isolate << EOF
+cat > /usr/local/etc/isolate <<EOF
 box_root=/var/local/lib/isolate
 cg_root=/sys/fs/cgroup/isolate
 lock_root=/var/local/lib/isolate/lock
@@ -52,6 +53,7 @@ EOF
 # Initialize isolate
 echo "Initializing isolate..."
 isolate-cg-keeper &
+KEEPER_PID=$!
 isolate --init --cg || echo "Warning: isolate init failed, continuing anyway"
 
 # Wait for MongoDB to be ready
@@ -67,6 +69,35 @@ if [ -f "/app/scripts/init-admin.js" ]; then
     node /app/scripts/init-admin.js
 fi
 
-# Start the application
+# Function to handle shutdown
+shutdown() {
+    echo "Shutting down gracefully..."
+    
+    # Kill the Node.js application
+    if [ ! -z "$APP_PID" ]; then
+        echo "Stopping Node.js application (PID: $APP_PID)..."
+        kill -TERM "$APP_PID" 2>/dev/null || true
+        wait "$APP_PID" 2>/dev/null || true
+    fi
+    
+    # Kill isolate-cg-keeper
+    if [ ! -z "$KEEPER_PID" ]; then
+        echo "Stopping isolate-cg-keeper (PID: $KEEPER_PID)..."
+        kill -TERM "$KEEPER_PID" 2>/dev/null || true
+        wait "$KEEPER_PID" 2>/dev/null || true
+    fi
+    
+    echo "Shutdown complete"
+    exit 0
+}
+
+# Trap SIGTERM and SIGINT
+trap shutdown SIGTERM SIGINT
+
+# Start the application in the background
 echo "Starting application as root..."
-exec npm run start:prod
+npm run start:prod &
+APP_PID=$!
+
+# Wait for the application to exit
+wait "$APP_PID"

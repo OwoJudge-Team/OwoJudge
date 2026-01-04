@@ -1,12 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { validationResult, checkSchema } from 'express-validator';
 import { Contest, IContest, UserStanding } from '../mongoose/schemas/contests';
 import { IRequest } from '../utils/request-interface';
-import { IUser } from '../mongoose/schemas/users';
 import { Submission } from '../mongoose/schemas/submission';
-import { SubmissionStatus } from '../utils/submission-status';
 import { createContestValidation } from '../validations/create-contest-validation';
 import { updateContestValidation } from '../validations/update-contest-validation';
+import { isAdmin, isAuthenticated } from '../middleware/auth';
 
 const contestsRouter = Router();
 
@@ -40,10 +39,6 @@ const getContestByID = async (request: IRequest, response: Response) => {
 };
 
 const createContest = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user || !(request.user as IUser).isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const result = validationResult(request);
   if (!result.isEmpty()) {
     response.status(400).send(result.array());
@@ -67,10 +62,6 @@ const createContest = async (request: IRequest, response: Response) => {
 };
 
 const updateContest = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user || !(request.user as IUser).isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const id: string | undefined = request.params?.id;
   if (!id) {
     response.status(400).send('Contest ID is required');
@@ -91,10 +82,6 @@ const updateContest = async (request: IRequest, response: Response) => {
 };
 
 const deleteContest = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user || !(request.user as IUser).isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
   const id: string | undefined = request.params?.id;
   if (!id) {
     response.status(400).send('Contest ID is required');
@@ -125,7 +112,7 @@ const getStandings = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    
+
     // Sort standings by totalScore (descending), then by lastSubmissionTime (ascending - earlier is better)
     const sortedStandings = [...contest.standings].sort((a, b) => {
       if (b.totalScore !== a.totalScore) {
@@ -137,7 +124,7 @@ const getStandings = async (request: IRequest, response: Response) => {
       }
       return 0;
     });
-    
+
     response.status(200).send(sortedStandings);
   } catch (error) {
     console.log(error);
@@ -146,24 +133,19 @@ const getStandings = async (request: IRequest, response: Response) => {
 };
 
 const updateStandings = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user || !(request.user as IUser).isAdmin) {
-    response.status(401).send('Please login as an admin first');
-    return;
-  }
-  
   const id: string | undefined = request.params?.id;
   if (!id) {
     response.status(400).send('Contest ID is required');
     return;
   }
-  
+
   try {
     const contest: IContest | null = await Contest.findById(id);
     if (!contest) {
       response.sendStatus(404);
       return;
     }
-    
+
     // Get all problem IDs in the contest
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
     
@@ -175,15 +157,15 @@ const updateStandings = async (request: IRequest, response: Response) => {
         $lte: contest.endTime
       }
     }).sort({ createdTime: 1 });
-    
+
     // Build standings from submissions
     const standingsMap = new Map<string, UserStanding>();
-    
+
     for (const submission of submissions) {
       const username = submission.username;
       const serialNumber = submission.problemSerialNumber;
       const score = submission.score || 0;
-      
+
       if (!standingsMap.has(username)) {
         standingsMap.set(username, {
           username,
@@ -193,9 +175,9 @@ const updateStandings = async (request: IRequest, response: Response) => {
           lastSubmissionTime: submission.createdTime
         });
       }
-      
+
       const userStanding = standingsMap.get(username)!;
-      
+
       // Find if this problem already has a score
       const existingProblemScore = userStanding.problemScores.find(ps => ps.serialNumber === serialNumber);
       
@@ -215,20 +197,20 @@ const updateStandings = async (request: IRequest, response: Response) => {
         });
         userStanding.totalScore += score;
       }
-      
+
       // Update last submission time
       if (!userStanding.lastSubmissionTime || submission.createdTime > userStanding.lastSubmissionTime) {
         userStanding.lastSubmissionTime = submission.createdTime;
       }
-      
+
       // Count solved problems (score > 0)
       userStanding.solvedCount = userStanding.problemScores.filter(ps => ps.score > 0).length;
     }
-    
+
     // Convert map to array
     contest.standings = Array.from(standingsMap.values());
     await contest.save();
-    
+
     response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
   } catch (error) {
     console.log(error);
@@ -239,14 +221,15 @@ const updateStandings = async (request: IRequest, response: Response) => {
 contestsRouter.get('/api/contests', getAllContests);
 contestsRouter.get('/api/contests/:id', getContestByID);
 contestsRouter.get('/api/contests/:id/standings', getStandings);
-contestsRouter.post('/api/contests', checkSchema(createContestValidation), createContest);
-contestsRouter.post('/api/contests/:id/standings/update', updateStandings);
+contestsRouter.post('/api/contests', isAdmin, checkSchema(createContestValidation), createContest);
+contestsRouter.post('/api/contests/:id/standings/update', isAuthenticated, updateStandings);
 contestsRouter.patch(
   '/api/contests/:id',
+  isAdmin,
   checkSchema(updateContestValidation),
   updateContest
 );
-contestsRouter.delete('/api/contests/:id', deleteContest);
+contestsRouter.delete('/api/contests/:id', isAdmin, deleteContest);
 
 export default contestsRouter;
 export { getAllContests, getContestByID, createContest, updateContest, deleteContest, getStandings, updateStandings };

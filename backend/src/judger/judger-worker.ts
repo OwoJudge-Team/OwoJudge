@@ -41,10 +41,11 @@ interface WorkerResponse {
 }
 
 const writeUserSolution = (submission: ISubmission, dir: string) => {
-  for (const file of submission.userSolution) {
-    const filename = file.filename;
+  for (let i = 0; i < submission.userSolution.length; i++) {
+    console.log(`Writing user solution file ${i}`);
+    const file = submission.userSolution[i];
     const content = file.content;
-    fs.writeFileSync(path.join(dir, filename), content);
+    fs.writeFileSync(path.join(dir, 'main.c'), content);
   }
 }
 
@@ -495,6 +496,8 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
 const processSubmission = async (submissionID: string): Promise<void> => {
   try {
     const submission = await Submission.findById(submissionID);
+    console.log(`Processing submission ${submissionID}`);
+    console.log(submission);
     if (!submission) {
       throw new Error(`Submission ${submissionID} not found`);
     }

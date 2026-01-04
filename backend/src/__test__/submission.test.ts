@@ -123,17 +123,6 @@ describe('Submission Routes', () => {
     });
 
     describe('getSubmissions', () => {
-        it('should return 401 if not authenticated', async () => {
-            mockRequest = {
-                isAuthenticated: () => false,
-                user: undefined
-            };
-
-            await getSubmissions(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
-        });
-
         it('should return only user\'s own submissions for non-admin', async () => {
             const userSubmissions = mockSubmissions.filter(s => s.username === 'testuser');
             mockSubmissionFind.mockResolvedValue(userSubmissions);
@@ -231,18 +220,6 @@ describe('Submission Routes', () => {
     });
 
     describe('getSubmissionByID', () => {
-        it('should return 401 if not authenticated', async () => {
-            mockRequest = {
-                isAuthenticated: () => false,
-                user: undefined,
-                params: { serialNumber: '1000001' }
-            };
-
-            await getSubmissionByID(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
-        });
-
         it('should return 404 if submission not found', async () => {
             mockSubmissionFindOne.mockResolvedValue(null);
 

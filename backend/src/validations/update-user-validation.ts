@@ -1,16 +1,4 @@
 export const updateUserValidation = {
-  username: {
-    isLength: {
-      options: {
-        min: 4,
-        max: 32
-      },
-      errorMessage: 'Length of username must between 4 to 32 characters'
-    },
-    isString: {
-      errorMessage: 'Username should be a string'
-    }
-  },
   displayName: {
     isLength: {
       options: {
@@ -21,7 +9,8 @@ export const updateUserValidation = {
     },
     isString: {
       errorMessage: 'displayName should be a string'
-    }
+    },
+    optional: true
   },
   password: {
     isLength: {
@@ -33,9 +22,26 @@ export const updateUserValidation = {
     },
     isString: {
       errorMessage: 'Password should be a string'
-    }
+    },
+    optional: true
   },
   isAdmin: {
-    notEmpty: true
+    isBoolean: {
+      errorMessage: 'isAdmin must be a boolean'
+    },
+    toBoolean: true,
+    optional: true
+  },
+  gitPublicKey: {
+    isString: {
+      errorMessage: 'Git public key should be a string'
+    },
+    optional: true
+  },
+  studentId: {
+    isString: {
+      errorMessage: 'studentId should be a string'
+    },
+    optional: true
   }
 };

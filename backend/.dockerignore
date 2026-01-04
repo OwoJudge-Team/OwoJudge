@@ -12,3 +12,8 @@ coverage
 .DS_Store
 uploads/*
 !uploads/.gitkeep
+gitea/
+postgres/
+problems/
+isolate/
+secrets/

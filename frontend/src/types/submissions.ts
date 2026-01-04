@@ -36,7 +36,7 @@ export interface UserSolution {
   content: string;
 }
 
-export interface Result {
+export interface TestCaseResult {
   testcase: string;
   status: Status;
   time: number;
@@ -44,18 +44,28 @@ export interface Result {
   message: string;
 }
 
+export interface GroupResult {
+  score: number;
+  testcases: TestCaseResult[];
+}
+
+export interface Result {
+  [groupName: string]: GroupResult;
+}
+
 export interface Submission {
   serialNumber: number;
   userHandle: string;
+  username: string;
   userID: number;
   problemSerialNumber: number;
   problemTitle: string;
   language: string;
   status: Status;
-  score?: number;
+  score: number;
   createdTime: string;
   time: string;
   memory: string;
   userSolution: Array<UserSolution>;
-  results: Result[];
+  results: Result;
 }

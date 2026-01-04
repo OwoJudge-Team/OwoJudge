@@ -5,6 +5,14 @@ import { createSubmission } from '../routes/submission';
 import { getProblems, getProblemByID } from '../routes/problems';
 import { ProblemStatus } from '../mongoose/schemas/problems';
 
+vi.mock('fs', () => ({
+    existsSync: vi.fn(() => true),
+    readFileSync: vi.fn(() => 'mock content'),
+    promises: {
+        readFile: vi.fn().mockResolvedValue('mock content')
+    }
+}));
+
 // Mock dependencies
 const { mockProblem, mockUser, mockSubmission } = vi.hoisted(() => {
     const ProblemStatus = { Ready: 'ready' };

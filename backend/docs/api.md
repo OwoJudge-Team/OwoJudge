@@ -332,21 +332,6 @@ Deletes a problem and its associated files.
     -   `401 Unauthorized`: If the requester is not an admin.
     -   `404 Not Found`: If the problem does not exist.
 
-### `POST /api/problems/:serialNumber/rejudge`
-
-Triggers a rejudge for all submissions associated with the problem.
-
--   **Authentication:** Admin only.
--   **Parameters:**
-    -   `serialNumber` (number): The serial number of the problem.
--   **Response Example:**
-    `Rejudge triggered for X submissions.`
--   **Status Codes:**
-    -   `200 OK`: Rejudge triggered successfully.
-    -   `401 Unauthorized`: User not authenticated.
-    -   `403 Forbidden`: User is not an admin.
-    -   `404 Not Found`: Problem does not exist.
-
 ### `GET /api/problems/:serialNumber/allowed-languages`
 
 Retrieves the list of programming languages allowed for submissions to a specific problem.
@@ -616,21 +601,6 @@ Creates a new code submission for a problem.
     -   `429 Too Many Requests`: Daily submission quota exceeded.
     -   `500 Internal Server Error`: Failed to creating submission.
 
-### `POST /api/submissions/:serialNumber/rejudge`
-
-Triggers a rejudge for a specific submission. The submission status will be reset to `PD`, score to `0`, and results cleared.
-
--   **Authentication:** Admin only.
--   **Parameters:**
-    -   `serialNumber` (number): The unique serial number of the submission.
--   **Response Example:**
-    Returns the updated submission object.
--   **Status Codes:**
-    -   `200 OK`: Rejudge triggered successfully.
-    -   `401 Unauthorized`: User not authenticated.
-    -   `403 Forbidden`: User is not an admin.
-    -   `404 Not Found`: Submission does not exist.
-
 **Note:** The submission status will initially be `PD` (Pending) or `QU` (Queued), and will be updated asynchronously by the judger system. Poll the GET endpoint to check the final status.
 
 ## Contests
@@ -852,3 +822,68 @@ Deletes a contest.
     -   `404 Not Found`: Contest does not exist.
 
 **Note:** Standings are sorted by total score (descending), with ties broken by earliest last submission time.
+
+## Rejudge
+
+Endpoints for triggering rejudges on submissions or problems.
+
+### `POST /api/rejudge/submissions`
+
+Triggers a rejudge for a list of specific submissions.
+
+-   **Authentication:** Admin only.
+-   **Request Body:**
+    ```json
+    {
+        "serialNumbers": [100, 101, 102]
+    }
+    ```
+-   **Responses:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `400 Bad Request`: Invalid input (e.g., `serialNumbers` is not an array).
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: No submissions found for the provided IDs.
+
+### `POST /api/rejudge/problems`
+
+Triggers a rejudge for all submissions associated with a list of problems.
+
+-   **Authentication:** Admin only.
+-   **Request Body:**
+    ```json
+    {
+        "serialNumbers": [1, 2]
+    }
+    ```
+-   **Responses:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `400 Bad Request`: Invalid input (e.g., `serialNumbers` is not an array).
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: No problems found for the provided IDs.
+
+### `POST /api/rejudge/submission/:serialNumber`
+
+Triggers a rejudge for a specific submission.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The unique serial number of the submission.
+-   **Responses:**
+    -   `200 OK`: Returns the updated submission object.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Submission does not exist.
+
+### `POST /api/rejudge/problem/:serialNumber`
+
+Triggers a rejudge for all submissions associated with a specific problem.
+
+-   **Authentication:** Admin only.
+-   **Parameters:**
+    -   `serialNumber` (number): The serial number of the problem.
+-   **Responses:**
+    -   `200 OK`: Rejudge triggered successfully.
+    -   `400 Bad Request`: Invalid problem ID.
+    -   `401 Unauthorized`: User not authenticated.
+    -   `403 Forbidden`: User is not an admin.
+    -   `404 Not Found`: Problem does not exist.

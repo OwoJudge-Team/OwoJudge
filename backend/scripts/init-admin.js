@@ -32,6 +32,22 @@ const userSchema = new mongoose.Schema({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  gitPublicKey: {
+    type: mongoose.Schema.Types.String,
+    required: false
+  },
+  studentId: {
+    type: mongoose.Schema.Types.String,
+    required: false,
+    unique: true,
+    sparse: true
+  },
+  giteaId: {
+    type: mongoose.Schema.Types.Number,
+    required: false,
+    unique: true,
+    sparse: true
   }
 });
 
@@ -71,14 +87,14 @@ const ROOT_USERNAME = process.env.ROOT_USERNAME || 'admin';
 async function createAdminUser() {
   try {
     console.log('Initializing admin user...');
-    
+
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
     // Check if admin user already exists
     const existingAdmin = await User.findOne({ username: ROOT_USERNAME });
-    
+
     if (existingAdmin) {
       const newPass = process.env.ADMIN_PASSWD;
       if (!newPass) {
@@ -126,7 +142,7 @@ async function createAdminUser() {
     });
 
     const savedUser = await adminUser.save();
-    
+
     console.log('Admin user created successfully!');
     console.log('Admin User Details:');
     console.log(`Username: ${ROOT_USERNAME}`);

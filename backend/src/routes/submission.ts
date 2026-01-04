@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
@@ -7,15 +7,11 @@ import { User, IUser } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
+import { isAuthenticated } from '../middleware/auth';
 
 const submissionRouter: Router = Router();
 
 export const getSubmissions = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
   const user = request.user as IUser;
   const query: any = user.isAdmin ? {} : { username: user.username };
 
@@ -68,11 +64,6 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
 };
 
 export const getSubmissionByID = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
   const user = request.user as IUser;
   const { serialNumber } = request.params;
 
@@ -97,10 +88,6 @@ export const getSubmissionByID = async (request: IRequest, response: Response): 
 };
 
 export const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const result = validationResult(request);
   if (!result.isEmpty()) {
     response.status(400).send(result.array());
@@ -175,44 +162,8 @@ export const createSubmission = async (request: IRequest, response: Response): P
   }
 };
 
-export const rejudgeSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge submissions');
-    return;
-  }
-
-  const { serialNumber } = request.params;
-
-  try {
-    const submission: ISubmission | null = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
-    if (!submission) {
-      response.status(404).send('Submission not found');
-      return;
-    }
-
-    submission.status = SubmissionStatus.PD;
-    submission.score = 0;
-    submission.results = {};
-    await submission.save();
-
-    submitUserSubmission(submission);
-
-    response.status(200).send(submission);
-  } catch (error: unknown) {
-    console.log(`Error: ${error}`);
-    response.status(400).send(error);
-  }
-};
-
-submissionRouter.get('/api/submissions', getSubmissions);
-submissionRouter.get('/api/submission/:serialNumber', getSubmissionByID);
-submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
-submissionRouter.post('/api/submissions/:serialNumber/rejudge', rejudgeSubmission);
+submissionRouter.get('/api/submissions', isAuthenticated, getSubmissions);
+submissionRouter.get('/api/submission/:serialNumber', isAuthenticated, getSubmissionByID);
+submissionRouter.post('/api/submissions', isAuthenticated, checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;

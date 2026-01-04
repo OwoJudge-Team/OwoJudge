@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/utils/api";
 // import contests from "@/constants/contests";
-import { Contest, Standing } from "@/constants/contests";
+import { Contest, Standing } from "@/types/contests";
 import { formatISOTime } from "@/utils/time";
-import { Problem } from "@/constants/problems";
+import { Problem } from "@/types/problems";
 import { useParams } from "next/navigation";
 import {
   FaChartPie,
@@ -63,7 +63,7 @@ export default function ContestPage() {
         const problemIDs = new Set(contestData.problems.map((p) => p.serialNumber));
         const problemsRes = await apiGet(`/api/problems`);
         const allProblems: Problem[] = await problemsRes.json();
-        const contestProblems = allProblems.filter((p) => problemIDs.has(p.serialNumber ?? -1));
+        const contestProblems = allProblems.filter((p) => problemIDs.has(p.serialNumber));
         setProblems(contestProblems);
       } catch (error) {
         console.error("Failed to fetch contest:", error);
@@ -169,14 +169,14 @@ export default function ContestPage() {
                 <td className="px-6 py-4">
                   <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
                     <FaChartPie />
-                    {p.quota ?? 0}
+                    {p.dailyQuota}
                   </span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
                       <FaStar />
-                      {problemScores.get(p.serialNumber ?? -1) ?? 0}
+                      {problemScores.get(p.serialNumber) ?? 0}
                     </div>
                   </div>
                 </td>
@@ -187,15 +187,15 @@ export default function ContestPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  {p.userDetail?.solved ? (
+                  {p.userDetail.solved ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
                       <FaCircleCheck />
                       Solved
                     </span>
-                  ) : p.userDetail?.attempted ? (
+                  ) : p.userDetail.attempted ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
                       <FaCircleXmark />
-                      {p.userDetail?.attempted} {p.userDetail?.attempted === 1 ? "Try" : "Tries"}
+                      {p.userDetail.attempted} {p.userDetail.attempted === 1 ? "Try" : "Tries"}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Submission, Result, StatusToCode } from "@/constants/submissions";
+import { Submission, Result, TestCaseResult, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { apiGet } from "@/utils/api";
 import { getStatusColor } from "@/utils/submission-status";
@@ -33,8 +33,9 @@ const LANGUAGE_MAPPING: { [key: string]: string } = {
 
 interface PairedResult {
   testcase: string;
-  left?: Result;
-  right?: Result;
+  groupName?: string;
+  left?: TestCaseResult;
+  right?: TestCaseResult;
   changed: boolean;
 }
 
@@ -76,28 +77,51 @@ export default function ComparePage() {
 
   // Compute Testcase Comparison
   const pairedResults = useMemo(() => {
-    if (!leftSub || !rightSub) return [];
-    // Map by testcase name
-    const rightMap = new Map(rightSub.results.map((r) => [r.testcase, r]));
+    if (!leftSub || !rightSub) return new Map<string, PairedResult[]>();
+    // Helper: normalize results into flat arrays of { groupName, ...testcase }
+    const normalize = (results: Result) => {
+      return Object.entries(results).flatMap(([groupName, group]) =>
+        (group.testcases || []).map((tc: TestCaseResult) => ({ groupName, ...tc }))
+      );
+    };
 
-    // Get all unique testcases from both
-    const allTestcases = new Set([
-      ...leftSub.results.map((r) => r.testcase),
-      ...rightSub.results.map((r) => r.testcase),
+    const flatLeft = normalize(leftSub.results);
+    const flatRight = normalize(rightSub.results);
+
+    // Build a map of groupName -> Set(testcase)
+    const allGroups = new Set<string>([
+      ...flatLeft.map((r) => r.groupName),
+      ...flatRight.map((r) => r.groupName),
     ]);
 
-    return Array.from(allTestcases)
-      .sort()
-      .map((tc) => {
-        const leftRes = leftSub.results.find((r) => r.testcase === tc);
-        const rightRes = rightMap.get(tc);
-        return {
-          testcase: tc,
-          left: leftRes,
-          right: rightRes,
-          changed: leftRes?.status !== rightRes?.status,
-        } as PairedResult;
+    const allTestcasesMap = new Map<string, Set<string>>();
+    for (const g of allGroups) {
+      const set = new Set<string>();
+      flatLeft.filter((r) => r.groupName === g).forEach((r) => set.add(r.testcase));
+      flatRight.filter((r) => r.groupName === g).forEach((r) => set.add(r.testcase));
+      allTestcasesMap.set(g, set);
+    }
+
+    // Convert to map of groupName -> PairedResult[]
+    const resultMap = new Map<string, PairedResult[]>();
+    Array.from(allTestcasesMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([groupName, set]) => {
+        const paired = Array.from(set)
+          .sort()
+          .map((tc) => {
+            const leftRes = flatLeft.find((r) => r.groupName === groupName && r.testcase === tc);
+            const rightRes = flatRight.find((r) => r.groupName === groupName && r.testcase === tc);
+            return {
+              testcase: tc,
+              left: leftRes as TestCaseResult,
+              right: rightRes as TestCaseResult,
+              changed: leftRes?.status !== rightRes?.status,
+            } as PairedResult;
+          });
+        resultMap.set(groupName, paired);
       });
+    return resultMap;
   }, [leftSub, rightSub]);
 
   if (!leftSub || !rightSub) {
@@ -153,23 +177,37 @@ export default function ComparePage() {
       {/* Testcase Comparison Section */}
       <div className="mb-12">
         <h3 className="mb-3 text-lg font-semibold">Testcase Comparison</h3>
-        <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800 shadow-lg">
-          <table className="min-w-full table-auto text-left">
-            <thead className="bg-slate-700/50 text-slate-400">
-              <tr className="text-xs font-semibold uppercase tracking-wider">
-                <th className="px-4 py-3">Case</th>
-                <th className="px-4 py-3">Left Status</th>
-                <th className="px-4 py-3">Right Status</th>
-                <th className="px-4 py-3 text-center">Changed</th>
-                <th className="px-4 py-3">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pairedResults.map((row) => (
-                <TestcaseRow key={row.testcase} row={row} />
-              ))}
-            </tbody>
-          </table>
+        <div className="mb-6">
+          <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800 shadow-lg">
+            <table className="min-w-full table-auto text-left">
+              <thead className="bg-slate-700/50 text-slate-400">
+                <tr className="text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-4 py-3">Case</th>
+                  <th className="px-4 py-3">Left Status</th>
+                  <th className="px-4 py-3">Right Status</th>
+                  <th className="px-4 py-3 text-center">Changed</th>
+                  <th className="px-4 py-3">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from(pairedResults.entries()).map(([groupName, rows]) => (
+                  <React.Fragment key={groupName}>
+                    <tr>
+                      <td
+                        className="border-t border-slate-700 px-4 py-3 font-semibold text-slate-200"
+                        colSpan={5}
+                      >
+                        {groupName}
+                      </td>
+                    </tr>
+                    {rows.map((row) => (
+                      <TestcaseRow key={row.testcase} row={row} />
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

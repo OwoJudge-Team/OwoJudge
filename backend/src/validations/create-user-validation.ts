@@ -45,8 +45,15 @@ export const createUserValidation = {
     }
   },
   isAdmin: {
-    notEmpty: {
-      errorMessage: 'isAdmin should not be empty'
-    }
-  }
+    isBoolean: {
+      errorMessage: 'isAdmin must be a boolean'
+    },
+    toBoolean: true
+  },
+  studentId: {
+    isString: {
+      errorMessage: 'studentId should be a string'
+    },
+    optional: true
+  },
 };
