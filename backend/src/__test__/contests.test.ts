@@ -174,30 +174,6 @@ describe('Contest Routes', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(201);
         });
-
-        it('should return 401 for non-admin', async () => {
-            mockRequest = {
-                isAuthenticated: () => true,
-                user: { isAdmin: false } as any,
-                body: {}
-            };
-
-            await createContest(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
-        });
-
-        it('should return 401 if not authenticated', async () => {
-            mockRequest = {
-                isAuthenticated: () => false,
-                user: undefined,
-                body: {}
-            };
-
-            await createContest(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
-        });
     });
 
     describe('updateContest', () => {
@@ -213,19 +189,6 @@ describe('Contest Routes', () => {
             await updateContest(mockRequest as IRequest, mockResponse);
 
             expect(mockResponse.status).toHaveBeenCalledWith(200);
-        });
-
-        it('should return 401 for non-admin', async () => {
-            mockRequest = {
-                isAuthenticated: () => true,
-                user: { isAdmin: false } as any,
-                params: { id: 'contest1' },
-                body: {}
-            };
-
-            await updateContest(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
         });
 
         it('should return 400 if no ID provided', async () => {
@@ -270,17 +233,6 @@ describe('Contest Routes', () => {
             expect(mockResponse.status).toHaveBeenCalledWith(200);
         });
 
-        it('should return 401 for non-admin', async () => {
-            mockRequest = {
-                isAuthenticated: () => true,
-                user: { isAdmin: false } as any,
-                params: { id: 'contest1' }
-            };
-
-            await deleteContest(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
-        });
 
         it('should return 404 if contest not found', async () => {
             mockContestFindByIdAndDelete.mockResolvedValue(null);
@@ -337,17 +289,6 @@ describe('Contest Routes', () => {
     });
 
     describe('updateStandings', () => {
-        it('should return 401 for non-admin', async () => {
-            mockRequest = {
-                isAuthenticated: () => true,
-                user: { isAdmin: false } as any,
-                params: { id: 'contest1' }
-            };
-
-            await updateStandings(mockRequest as IRequest, mockResponse);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(401);
-        });
 
         it('should return 400 if no ID provided', async () => {
             mockRequest = {

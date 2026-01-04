@@ -88,10 +88,6 @@ export const getSubmissionByID = async (request: IRequest, response: Response): 
 };
 
 export const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
   const result = validationResult(request);
   if (!result.isEmpty()) {
     response.status(400).send(result.array());

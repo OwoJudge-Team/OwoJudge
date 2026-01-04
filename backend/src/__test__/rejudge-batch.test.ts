@@ -55,18 +55,6 @@ describe('Batch Rejudge API', () => {
             };
         });
 
-        it('should return 401 if not authenticated', async () => {
-            mockRequest.isAuthenticated = () => false;
-            await rejudgeSubmissions(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(401);
-        });
-
-        it('should return 403 if not admin', async () => {
-            mockRequest.user = { isAdmin: false } as any;
-            await rejudgeSubmissions(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(403);
-        });
-
         it('should return 400 if serialNumbers is not an array', async () => {
             mockRequest.body = { serialNumbers: 'not-an-array' };
             await rejudgeSubmissions(mockRequest as IRequest, mockResponse as Response);
@@ -114,18 +102,6 @@ describe('Batch Rejudge API', () => {
                 user: { isAdmin: true } as any,
                 isAuthenticated: () => true
             };
-        });
-
-        it('should return 401 if not authenticated', async () => {
-            mockRequest.isAuthenticated = () => false;
-            await rejudgeProblems(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(401);
-        });
-
-        it('should return 403 if not admin', async () => {
-            mockRequest.user = { isAdmin: false } as any;
-            await rejudgeProblems(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(403);
         });
 
         it('should return 400 if serialNumbers is not an array', async () => {

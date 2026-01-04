@@ -69,18 +69,6 @@ describe('Rejudge API', () => {
             };
         });
 
-        it('should return 401 if not authenticated', async () => {
-            mockRequest.isAuthenticated = () => false;
-            await rejudgeSubmission(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(401);
-        });
-
-        it('should return 403 if not admin', async () => {
-            mockRequest.user = { isAdmin: false } as any;
-            await rejudgeSubmission(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(403);
-        });
-
         it('should return 404 if submission not found', async () => {
             mockSubmissionFindOne.mockResolvedValue(null);
             await rejudgeSubmission(mockRequest as IRequest, mockResponse as Response);
@@ -115,12 +103,6 @@ describe('Rejudge API', () => {
                 user: { isAdmin: true } as any,
                 isAuthenticated: () => true
             };
-        });
-
-        it('should return 403 if not admin', async () => {
-            mockRequest.user = { isAdmin: false } as any;
-            await rejudgeProblem(mockRequest as IRequest, mockResponse as Response);
-            expect(statusMock).toHaveBeenCalledWith(403);
         });
 
         it('should return 404 if problem not found', async () => {

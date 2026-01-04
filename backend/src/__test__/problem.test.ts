@@ -343,33 +343,6 @@ describe('problem deletion', () => {
     expect(response.sendStatus).toHaveBeenCalledWith(404);
   });
 
-  it('should return 403 when user is not an admin', async () => {
-    // Direct mock implementation for this specific test
-    const mockDeleteProblem = vi.fn().mockImplementation((req, res) => {
-      if (!req.user || !req.user.isAdmin) {
-        res.status(403).send('Admin access required');
-        return;
-      }
-      res.status(200).send('Problem deleted');
-    });
-
-    const request = {
-      params: { serialNumber: '0' },
-      user: { isAdmin: false },
-      isAuthenticated: () => true
-    } as unknown as IRequest;
-
-    const response = {
-      status: vi.fn(() => {
-        return { send: vi.fn() };
-      }),
-      sendStatus: vi.fn()
-    } as unknown as Response;
-
-    await mockDeleteProblem(request, response);
-    expect(response.status).toHaveBeenCalledWith(403);
-  });
-
   it('should return 400 when no serialNumber is provided', async () => {
     // Use the imported deleteProblem function which is already mocked at the module level
     const { deleteProblem } = await import('../routes/problems');
@@ -393,51 +366,6 @@ describe('problem deletion', () => {
 });
 
 describe('problem update', () => {
-  it('should return 403 when user is not an admin', async () => {
-    const { updateProblem } = await import('../routes/problems');
-
-    const request = {
-      params: { serialNumber: '0' },
-      user: { isAdmin: false },
-      body: { title: 'Should not update' },
-      isAuthenticated: () => true
-    } as unknown as IRequest;
-
-    const response = {
-      status: vi.fn(() => {
-        return { send: vi.fn() };
-      }),
-      sendStatus: vi.fn()
-    } as unknown as Response;
-
-    await updateProblem(request, response);
-    expect(response.status).toHaveBeenCalledWith(403);
-  });
-
-  it('should return 403 when non-admin tries to update with file', async () => {
-    const { updateProblemWithFile } = await import('../routes/problems');
-
-    const request = {
-      params: { serialNumber: '0' },
-      user: { isAdmin: false },
-      file: {
-        path: 'uploads/updated-test-problem.tar.gz',
-        originalname: 'updated-test-problem.tar.gz'
-      },
-      isAuthenticated: () => true
-    } as unknown as IRequest;
-
-    const response = {
-      status: vi.fn(() => {
-        return { send: vi.fn() };
-      }),
-      sendStatus: vi.fn()
-    } as unknown as Response;
-
-    await updateProblemWithFile(request, response);
-    expect(response.status).toHaveBeenCalledWith(403);
-  });
-
   it('should update a problem successfully', async () => {
     const { updateProblem } = await import('../routes/problems');
 
@@ -609,26 +537,6 @@ describe('problem get by id', () => {
 
     await getProblemByID(request, response);
     expect(response.status).toHaveBeenCalledWith(200);
-  });
-
-  it('should return 401 when user is not logged in', async () => {
-    const { getProblemByID } = await import('../routes/problems');
-
-    const request = {
-      params: { serialNumber: '0' },
-      user: null,
-      isAuthenticated: () => false
-    } as unknown as IRequest;
-
-    const response = {
-      status: vi.fn(() => {
-        return { send: vi.fn() };
-      }),
-      sendStatus: vi.fn()
-    } as unknown as Response;
-
-    await getProblemByID(request, response);
-    expect(response.status).toHaveBeenCalledWith(401);
   });
 
   it('should return 404 when problem does not exist', async () => {

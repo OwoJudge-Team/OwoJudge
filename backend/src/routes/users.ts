@@ -75,8 +75,6 @@ const createUser = async (request: IRequest, response: Response) => {
   const { username, password, displayName, isAdmin, studentId } = matchedData(request) as IUser;
 
   try {
-    console.log(`Creating user: ${username}`);
-
     // Step 1: Create OwoJudge user first (without Gitea data)
     const newUser = new User({
       username,
@@ -88,7 +86,6 @@ const createUser = async (request: IRequest, response: Response) => {
     });
 
     const savedUser: IUser = await newUser.save();
-    console.log(`Judge user ${username} created successfully`);
 
     // Step 2: Create Gitea user and repo
     let giteaId: number;
@@ -101,19 +98,15 @@ const createUser = async (request: IRequest, response: Response) => {
         email: `${username}@owojudge.local`
       });
       giteaId = giteaUser.id;
-      console.log(`Gitea user created with ID: ${giteaId}`);
 
       const giteaRepo = await giteaService.createUserRepo({ username });
       gitSshUrl = giteaRepo.ssh_url;
-      console.log(`Gitea repo created with SSH URL: ${gitSshUrl}`);
     } catch (giteaError) {
       console.error(`Failed to create Gitea user/repo for ${username}:`, giteaError);
 
       // Rollback: Delete judge user since Gitea integration failed
-      console.log(`Rolling back judge user creation for ${username}...`);
       try {
         await User.findOneAndDelete({ username });
-        console.log(`Successfully deleted judge user ${username}`);
       } catch (deleteError) {
         console.error(`Failed to rollback judge user ${username}:`, deleteError);
       }
@@ -129,7 +122,6 @@ const createUser = async (request: IRequest, response: Response) => {
     savedUser.giteaId = giteaId;
     savedUser.gitSshUrl = gitSshUrl;
     await savedUser.save();
-    console.log(`Judge user ${username} updated with Gitea data`);
 
     response.status(201).send(savedUser);
   } catch (error) {
