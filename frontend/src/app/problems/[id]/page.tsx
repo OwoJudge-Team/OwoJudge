@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { apiGet } from "@/utils/api";
-import { useParams } from "next/navigation";
+import { apiGet, apiDelete } from "@/utils/api";
+import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
 import { FaClock, FaMemory, FaSpinner } from "react-icons/fa6";
+import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
 
@@ -12,6 +13,12 @@ const SHOW_SUBMIT = false;
 export default function ProblemPage() {
   const params = useParams();
   const id = params.id;
+  const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [finished, setFinished] = useState(false);
 
   const [data, setData] = useState<Problem | null>(null);
 
@@ -21,6 +28,9 @@ export default function ProblemPage() {
         const res = await apiGet(`/api/problems/${id}`);
         const problemData = await res.json();
         setData(problemData);
+        setMessage(
+          `Are you sure you want to delete problem #${problemData.serialNumber} ${problemData.title}? This action cannot be undone.`
+        );
       } catch (error) {
         console.error("Failed to fetch problem data:", error);
       }
@@ -28,6 +38,25 @@ export default function ProblemPage() {
 
     fetchProblem();
   }, [id]);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await apiDelete(`/api/problems/${id}`);
+      if (res.ok) {
+        setMessage("Problem deleted successfully. Back to problems list.");
+        setSuccess(true);
+      } else {
+        setMessage("Failed to delete the problem.");
+      }
+    } catch (error) {
+      setMessage("An error occurred while deleting the problem.");
+      console.error("Error deleting problem:", error);
+    } finally {
+      setIsDeleting(false);
+      setFinished(true);
+    }
+  };
 
   if (!data) {
     return (
@@ -48,6 +77,12 @@ export default function ProblemPage() {
           <div className="mb-4 flex items-baseline gap-4">
             <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
             <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
+            <button
+              className="ml-auto rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
+              onClick={() => setIsModalOpen(true)}
+            >
+              Delete Problem
+            </button>
           </div>
 
           <div className="flex items-center gap-6 text-slate-400">
@@ -79,6 +114,25 @@ export default function ProblemPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          if (success) {
+            router.push("/problems");
+          } else if (finished) {
+            setFinished(false);
+            setMessage(
+              `Are you sure you want to delete problem #${data.serialNumber} ${data.title}? This action cannot be undone.`
+            );
+          }
+        }}
+        onConfirm={handleDelete}
+        message={message}
+        confirm={!isDeleting && !finished}
+        loading={isDeleting}
+      />
     </div>
   );
 }
