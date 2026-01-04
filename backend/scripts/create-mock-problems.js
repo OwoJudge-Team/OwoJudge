@@ -80,7 +80,7 @@ function generateRandomProblem(index) {
   const scorePolicy = ['sum', 'max'][Math.floor(Math.random() * 2)];
   const tags = getRandomElements(tagOptions.flat(), Math.floor(Math.random() * 3) + 2);
   const problemRelatedTags = getRandomElements(difficulties, 1);
-  const dailyQuota = Math.random() > 0.7 ? [5, 10, 20][Math.floor(Math.random() * 3)] : 0; // 30% chance of having a quota
+  const dailyQuota = [5, 10, 20][Math.floor(Math.random() * 3)]; // 30% chance of having a quota
   
   return {
     dirName,
