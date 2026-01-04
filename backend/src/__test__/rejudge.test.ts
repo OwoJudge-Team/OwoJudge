@@ -41,8 +41,7 @@ vi.mock('../mongoose/schemas/problems', () => ({
 }));
 
 // Import the functions under test
-import { rejudgeSubmission } from '../routes/submission';
-import { rejudgeProblem } from '../routes/problems';
+import { rejudgeSubmission, rejudgeProblem } from '../routes/rejudge';
 
 describe('Rejudge API', () => {
     let mockRequest: Partial<IRequest>;

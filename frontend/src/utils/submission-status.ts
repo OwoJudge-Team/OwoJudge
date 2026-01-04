@@ -1,4 +1,4 @@
-import { Status, SubmissionStatus } from "../constants/submissions";
+import { Status, SubmissionStatus } from "../types/submissions";
 
 // Helper function to get status color
 // When you add a new color here, remember to also update the safelist in tailwind.config.ts

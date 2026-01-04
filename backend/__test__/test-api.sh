@@ -12,7 +12,7 @@ sleep 5
 
 # Run API tests
 cd __test__/api-test || exit 1
-cargo --quiet test
+cargo --quiet test -- --test-threads=1
 cd ../..
 # Remove containers, networks and volumes created by the test
 if [ "$1" == '--debug' ]; then

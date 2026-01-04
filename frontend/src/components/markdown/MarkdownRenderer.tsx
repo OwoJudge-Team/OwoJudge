@@ -12,6 +12,10 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+  const processedContent = (content || "")
+    .replace(/\\\[([\s\S]*?)\\\]/g, (match, p1) => `$$${p1.trim()}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (match, p1) => `$${p1.trim()}$`);
+
   return (
     <div className="prose prose-slate max-w-none dark:prose-invert prose-headings:text-slate-100 prose-p:text-slate-300 prose-strong:text-slate-200 prose-code:before:content-none prose-code:after:content-none">
       <ReactMarkdown
@@ -52,7 +56,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
           } as Components
         }
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );

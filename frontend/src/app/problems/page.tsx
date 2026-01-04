@@ -1,6 +1,6 @@
 "use client";
 
-import { Problem } from "@/constants/problems";
+import { Problem } from "@/types/problems";
 import {
   FaChartPie,
   FaCircleCheck,
@@ -111,7 +111,7 @@ const ProblemPage: React.FC = () => {
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
                       <FaChartPie />
-                      {p.quota ?? 0}
+                      {p.dailyQuota}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -125,19 +125,19 @@ const ProblemPage: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
                       <FaUserGroup />
-                      {p.submissionDetail!.accepted.toLocaleString()}
+                      {p.submissionDetail.accepted.toLocaleString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {p.userDetail?.solved ? (
+                    {p.userDetail.solved ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
                         <FaCircleCheck />
                         Solved
                       </span>
-                    ) : p.userDetail?.attempted ? (
+                    ) : p.userDetail.attempted ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
                         <FaCircleXmark />
-                        {p.userDetail?.attempted} {p.userDetail?.attempted === 1 ? "Try" : "Tries"}
+                        {p.userDetail.attempted} {p.userDetail.attempted === 1 ? "Try" : "Tries"}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">

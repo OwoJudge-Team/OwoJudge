@@ -32,12 +32,26 @@ impl TempUser {
         match response.status() {
             StatusCode::CREATED => {},
             StatusCode::BAD_REQUEST => {
-                let response = client.get(&format!("http://localhost:8787/api/users/{username}"))
+                // If user creation failed, try to login as the user to see if it already exists
+                let login_res = client
+                    .post("http://localhost:8787/api/auth")
+                    .json(&json!({
+                        "username": username,
+                        "password": password
+                    }))
                     .send()
                     .await
                     .expect("Failed to send request");
-                if response.status() == StatusCode::NOT_FOUND {
-                    panic!("Failed to create temporary user: Bad Request");
+                
+                if login_res.status() != StatusCode::CREATED {
+                     // If login also fails, then it's a real error
+                     let response = client.get(&format!("http://localhost:8787/api/users/{username}"))
+                        .send()
+                        .await
+                        .expect("Failed to send request");
+                     if response.status() == StatusCode::NOT_FOUND {
+                         panic!("Failed to create temporary user: Bad Request. Login status: {}", login_res.status());
+                     }
                 }
             },
             _ => panic!("Failed to create temporary user: {}", response.status()),
@@ -48,9 +62,23 @@ impl TempUser {
             .await
             .expect("Failed to send request");
         assert_eq!(response.status(), StatusCode::OK);
-        TempUser {
+        Self {
             username: username.to_string(),
             password: password.to_string(),
         }
+    }
+
+    pub async fn create_admin() -> Self {
+        Self {
+            username: "admin".to_string(),
+            password: "adminpassword".to_string(),
+        }
+    }
+
+    pub async fn create_with_prefix(prefix: &str) -> Self {
+        let client = Client::builder().cookie_store(true).build().unwrap();
+        let username = format!("{}_{}", prefix, rand::random::<u32>());
+        let password = "password";
+        Self::new(&username, password, &client).await
     }
 }
