@@ -85,7 +85,9 @@ const ContestPage: React.FC = () => {
                     <CoolLink href={`/contests/${contest._id}`} text={contest.title} />
                   </td>
                   <td className="px-6 py-4">
-                    <div className={`flex items-center justify-start gap-3 rounded-xl ${END_TIME_COLOR[compareToCurrentTime(contest.startTime, contest.endTime)]} max-w-60 px-3 py-1`}>
+                    <div
+                      className={`flex items-center justify-start gap-3 rounded-xl ${END_TIME_COLOR[compareToCurrentTime(contest.startTime, contest.endTime)]} max-w-60 px-3 py-1`}
+                    >
                       <FaClock />
                       {formatISOTime(contest.startTime)}
                     </div>
