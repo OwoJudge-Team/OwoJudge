@@ -175,44 +175,8 @@ export const createSubmission = async (request: IRequest, response: Response): P
   }
 };
 
-export const rejudgeSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge submissions');
-    return;
-  }
-
-  const { serialNumber } = request.params;
-
-  try {
-    const submission: ISubmission | null = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
-    if (!submission) {
-      response.status(404).send('Submission not found');
-      return;
-    }
-
-    submission.status = SubmissionStatus.PD;
-    submission.score = 0;
-    submission.results = {};
-    await submission.save();
-
-    submitUserSubmission(submission);
-
-    response.status(200).send(submission);
-  } catch (error: unknown) {
-    console.log(`Error: ${error}`);
-    response.status(400).send(error);
-  }
-};
-
 submissionRouter.get('/api/submissions', getSubmissions);
 submissionRouter.get('/api/submission/:serialNumber', getSubmissionByID);
 submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
-submissionRouter.post('/api/submissions/:serialNumber/rejudge', rejudgeSubmission);
 
 export default submissionRouter;
