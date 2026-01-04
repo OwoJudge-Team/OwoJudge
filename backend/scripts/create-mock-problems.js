@@ -80,6 +80,7 @@ function generateRandomProblem(index) {
   const scorePolicy = ['sum', 'max'][Math.floor(Math.random() * 2)];
   const tags = getRandomElements(tagOptions.flat(), Math.floor(Math.random() * 3) + 2);
   const problemRelatedTags = getRandomElements(difficulties, 1);
+  const dailyQuota = Math.random() > 0.7 ? [5, 10, 20][Math.floor(Math.random() * 3)] : 0; // 30% chance of having a quota
   
   return {
     dirName,
@@ -91,6 +92,7 @@ function generateRandomProblem(index) {
     scorePolicy,
     tags,
     problemRelatedTags,
+    dailyQuota,
     createdTime: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)) // Random date in last year
   };
 }
@@ -179,6 +181,7 @@ async function createMockProblems() {
             problemJson.time_limit = problemData.timeLimit / 1000; // Convert ms to s
             problemJson.memory_limit = problemData.memoryLimit;
             problemJson.process_limit = problemData.processes;
+            problemJson.dailyQuota = problemData.dailyQuota;
             
             fs.writeFileSync(problemJsonPath, JSON.stringify(problemJson, null, 4));
           }
