@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FaUser, FaIdCard, FaEnvelope, FaKey, FaLock, FaShieldHalved } from "react-icons/fa6";
+import { FaUser, FaIdCard, FaKey, FaLock, FaShieldHalved } from "react-icons/fa6";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiFetch } from "@/utils/api";
 
@@ -13,7 +13,6 @@ export default function SettingsPage() {
   const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("user");
-  const [email, setEmail] = useState("");
   const [sshPublicKey, setSshPublicKey] = useState("");
 
   // Password change state
@@ -35,8 +34,6 @@ export default function SettingsPage() {
           setStudentId(userData.studentId || "");
           setName(userData.displayName || "");
           setRole(userData.isAdmin ? "admin" : "user");
-          // Email is usually not in public profile, check if backend returns it for owner
-          setEmail(userData.email || "");
           setSshPublicKey(userData.gitPublicKey || "");
           setLoading(false);
         } catch (err) {
@@ -62,15 +59,10 @@ export default function SettingsPage() {
 
     const updates: Record<string, string> = {};
     if (name) updates.displayName = name;
-    // Backend restricts username updates usually, but if allowed:
-    // if (handle !== user.username) updates.username = handle;
 
     // Only send if not empty
     if (newPassword) updates.password = newPassword;
     if (sshPublicKey) updates.gitPublicKey = sshPublicKey;
-    // Note: studentId, email updates might depend on backend permission/schema
-
-    // Check backend routes/users.ts: updateUser supports password, displayName, gitPublicKey (mapped from sshPublicKey)
 
     try {
       const res = await apiFetch(`/api/users/${user.username}`, {
@@ -206,25 +198,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Email - Read Only as per schema usually or separate flow */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                >
-                  <FaEnvelope className="h-3.5 w-3.5 text-slate-400" />
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  disabled
-                  className="w-full cursor-not-allowed rounded-lg border border-slate-600 bg-slate-900/30 px-4 py-2.5 text-sm text-slate-400 focus:outline-none"
-                  placeholder="Not available"
-                />
-              </div>
-
               {/* SSH Public Key */}
               <div>
                 <label
@@ -296,28 +269,6 @@ export default function SettingsPage() {
           {/* Submit Section */}
           <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
             <div className="space-y-5 p-6">
-              {/* Current Password - Note: Backend doesn't explicitly require current password for self-update, but good practice. However, frontend shouldn't block if not implemented. Removed 'required' for now as backend doesn't validate it in updateUser logic provided. */}
-              {/* <div>
-                <label
-                  htmlFor="currentPassword"
-                  className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                >
-                  <FaLock className="h-3.5 w-3.5 text-slate-400" />
-                  Current Password
-                  <span className="ml-auto text-xs text-rose-400">
-                    * Required to submit changes
-                  </span>
-                </label>
-                <input
-                  type="password"
-                  id="currentPassword"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                  placeholder="Enter current password to confirm changes"
-                />
-              </div> */}
-
               {/* Submit Button */}
               <button
                 type="submit"
