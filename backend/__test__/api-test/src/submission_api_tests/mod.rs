@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::task;
 use tokio::sync::Semaphore;
-use crate::user_api_tests::temp_user::TempUser;
+// use crate::user_api_tests::temp_user::TempUser;
 
 // --- Helpers ---
 
@@ -580,7 +580,7 @@ async fn test_rejudge_flow() {
 
     // Rejudge
     let response = client
-        .post(&format!("http://localhost:8787/api/submissions/{}/rejudge", serial_number))
+        .post(&format!("http://localhost:8787/api/rejudge/submission/{}", serial_number))
         .send()
         .await
         .unwrap();
