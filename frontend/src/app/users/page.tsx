@@ -1,83 +1,79 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-
-interface User {
-  id: number;
-  name: string;
-}
+import { apiGet } from "@/utils/api";
+import CoolLink from "@/components/cool-link";
+import { User } from "@/types/user";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/users")
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data);
+    const fetchUsers = async () => {
+      try {
+        const res = await apiGet("/api/users");
+        const data = await res.json();
+        setUsers(Array.isArray(data) ? data : []);
         setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error(err);
         setLoading(false);
-      });
+      }
+    };
+
+    fetchUsers();
   }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-light p-8">
+      <div className="min-h-screen bg-background px-8 py-12">
         <div className="mx-auto max-w-6xl">
-          <div className="text-center text-xl text-foreground">Loading...</div>
+          <div className="text-center text-xl text-slate-300">Loading...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-light p-8">
+    <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
-        {/* Title */}
-        <h1 className="mb-8 text-4xl font-bold text-foreground">Users</h1>
-
-        {/* Users Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {users.map((user) => (
-            <Link
-              key={user.id}
-              href={`/users/${user.id}`}
-              className="block rounded-lg bg-white p-6 shadow-lg transition hover:scale-105 hover:shadow-xl"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">{user.name}</h2>
-                  <p className="text-sm text-gray-600">User #{user.id}</p>
-                </div>
-                <div className="text-primary">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </Link>
-          ))}
+        <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-700 bg-slate-800/50">
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  #
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  User
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {users.map((user, index) => (
+                <tr
+                  key={user.username}
+                  className="group transition-all duration-150 hover:bg-slate-700/50"
+                >
+                  <td className="px-6 py-4">
+                    <div className="text-lg font-bold text-slate-400">{index + 1}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <CoolLink href={`/users/${user.username}`} text={user.displayName} />
+                      <span className="text-xs text-slate-500">@{user.username}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {users.length === 0 && (
-          <div className="rounded-lg bg-white p-8 text-center shadow-lg">
-            <p className="text-gray-600">No users found.</p>
+          <div className="mt-6 text-center text-slate-500">
+            <p>No users found.</p>
           </div>
         )}
       </div>

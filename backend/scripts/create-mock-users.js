@@ -33,6 +33,14 @@ const userSchema = new mongoose.Schema({
   rating: {
     type: mongoose.Schema.Types.Number,
     required: true
+  },
+  quotaUsage: {
+    type: Map,
+    of: new mongoose.Schema({
+      count: { type: Number, required: true },
+      date: { type: Date, required: true }
+    }),
+    default: {}
   }
 });
 
@@ -121,6 +129,19 @@ function generateSolvedProblems() {
   return [...new Set(problems)]; // Remove duplicates
 }
 
+function generateQuotaUsage() {
+  const usage = {};
+  const numEntries = Math.floor(Math.random() * 5);
+  for (let i = 0; i < numEntries; i++) {
+    const problemId = Math.floor(Math.random() * 1000) + 1;
+    usage[problemId] = {
+      count: Math.floor(Math.random() * 5) + 1,
+      date: new Date()
+    };
+  }
+  return usage;
+}
+
 // Get command line arguments
 const args = process.argv.slice(2);
 const count = parseInt(args[0]) || 10;
@@ -146,6 +167,7 @@ async function createMockUsers() {
         const displayName = generateRandomDisplayName();
         const solvedProblems = generateSolvedProblems();
         const rating = generateRandomRating();
+        const quotaUsage = generateQuotaUsage();
         
         // Check if user already exists
         const existingUser = await User.findOne({ username });
@@ -163,7 +185,8 @@ async function createMockUsers() {
           isAdmin: false,
           solvedProblem: solvedProblems.length,
           solvedProblems: solvedProblems,
-          rating: rating
+          rating: rating,
+          quotaUsage: quotaUsage
         });
 
         await mockUser.save();

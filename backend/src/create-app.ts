@@ -11,6 +11,7 @@ import submissionRouter from './routes/submission.js';
 import authRouter from './routes/auth.js';
 import contestsRouter from './routes/contests.js';
 import webhookRouter from './routes/webhook.js';
+import rejudgeRouter from './routes/rejudge.js';
 
 // Custom middleware to apply express.json() only to non-multipart requests
 const conditionalJsonParser = (req: Request, res: Response, next: NextFunction) => {
@@ -71,5 +72,6 @@ export const createApp = (): Application => {
   app.use(authRouter);
   app.use(contestsRouter);
   app.use(webhookRouter);
+  app.use(rejudgeRouter);
   return app;
 };

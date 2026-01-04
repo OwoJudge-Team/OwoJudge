@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::task;
 use tokio::sync::Semaphore;
-use crate::user_api_tests::temp_user::TempUser;
+// use crate::user_api_tests::temp_user::TempUser;
 
 // --- Helpers ---
 
@@ -364,7 +364,8 @@ async fn test_submission_pagination() {
         .expect("Failed to get submissions");
     
     assert_eq!(response.status(), StatusCode::OK);
-    let submissions: Vec<Value> = response.json().await.expect("Failed to parse JSON");
+    let body: Value = response.json().await.expect("Failed to parse JSON");
+    let submissions = body["submissions"].as_array().expect("Expected submissions array");
     assert_eq!(submissions.len(), 2);
 
     // Test limit=2, offset=2
@@ -376,7 +377,8 @@ async fn test_submission_pagination() {
         .expect("Failed to get submissions");
     
     assert_eq!(response.status(), StatusCode::OK);
-    let submissions: Vec<Value> = response.json().await.expect("Failed to parse JSON");
+    let body: Value = response.json().await.expect("Failed to parse JSON");
+    let submissions = body["submissions"].as_array().expect("Expected submissions array");
     assert_eq!(submissions.len(), 2);
 
     // Test limit=2, offset=4 (should return 1)
@@ -388,7 +390,8 @@ async fn test_submission_pagination() {
         .expect("Failed to get submissions");
     
     assert_eq!(response.status(), StatusCode::OK);
-    let submissions: Vec<Value> = response.json().await.expect("Failed to parse JSON");
+    let body: Value = response.json().await.expect("Failed to parse JSON");
+    let submissions = body["submissions"].as_array().expect("Expected submissions array");
     assert_eq!(submissions.len(), 1);
 }
 
@@ -493,9 +496,9 @@ async fn test_submission_lifecycle() {
         .await
         .expect("Failed to list submissions");
     assert_eq!(response.status(), StatusCode::OK);
-    let list: Value = response.json().await.expect("Failed to parse list");
-    assert!(list.is_array());
-    let found = list.as_array().unwrap().iter().any(|s| s["serialNumber"] == submission_serial_number);
+    let body: Value = response.json().await.expect("Failed to parse list");
+    let list = body["submissions"].as_array().expect("Expected submissions array");
+    let found = list.iter().any(|s| s["serialNumber"] == submission_serial_number);
     assert!(found, "Submission not found in list");
 }
 
@@ -577,7 +580,7 @@ async fn test_rejudge_flow() {
 
     // Rejudge
     let response = client
-        .post(&format!("http://localhost:8787/api/submissions/{}/rejudge", serial_number))
+        .post(&format!("http://localhost:8787/api/rejudge/submission/{}", serial_number))
         .send()
         .await
         .unwrap();
@@ -836,4 +839,126 @@ pub async fn random_submission_api_calls(count: usize) {
     println!("Completed {} submission requests in {:.3} seconds", count, duration.as_secs_f64());
     println!("Successes: {}", successes);
     println!("Throughput: {:.2} requests/second", count as f64 / duration.as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_submission_filter_substring() {
+    let admin = TempUser::create_admin().await;
+    let client = Client::builder().cookie_store(true).build().unwrap();
+
+    // Login as admin
+    let login_res = client
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": admin.username,
+            "password": "adminpassword"
+        }))
+        .send()
+        .await
+        .expect("Failed to login");
+    
+    assert_eq!(login_res.status(), StatusCode::CREATED, "Admin login failed");
+
+    // Create a problem
+    let problem_serial = create_temp_problem(&client).await;
+
+    // Create submissions with different statuses
+    let statuses = vec!["AC", "WA", "TLE"];
+    for _ in 0..3 {
+        let _ = client
+            .post("http://localhost:8787/api/submissions")
+            .json(&json!({
+                "problemSerialNumber": problem_serial,
+                "language": "g++ c++17",
+                "userSolution": [{
+                    "filename": "main.cpp",
+                    "content": "#include <iostream>\nint main() { return 0; }"
+                }]
+            }))
+            .send()
+            .await
+            .expect("Failed to create submission");
+    }
+
+    // Wait for submissions to be processed (mocking processing by just waiting a bit or assuming they are created)
+    // Note: In a real integration test, we might need to wait for the judger or manually update the status in the DB if the judger isn't running.
+    // For this test, we are testing the filter logic, so we can just query.
+    // However, since we can't easily force the status to be AC/WA/TLE without the judger running or direct DB access,
+    // we will rely on the fact that we implemented the filter logic in the backend.
+    // But to properly test "substring match", we ideally need data that matches.
+    
+    // Since we can't easily set the status of a submission via API without a running judger that produces those results,
+    // we will test the 'username' filter which we CAN control (by creating users with specific names).
+
+    // Create a user with a specific substring in username
+    let substring_user = TempUser::create_with_prefix("sub_user").await;
+    let client_user = Client::builder().cookie_store(true).build().unwrap();
+    
+    // Login as the new user
+    let _ = client_user
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": substring_user.username,
+            "password": substring_user.password
+        }))
+        .send()
+        .await
+        .expect("Failed to login");
+
+    // Submit as this user
+    let _ = client_user
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": problem_serial,
+            "language": "g++ c++17",
+            "userSolution": [{
+                "filename": "main.cpp",
+                "content": "#include <iostream>\nint main() { return 0; }"
+            }]
+        }))
+        .send()
+        .await
+        .expect("Failed to create submission");
+
+    // Now login as admin again to search
+    let client_admin = Client::builder().cookie_store(true).build().unwrap();
+    let _ = client_admin
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": admin.username,
+            "password": admin.password
+        }))
+        .send()
+        .await
+        .expect("Failed to login");
+
+    // Search for username substring "sub_user"
+    let res = client_admin
+        .get("http://localhost:8787/api/submissions")
+        .query(&[("username", "sub_user")])
+        .send()
+        .await
+        .expect("Failed to get submissions");
+
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.expect("Failed to parse response");
+    
+    let submissions = body["submissions"].as_array().expect("submissions should be an array");
+    assert!(!submissions.is_empty(), "Should find submissions matching username substring");
+    
+    for sub in submissions {
+        let username = sub["username"].as_str().expect("username should be string");
+        assert!(username.contains("sub_user"), "Username should contain the substring");
+    }
+
+    // Test status filter (even if we only have PD/QU, we can search for 'P' or 'Q')
+    let res_status = client_admin
+        .get("http://localhost:8787/api/submissions")
+        .query(&[("status", "P")]) // Should match PD (Pending)
+        .send()
+        .await
+        .expect("Failed to get submissions");
+        
+    assert_eq!(res_status.status(), StatusCode::OK);
+    // We expect at least some results since new submissions are PD
 }

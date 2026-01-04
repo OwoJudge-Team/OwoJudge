@@ -296,6 +296,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
           memoryLimit: metadata.memory_limit,
           scorePolicy: metadata.score_policy,
           fullScore: metadata.full_score,
+          dailyQuota: metadata.dailyQuota,
           tags: metadata.tags || [],
           testcase: metadata.testcase,
           problemRelatedTags: metadata.problemRelatedTags || [],
@@ -619,6 +620,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
           memoryLimit: metadata.memory_limit,
           scorePolicy: metadata.score_policy,
           fullScore: metadata.full_score,
+          dailyQuota: metadata.dailyQuota,
           tags: metadata.tags || [],
           testcase: metadata.testcase,
           problemRelatedTags: metadata.problemRelatedTags || [],
@@ -834,52 +836,6 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
   }
 };
 
-export const rejudgeProblem = async (request: IRequest, response: Response) => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge problems');
-    return;
-  }
-
-  const serialNumber = parseInt(request.params.serialNumber);
-
-  if (isNaN(serialNumber)) {
-    response.status(400).send('Invalid problem ID');
-    return;
-  }
-
-  try {
-    const problem: IProblem | null = await Problem.findOne({ serialNumber });
-    if (!problem) {
-      response.sendStatus(404);
-      return;
-    }
-
-    const submissions: ISubmission[] = await Submission.find({ problemSerialNumber: serialNumber });
-
-    // Process submissions in chunks to avoid overwhelming the database/judger
-    for (const submission of submissions) {
-      submission.status = SubmissionStatus.PD;
-      submission.score = 0;
-      submission.results = {};
-      await submission.save();
-
-      // We don't await the submission process here to avoid timeout
-      // The judger queue handle it eventually
-      submitUserSubmission(submission);
-    }
-
-    response.status(200).send(`Rejudge triggered for ${submissions.length} submissions.`);
-  } catch (error) {
-    console.log(error);
-    response.status(500).send('Internal Server Error');
-  }
-};
-
 problemsRouter.get('/api/problems', getProblems);
 problemsRouter.get('/api/problems/:serialNumber', isAuthenticated, getProblemByID);
 problemsRouter.get('/api/problems/:serialNumber/testcases/:testcaseName', isAuthenticated, generateTestcase);
@@ -898,9 +854,8 @@ problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Resp
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:serialNumber', isAdmin, deleteProblem);
-problemsRouter.patch('/api/problems/:serialNumber', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
-problemsRouter.post('/api/problems/:serialNumber/rejudge', rejudgeProblem);
+problemsRouter.delete('/api/problems/:serialNumber', deleteProblem);
+problemsRouter.patch('/api/problems/:serialNumber', checkSchema(updateProblemValidation), updateProblem);
 
 problemsRouter.put('/api/problems/:serialNumber', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {

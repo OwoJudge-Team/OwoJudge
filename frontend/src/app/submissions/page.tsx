@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
-import { Submission, StatusToCode, SubmissionStatus } from "@/constants/submissions";
+import { Submission, StatusToCode, SubmissionStatus } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { apiGet } from "@/utils/api";
 import { FaClock, FaFloppyDisk, FaSpinner } from "react-icons/fa6";
@@ -40,7 +40,6 @@ const SubmissionPage: React.FC = () => {
         if (filterStatus) {
           params.set("status", filterStatus);
         }
-        console.log(params.toString());
         const res = await apiGet(`/api/submissions?${params.toString()}`);
         const data = await res.json();
         setTotalCount(data.total);
@@ -160,7 +159,7 @@ const SubmissionPage: React.FC = () => {
                     {formatISOTime(submission.createdTime)}
                   </td>
                   <td className="px-6 py-4">
-                    <CoolLink href={`/users/${submission.userID}`} text={submission.userHandle} />
+                    <CoolLink href={`/users/${submission.username}`} text={submission.userHandle} />
                   </td>
                   <td className="px-6 py-4">
                     <CoolLink

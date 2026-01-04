@@ -17,8 +17,12 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
 
   // Add filters from query parameters
   const { username, userID, problemSerialNumber, status, minScore, maxScore } = request.query;
-  if (username && (user.isAdmin || username === user.username)) {
-    query.username = username;
+  if (username) {
+    if (user.isAdmin) {
+      query.username = { $regex: username, $options: 'i' };
+    } else if (username === user.username) {
+      query.username = username;
+    }
   }
   if (userID && (user.isAdmin || userID === user.id.toString())) {
     query.userID = userID;
@@ -27,7 +31,7 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
     query.problemSerialNumber = parseInt(problemSerialNumber as string);
   }
   if (status) {
-    query.status = status;
+    query.status = { $regex: status, $options: 'i' };
   }
   if (minScore !== undefined || maxScore !== undefined) {
     query.score = {};
@@ -162,44 +166,8 @@ export const createSubmission = async (request: IRequest, response: Response): P
   }
 };
 
-export const rejudgeSubmission = async (request: IRequest, response: Response): Promise<void> => {
-  if (!request.isAuthenticated() || !request.user) {
-    response.status(401).send('Please login first');
-    return;
-  }
-
-  const user = request.user as IUser;
-  if (!user.isAdmin) {
-    response.status(403).send('You are not authorized to rejudge submissions');
-    return;
-  }
-
-  const { serialNumber } = request.params;
-
-  try {
-    const submission: ISubmission | null = await Submission.findOne({ serialNumber: parseInt(serialNumber) });
-    if (!submission) {
-      response.status(404).send('Submission not found');
-      return;
-    }
-
-    submission.status = SubmissionStatus.PD;
-    submission.score = 0;
-    submission.results = {};
-    await submission.save();
-
-    submitUserSubmission(submission);
-
-    response.status(200).send(submission);
-  } catch (error: unknown) {
-    console.log(`Error: ${error}`);
-    response.status(400).send(error);
-  }
-};
-
-submissionRouter.get('/api/submissions', isAuthenticated, getSubmissions);
-submissionRouter.get('/api/submission/:serialNumber', isAuthenticated, getSubmissionByID);
-submissionRouter.post('/api/submissions', isAuthenticated, checkSchema(createSubmissionValidation), createSubmission);
-submissionRouter.post('/api/submissions/:serialNumber/rejudge', isAuthenticated, rejudgeSubmission);
+submissionRouter.get('/api/submissions', getSubmissions);
+submissionRouter.get('/api/submission/:serialNumber', getSubmissionByID);
+submissionRouter.post('/api/submissions', checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;
