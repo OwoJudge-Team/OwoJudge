@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { apiGet, apiDelete } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
 import { FaClock, FaMemory, FaSpinner } from "react-icons/fa6";
@@ -19,7 +20,7 @@ export default function ProblemPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [finished, setFinished] = useState(false);
-
+  const { user } = useAuth();
   const [data, setData] = useState<Problem | null>(null);
 
   useEffect(() => {
@@ -77,12 +78,14 @@ export default function ProblemPage() {
           <div className="mb-4 flex items-baseline gap-4">
             <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
             <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
-            <button
-              className="ml-auto rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
-              onClick={() => setIsModalOpen(true)}
-            >
-              Delete Problem
-            </button>
+            {user && user.isAdmin && (
+              <button
+                className="ml-auto rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
+                onClick={() => setIsModalOpen(true)}
+              >
+                Delete Problem
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-6 text-slate-400">
