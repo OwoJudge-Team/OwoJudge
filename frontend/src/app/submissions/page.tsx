@@ -201,20 +201,22 @@ const SubmissionPage: React.FC = () => {
         </div>
 
         {/* Submissions Table */}
-        <div className="overflow-hidden rounded-lg border-slate-700 bg-slate-800 shadow-lg">
+        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
           <table className="w-full text-left">
-            <thead className="bg-primary-light text-slate-400">
-              <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <thead className="bg-slate-800/50 text-slate-400">
+              <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider">
                 {user.isAdmin && (
-                  <th className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500"
-                      onChange={handleSelectAll}
-                      checked={
-                        submissions.length > 0 && selectedSubmissions.size === submissions.length
-                      }
-                    />
+                  <th className="w-12 px-6 py-4">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 cursor-pointer rounded border-2 border-slate-500 bg-slate-900/50 text-indigo-500 transition-all focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                        onChange={handleSelectAll}
+                        checked={
+                          submissions.length > 0 && selectedSubmissions.size === submissions.length
+                        }
+                      />
+                    </div>
                   </th>
                 )}
                 <th className="px-6 py-4">#</th>
@@ -227,64 +229,78 @@ const SubmissionPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {submissions.map((submission) => (
-                <tr key={submission.serialNumber} className="transition hover:bg-neutral">
-                  {user.isAdmin && (
+              {submissions.map((submission) => {
+                const isSelected = selectedSubmissions.has(submission.serialNumber);
+                return (
+                  <tr
+                    key={submission.serialNumber}
+                    className={`transition-all duration-150 hover:bg-slate-700/50 ${
+                      isSelected ? "bg-indigo-500/10" : ""
+                    }`}
+                  >
+                    {user.isAdmin && (
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            className="h-5 w-5 cursor-pointer rounded border-2 border-slate-500 bg-slate-900/50 text-indigo-500 transition-all focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(submission.serialNumber)}
+                          />
+                        </div>
+                      </td>
+                    )}
                     <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500"
-                        checked={selectedSubmissions.has(submission.serialNumber)}
-                        onChange={() => handleSelectOne(submission.serialNumber)}
+                      <CoolLink
+                        href={`/submissions/${submission.serialNumber}`}
+                        text={String(submission.serialNumber)}
                       />
                     </td>
-                  )}
-                  <td className="px-6 py-4">
-                    <CoolLink
-                      href={`/submissions/${submission.serialNumber}`}
-                      text={String(submission.serialNumber)}
-                    />
-                  </td>
-                  <td className="px-6 py-4 text-slate-100">
-                    {formatISOTime(submission.createdTime)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <CoolLink href={`/users/${submission.username}`} text={submission.userHandle} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <CoolLink
-                      href={`/problems/${submission.problemSerialNumber}`}
-                      text={submission.problemTitle}
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    {submission.status === SubmissionStatus.PD ||
-                    submission.status === SubmissionStatus.QU ? (
-                      <div className="flex w-[5ch] items-center justify-center">
-                        <FaSpinner className="animate-spin text-xl text-slate-300" />
+
+                    <td className="px-6 py-4 text-slate-100">
+                      {formatISOTime(submission.createdTime)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <CoolLink
+                        href={`/users/${submission.username}`}
+                        text={submission.userHandle}
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <CoolLink
+                        href={`/problems/${submission.problemSerialNumber}`}
+                        text={submission.problemTitle}
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      {submission.status === SubmissionStatus.PD ||
+                      submission.status === SubmissionStatus.QU ? (
+                        <div className="flex w-[5ch] items-center justify-center">
+                          <FaSpinner className="animate-spin text-xl text-slate-300" />
+                        </div>
+                      ) : (
+                        <div
+                          className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                        >
+                          {StatusToCode[submission.status]}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
+                        <FaClock />
+                        {submission.time}s
                       </div>
-                    ) : (
-                      <div
-                        className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
-                      >
-                        {StatusToCode[submission.status]}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
+                        <FaFloppyDisk />
+                        {submission.memory}MB
                       </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
-                      <FaClock />
-                      {submission.time}s
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
-                      <FaFloppyDisk />
-                      {submission.memory}MB
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

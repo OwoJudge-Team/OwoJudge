@@ -1,10 +1,17 @@
 const formatISOTime = (isoString: string) => {
   const date = new Date(isoString);
-  return new Intl.DateTimeFormat("en-US", {
+
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Taipei",
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(date)
+    .replace(",", "");
 };
 
 // Compare start and end time to current time
