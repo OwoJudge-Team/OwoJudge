@@ -448,7 +448,7 @@ const runAllTests = async (
   return { finalStatus, score: totalScore, groupedResults, time: maxTime, memory: maxMemory };
 }
 
-const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<SubmissionStatus> => {
+const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<{ status: SubmissionStatus; errorMessage?: string }> => {
   const metaFile = path.join(workDir, 'compile.meta');
   const boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
 
@@ -461,7 +461,7 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
       writeUserSolution(submission, boxDir);
     } catch (error) {
       console.error(`Failed to write files to box ${boxID}:`, error);
-      return SubmissionStatus.SE;
+      return { status: SubmissionStatus.SE, errorMessage: `Failed to write files: ${error}` };
     }
 
     console.log('Running compilation command for box ID:', boxID);
@@ -477,18 +477,48 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
         fullEnv: true
       }, 25000);
 
+      // Copy error file if it exists (for both success and failure cases)
+      const errorFilePath = path.join(boxDir, 'compile.error');
+      const targetErrorPath = path.join(workDir, 'compile.error');
+      if (fs.existsSync(errorFilePath)) {
+        fs.copyFileSync(errorFilePath, targetErrorPath);
+      }
+
       const executablePath = path.join(boxDir, 'main');
       const targetPath = path.join(workDir, 'main.exe');
       if (fs.existsSync(executablePath)) {
         fs.copyFileSync(executablePath, targetPath);
         fs.chmodSync(targetPath, 0o755);
         console.log(`[${workDir}] Compilation successful, executable copied`);
-        return SubmissionStatus.QU;
+        return { status: SubmissionStatus.QU };
       }
-      return SubmissionStatus.CE;
+
+      // Compilation failed - read error message
+      let errorMessage = '';
+      if (fs.existsSync(targetErrorPath)) {
+        errorMessage = fs.readFileSync(targetErrorPath, 'utf-8');
+        console.log(`[${workDir}] Compilation error:\n${errorMessage}`);
+      }
+
+      return { status: SubmissionStatus.CE, errorMessage };
     } catch (error) {
       console.error(`[${workDir}] Compilation failed:`, error);
-      return SubmissionStatus.CE;
+
+      // Try to get error message even on exception
+      const errorFilePath = path.join(boxDir, 'compile.error');
+      const targetErrorPath = path.join(workDir, 'compile.error');
+      let errorMessage = '';
+
+      if (fs.existsSync(errorFilePath)) {
+        try {
+          fs.copyFileSync(errorFilePath, targetErrorPath);
+          errorMessage = fs.readFileSync(targetErrorPath, 'utf-8');
+        } catch (readError) {
+          console.error('Failed to read compilation error:', readError);
+        }
+      }
+
+      return { status: SubmissionStatus.CE, errorMessage: errorMessage || `Compilation exception: ${error}` };
     }
   });
 };
@@ -540,9 +570,16 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       }
       let isCompiledLanguage: boolean = false;
       if (langConfig.compileCommand !== '') {
-        const result = await compileUserSolution(submission, workDir);
-        if (result === SubmissionStatus.CE) {
+        const { status: compileStatus, errorMessage } = await compileUserSolution(submission, workDir);
+        if (compileStatus === SubmissionStatus.CE) {
           submission.status = SubmissionStatus.CE;
+
+          // Log compilation error for debugging (but don't store in submission)
+          if (errorMessage) {
+            console.log(`[${workDir}] Detailed compilation error for submission ${submissionID}:`);
+            console.log(errorMessage);
+          }
+
           await submission.save();
 
           // Update submission statistics
