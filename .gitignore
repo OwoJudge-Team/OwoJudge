@@ -1,1 +1,7 @@
-/.vscode/
+# IDE config
+.zed/
+.vscode/
+
+# env
+.env
+!.env.example

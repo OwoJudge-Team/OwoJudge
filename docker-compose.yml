@@ -1,0 +1,126 @@
+services:
+  # Gitea - Git service
+  gitea:
+    image: docker.gitea.com/gitea:1.25.2
+    container_name: judge-gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=db:5432
+      - GITEA__database__NAME=${GITEA_DB_NAME:-gitea}
+      - GITEA__database__USER=${GITEA_DB_USER:-gitea}
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWD:-gitea}
+      - GITEA_ADMIN_USER=${GITEA_ADMIN_USER:-admin}
+      - GITEA_ADMIN_PASSWD=${GITEA_ADMIN_PASSWD:-admin1234}
+      - GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-admin@owojudge.local}
+      - GITEA__security__INSTALL_LOCK=true
+      - GITEA__server__ROOT_URL=http://gitea:3000/
+      - GITEA__WEBHOOK__ALLOWED_HOST_LIST=backend,localhost,127.0.0.1,::1
+    restart: always
+    networks:
+      - judge-network
+    volumes:
+      - gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./backend/secrets:/secrets
+      - ./backend/scripts/entrypoint.sh:/scripts/entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:${GITEA_HTTP_PORT:-3000}:3000"
+      - "0.0.0.0:${GITEA_SSH_PORT:-22}:22"
+    depends_on:
+      - db
+    entrypoint: ["/bin/bash", "/scripts/entrypoint.sh"]
+
+  # Postgres for Gitea
+  db:
+    image: docker.io/library/postgres:14
+    restart: always
+    environment:
+      - POSTGRES_USER=${GITEA_DB_USER:-gitea}
+      - POSTGRES_PASSWORD=${GITEA_DB_PASSWD:-gitea}
+      - POSTGRES_DB=${GITEA_DB_NAME:-gitea}
+    networks:
+      - judge-network
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+
+  # MongoDB for Judge Backend
+  mongodb:
+    image: mongo:7.0
+    container_name: judge-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: judge
+    ports:
+      - "127.0.0.1:${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - judge-network
+
+  # Judge Backend
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    privileged: true
+    pid: host
+    cgroup: host
+    container_name: judge-backend
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      - mongodb
+      - gitea
+    ports:
+      - "${BACKEND_PORT:-8787}:8787"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/judge
+      - ROOT_USERNAME=${ROOT_USERNAME:-admin}
+      - GITEA_BASE_URL=http://gitea:3000
+      - ADMIN_PASSWD=${ADMIN_PASSWD:-admin1234}
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/problems:/app/problems
+      - ./backend/scripts:/app/scripts
+      - ./backend/secrets:/secrets:ro
+      - /sys/fs/cgroup/:/sys/fs/cgroup/:rw
+      - /run:/run:rwz
+    networks:
+      - judge-network
+    cap_add:
+      - SYS_ADMIN
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
+    security_opt:
+      - apparmor:unconfined
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: judge-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3500:3000"
+    environment:
+      - API_URL_INTERNAL=http://backend:8787
+      - NEXT_PUBLIC_API_URL=
+    networks:
+      - judge-network
+
+volumes:
+  mongodb_data:
+  postgres_db:
+  gitea_data:
+
+networks:
+  judge-network:
+    driver: bridge
