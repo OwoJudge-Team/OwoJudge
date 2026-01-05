@@ -343,7 +343,7 @@ async fn test_create_user() {
             .send()
             .await
             .expect("Failed to send request");
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
     // Admin user creating a new user
     let admin_client = ClientBuilder::new()
@@ -419,13 +419,14 @@ async fn test_update_user() {
         let response = client
             .patch("http://localhost:8787/api/users/updateuser")
             .json(&json!({
-                "displayName": "Updated User"
+                "displayName": "Updated User",
+                "oldPassword": "updatepass"
             }))
             .send()
             .await
             .expect("Failed to send update request as user");
 
-        assert_eq!(response.status(), StatusCode::CREATED);
+        assert_eq!(response.status(), StatusCode::OK);
         let response = client
             .get("http://localhost:8787/api/users/updateuser")
             .send()
@@ -472,8 +473,8 @@ async fn test_update_user() {
             .expect("Failed to send admin update request");
         assert_eq!(
             response.status(),
-            StatusCode::CREATED,
-            "Expected 201 when updating user"
+            StatusCode::OK,
+            "Expected 200 when updating user"
         );
         let response = admin_client
             .get("http://localhost:8787/api/users/updateuser_admin")
@@ -543,7 +544,7 @@ async fn test_delete_user() {
             .send()
             .await
             .expect("Failed to send non-admin delete request");
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
     // Admin can delete an existing user

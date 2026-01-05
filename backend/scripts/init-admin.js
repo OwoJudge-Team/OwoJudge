@@ -6,12 +6,12 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   username: {
     type: mongoose.Schema.Types.String,
-    require: true,
+    required: true,
     unique: true
   },
   displayName: {
     type: mongoose.Schema.Types.String,
-    require: true
+    required: true
   },
   password: {
     type: mongoose.Schema.Types.String,
@@ -129,7 +129,7 @@ async function createAdminUser() {
 
     // Generate random password for admin user
     const adminPassword = process.env.ADMIN_PASSWD || randomString(12);
-    
+
     // Create admin user object
     const adminUser = new User({
       username: ROOT_USERNAME,

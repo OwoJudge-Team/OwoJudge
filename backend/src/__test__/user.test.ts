@@ -17,6 +17,10 @@ vi.mock('../utils/gitea-service', () => ({
     }
 }));
 
+vi.mock('../utils/hash-password', () => ({
+    hashString: vi.fn((str) => `hashed_${str}`)
+}));
+
 // Mock User model
 const { mockSave, mockFind, mockFindOne, mockFindOneAndDelete, mockFindOneAndUpdate } = vi.hoisted(() => {
   return {
@@ -226,21 +230,68 @@ describe('User Routes', () => {
 
   it('should update user', async () => {
     const req = {
-      params: {},
-      user: { isAdmin: true },
+      params: { username: 'admin' },
+      body: { oldPassword: 'password', displayName: 'New Name' },
+      user: { username: 'admin', isAdmin: true },
       isAuthenticated: () => true
     } as unknown as Request;
-    let data: any;
+    
     const res = {
       status: vi.fn(() => {
-        return { send: vi.fn(users => (data = users)) };
+        return { send: vi.fn() };
       })
     } as unknown as Response;
+    
+    mockFindOne.mockReturnValue(createChainable({ 
+        username: 'admin', 
+        password: 'hashed_password' 
+    }));
     
     mockFindOneAndUpdate.mockResolvedValue({ username: 'admin' });
 
     await updateUser(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('should fail update if old password missing', async () => {
+    const req = {
+      params: { username: 'admin' },
+      body: { displayName: 'New Name' },
+      user: { username: 'admin', isAdmin: true },
+      isAuthenticated: () => true
+    } as unknown as Request;
+    
+    const res = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      })
+    } as unknown as Response;
+
+    await updateUser(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('should fail update if old password incorrect', async () => {
+    const req = {
+      params: { username: 'admin' },
+      body: { oldPassword: 'wrong_password', displayName: 'New Name' },
+      user: { username: 'admin', isAdmin: true },
+      isAuthenticated: () => true
+    } as unknown as Request;
+    
+    const res = {
+      status: vi.fn(() => {
+        return { send: vi.fn() };
+      })
+    } as unknown as Response;
+    
+    mockFindOne.mockReturnValue(createChainable({ 
+        username: 'admin', 
+        password: 'hashed_password' 
+    }));
+
+    await updateUser(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
 

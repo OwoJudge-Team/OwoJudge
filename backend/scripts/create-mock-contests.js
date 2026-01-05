@@ -1,9 +1,10 @@
 const path = require('path');
+const fetch = require('node-fetch');
 
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'aaaaaaaa';
 
 // Contest Configuration
 const CONTEST_COUNT = process.argv[2] ? parseInt(process.argv[2]) : 5;

@@ -1,139 +1,89 @@
 #!/usr/bin/env node
 
-const mongoose = require('mongoose');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const fetch = require('node-fetch');
 
-// Define the User schema
-const userSchema = new mongoose.Schema({
-  username: {
-    type: mongoose.Schema.Types.String,
-    require: true,
-    unique: true
-  },
-  displayName: {
-    type: mongoose.Schema.Types.String,
-    require: true
-  },
-  password: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  isAdmin: {
-    type: mongoose.Schema.Types.Boolean,
-    required: true
-  },
-  solvedProblem: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  solvedProblems: {
-    type: mongoose.Schema.Types.Array,
-    required: true
-  },
-  rating: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  gitPublicKey: {
-    type: mongoose.Schema.Types.String,
-    required: false
-  },
-  studentId: {
-    type: mongoose.Schema.Types.String,
-    required: false,
-    unique: true,
-    sparse: true
-  },
-  giteaId: {
-    type: mongoose.Schema.Types.Number,
-    required: false,
-    unique: true,
-    sparse: true
-  }
-});
-
-const User = mongoose.model('User', userSchema);
-
-// Hash function
-let salt;
-
-const readSalt = () => {
-  try {
-    // Use absolute path relative to the backend directory
-    const saltPath = path.join(__dirname, '../salt.json');
-    const SALT = JSON.parse(fs.readFileSync(saltPath, 'utf-8')).salt;
-    salt = SALT;
-  } catch (error) {
-    const saltPath = path.join(__dirname, '../salt.json');
-    salt = crypto.randomBytes(32).toString('hex');
-    fs.writeFileSync(saltPath, JSON.stringify({ salt }, null, 4));
-  }
-};
-
-const hashString = (str) => {
-  if (!salt) {
-    readSalt();
-  }
-  return crypto.scryptSync(str, salt, 32).toString('hex');
-};
+// Configuration
+const API_URL = process.env.API_URL || 'http://localhost:8787/api';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'aaaaaaaa';
 
 // Get command line arguments
 const args = process.argv.slice(2);
-const username = args[0] || 'testuser';
+const username = args[0] || 'b14000000';
 const password = args[1] || 'password123';
 const displayName = args[2] || 'Test User';
 const isAdmin = args[3] === 'true';
 
-// MongoDB URI
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
+async function login() {
+  try {
+    console.log(`Logging in as ${ADMIN_USERNAME}...`);
+    const response = await fetch(`${API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+    }
+
+    const cookies = response.headers.get('set-cookie');
+    console.log('Logged in successfully');
+    return cookies;
+  } catch (error) {
+    console.error('Login error:', error.message);
+    throw error;
+  }
+}
+
+async function createUser(userData, cookie) {
+  try {
+    const response = await fetch(`${API_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': cookie
+      },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`API Error: ${response.status} - ${text}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+}
 
 async function createTestUser() {
   try {
-    console.log('Creating test user...');
+    console.log('Creating test user via API...');
 
-    // Connect to MongoDB
-    await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
+    const cookie = await login();
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ username });
-
-    if (existingUser) {
-      console.log(`User '${username}' already exists!`);
-      console.log('Please choose a different username or delete the existing user first.');
-      return;
-    }
-
-    // Create test user object
-    const testUser = new User({
+    const userData = {
       username,
       displayName,
-      password: hashString(password),
-      isAdmin,
-      solvedProblem: 0,
-      solvedProblems: [],
-      rating: 0
-    });
+      password,
+      isAdmin
+    };
 
-    await testUser.save();
-    
+    const result = await createUser(userData, cookie);
+
     console.log('\nTest user created successfully!');
     console.log('-----------------------------------');
     console.log(`Username:     ${username}`);
     console.log(`Password:     ${password}`);
     console.log(`Display Name: ${displayName}`);
     console.log(`Admin:        ${isAdmin}`);
-    console.log(`Rating:       0`);
     console.log('-----------------------------------');
     console.log('\nYou can now login with these credentials!');
   } catch (error) {
-    console.error('Error creating test user:', error);
+    console.error('Error creating test user:', error.message);
     process.exit(1);
-  } finally {
-    await mongoose.disconnect();
-    console.log('\nDisconnected from MongoDB');
   }
 }
 

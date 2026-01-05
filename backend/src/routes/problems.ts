@@ -275,7 +275,8 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
     await tar.x({
       file: targetPath,
       cwd: extractDir,
-      strip: 1 // Strip the top-level directory from the tarball
+      strip: 1, // Strip the top-level directory from the tarball
+      noMtime: true
     });
 
     const problemDir = extractDir;
@@ -567,7 +568,8 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
     await tar.x({
       file: targetPath,
       cwd: extractDir,
-      strip: 1
+      strip: 1,
+      noMtime: true
     });
 
     const newProblemDir = extractDir;
@@ -878,7 +880,7 @@ problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Resp
 }, createProblem);
 
 problemsRouter.delete('/api/problems/:serialNumber', isAdmin, deleteProblem);
-problemsRouter.patch('/api/problems/:serialNumber', isAuthenticated, checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.patch('/api/problems/:serialNumber', isAdmin, checkSchema(updateProblemValidation), updateProblem);
 
 problemsRouter.put('/api/problems/:serialNumber', isAdmin, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {

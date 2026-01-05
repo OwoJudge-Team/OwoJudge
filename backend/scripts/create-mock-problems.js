@@ -2,11 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const tar = require('tar');
 const os = require('os');
+const fetch = require('node-fetch');
+const FormData = require('form-data');
 
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'aaaaaaaa';
 
 // Problem templates with various themes
 const problemTitles = [
@@ -205,16 +207,18 @@ async function createMockProblems() {
             [problemData.dirName]
           );
 
-          // Upload
+          // Upload using form-data
           const formData = new FormData();
-          const fileContent = fs.readFileSync(tarballPath);
-          const blob = new Blob([fileContent], { type: 'application/gzip' });
-          formData.append('problem', blob, `${problemData.dirName}.tar.gz`);
+          formData.append('problem', fs.createReadStream(tarballPath), {
+            filename: `${problemData.dirName}.tar.gz`,
+            contentType: 'application/gzip'
+          });
 
           const uploadResp = await fetch(`${API_URL}/problems`, {
             method: 'POST',
             headers: {
-              'Cookie': cookie
+              'Cookie': cookie,
+              ...formData.getHeaders()
             },
             body: formData
           });

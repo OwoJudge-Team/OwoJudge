@@ -1,75 +1,79 @@
 #!/usr/bin/env node
 
-import mongoose from 'mongoose';
+const fetch = require('node-fetch');
 
-// Define the User schema
-const userSchema = new mongoose.Schema({
-  username: {
-    type: mongoose.Schema.Types.String,
-    require: true,
-    unique: true
-  },
-  displayName: {
-    type: mongoose.Schema.Types.String,
-    require: true
-  },
-  password: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  isAdmin: {
-    type: mongoose.Schema.Types.Boolean,
-    required: true
-  },
-  solvedProblem: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  solvedProblems: {
-    type: mongoose.Schema.Types.Array,
-    required: true
-  },
-  rating: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  gitPublicKey: {
-    type: mongoose.Schema.Types.String,
-    required: false
-  }
-});
-
-const User = mongoose.model('User', userSchema);
+// Configuration
+const API_URL = process.env.API_URL || 'http://localhost:8787/api';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'aaaaaaaa';
 
 // Get command line arguments
 const args = process.argv.slice(2);
-const username = args[0] || 'testuser';
+const username = args[0];
 
-// MongoDB URI
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
+if (!username) {
+  console.error('Error: Please provide a username to delete');
+  console.log('Usage: node delete-user.js <username>');
+  process.exit(1);
+}
+
+async function login() {
+  try {
+    console.log(`Logging in as ${ADMIN_USERNAME}...`);
+    const response = await fetch(`${API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+    }
+
+    const cookies = response.headers.get('set-cookie');
+    console.log('Logged in successfully');
+    return cookies;
+  } catch (error) {
+    console.error('Login error:', error.message);
+    throw error;
+  }
+}
+
+async function deleteUserViaAPI(username, cookie) {
+  try {
+    const response = await fetch(`${API_URL}/users/${username}`, {
+      method: 'DELETE',
+      headers: {
+        'Cookie': cookie
+      }
+    });
+
+    if (response.status === 404) {
+      throw new Error(`User '${username}' not found`);
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`API Error: ${response.status} - ${text}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+}
 
 async function deleteUser() {
   try {
-    console.log(`Deleting user '${username}'...`);
+    console.log(`Deleting user '${username}' via API...`);
 
-    // Connect to MongoDB
-    await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
+    const cookie = await login();
+    const result = await deleteUserViaAPI(username, cookie);
 
-    // Delete user
-    const result = await User.deleteOne({ username });
-
-    if (result.deletedCount === 0) {
-      console.log(`Error: User '${username}' not found!`);
-    } else {
-      console.log(`Info: User '${username}' deleted successfully!`);
-    }
+    console.log(`Info: User '${username}' deleted successfully!`);
   } catch (error) {
-    console.error('Error: deleting user:', error);
+    console.error('Error deleting user:', error.message);
     process.exit(1);
-  } finally {
-    await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
   }
 }
 
