@@ -267,7 +267,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
           <div className="flex items-center gap-2 text-slate-400">
             <FaCalendarAlt className="text-slate-500" /> Date
           </div>
-          <div className="font-medium text-slate-200">{formatISOTime(submission.createdTime)}</div>
+          <div className="font-medium text-slate-200">{formatISOTime(submission.createdAt)}</div>
         </div>
       </div>
     </div>

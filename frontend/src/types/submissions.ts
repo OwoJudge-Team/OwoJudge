@@ -63,7 +63,7 @@ export interface Submission {
   language: string;
   status: Status;
   score: number;
-  createdTime: string;
+  createdAt: string;
   time: string;
   memory: string;
   userSolution: Array<UserSolution>;

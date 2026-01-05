@@ -44,6 +44,8 @@ const SubmissionPage: React.FC = () => {
         const data = await res.json();
         setTotalCount(data.total);
         setSubmissions(data.submissions ?? []);
+
+        console.log("Fetched submissions:", data.submissions);
       } catch (error) {
         console.error("Failed to fetch submissions:", error);
       }
@@ -156,7 +158,7 @@ const SubmissionPage: React.FC = () => {
                     />
                   </td>
                   <td className="px-6 py-4 text-slate-100">
-                    {formatISOTime(submission.createdTime)}
+                    {formatISOTime(submission.createdAt)}
                   </td>
                   <td className="px-6 py-4">
                     <CoolLink href={`/users/${submission.username}`} text={submission.userHandle} />

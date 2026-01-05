@@ -1,26 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useReducer } from "react";
 import { FaUser, FaIdCard, FaKey, FaLock, FaShieldHalved } from "react-icons/fa6";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiFetch } from "@/utils/api";
+import { Card, LabeledInput } from "./components";
+import { initialState, settingsReducer, SettingsState } from "./settingsReducer";
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const [state, dispatch] = useReducer(settingsReducer, initialState);
 
-  // User info state
-  const [handle, setHandle] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("user");
-  const [sshPublicKey, setSshPublicKey] = useState("");
-
-  // Password change state
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const {
+    username,
+    studentId,
+    displayName,
+    role,
+    sshPublicKey,
+    currentPassword,
+    newPassword,
+    confirmPassword,
+    loading,
+    message,
+  } = state;
 
   useEffect(() => {
     if (user) {
@@ -30,39 +32,51 @@ export default function SettingsPage() {
           if (!res.ok) throw new Error("Failed to fetch user data");
           const userData = await res.json();
 
-          setHandle(userData.username || "");
-          setStudentId(userData.studentId || "");
-          setName(userData.displayName || "");
-          setRole(userData.isAdmin ? "admin" : "user");
-          setSshPublicKey(userData.gitPublicKey || "");
-          setLoading(false);
+          dispatch({
+            type: "LOAD_USER",
+            payload: {
+              username: userData.username || "",
+              studentId: userData.studentId || "",
+              displayName: userData.displayName || "",
+              role: userData.isAdmin ? "admin" : "user",
+              sshPublicKey: userData.gitPublicKey || "",
+            },
+          });
         } catch (err) {
           console.error(err);
-          setMessage({ text: "Failed to load user settings.", type: "error" });
-          setLoading(false);
+          dispatch({
+            type: "SET_MESSAGE",
+            value: { text: "Failed to load user settings.", type: "error" },
+          });
+          dispatch({ type: "SET_LOADING", value: false });
         }
       };
       fetchUserData();
     }
   }, [user]);
 
+  const handleChange = (field: keyof SettingsState) => (value: string) => {
+    dispatch({ type: "SET_FIELD", field, value });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
+    dispatch({ type: "SET_MESSAGE", value: null });
 
     if (newPassword && newPassword !== confirmPassword) {
-      setMessage({ text: "New passwords do not match.", type: "error" });
+      dispatch({
+        type: "SET_MESSAGE",
+        value: { text: "New passwords do not match.", type: "error" },
+      });
       return;
     }
 
     if (!user) return;
 
-    const updates: Record<string, string> = {};
-    if (name) updates.displayName = name;
-
-    // Only send if not empty
+    const updates: Record<string, string> = { oldPassword: currentPassword };
+    if (displayName) updates.displayName = displayName;
     if (newPassword) updates.password = newPassword;
-    if (sshPublicKey) updates.gitPublicKey = sshPublicKey;
+    updates.gitPublicKey = sshPublicKey;
 
     try {
       const res = await apiFetch(`/api/users/${user.username}`, {
@@ -74,21 +88,34 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        setMessage({ text: "Settings updated successfully.", type: "success" });
-        // Clear password fields
-        setNewPassword("");
-        setConfirmPassword("");
+        dispatch({
+          type: "SET_MESSAGE",
+          value: { text: "Settings updated successfully.", type: "success" },
+        });
+        dispatch({ type: "RESET_PASSWORD_FIELDS" });
       } else {
-        const errData = await res.json();
-        // Backend might send array of errors or string
-        const errorMsg = Array.isArray(errData)
-          ? errData.map((e) => e.msg).join(", ")
-          : errData.message || "Update failed";
-        setMessage({ text: errorMsg, type: "error" });
+        let errorMsg = "Update failed";
+        try {
+          const text = await res.text();
+          try {
+            const errData = JSON.parse(text);
+            errorMsg = Array.isArray(errData)
+              ? errData.map((e: { msg: string }) => e.msg).join(", ")
+              : errData.message || text;
+          } catch {
+            errorMsg = text || "Update failed";
+          }
+        } catch (e) {
+          console.error("Error reading response:", e);
+        }
+        dispatch({ type: "SET_MESSAGE", value: { text: errorMsg, type: "error" } });
       }
     } catch (err) {
       console.error(err);
-      setMessage({ text: "An error occurred while updating settings.", type: "error" });
+      dispatch({
+        type: "SET_MESSAGE",
+        value: { text: "An error occurred while updating settings.", type: "error" },
+      });
     }
   };
 
@@ -117,167 +144,102 @@ export default function SettingsPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* User Information Card */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
-            <div className="border-b border-slate-700 bg-slate-800/50 px-6 py-4">
-              <h2 className="text-lg font-bold text-slate-100">User Information</h2>
+          <Card title="User Information">
+            <div className="grid grid-cols-2 gap-4">
+              <LabeledInput
+                id="username"
+                label="Username"
+                icon={<FaUser className="h-3.5 w-3.5" />}
+                value={username}
+                disabled
+                title="Username cannot be changed"
+              />
+
+              <LabeledInput
+                id="studentId"
+                label="Student ID"
+                icon={<FaIdCard className="h-3.5 w-3.5" />}
+                value={studentId}
+                disabled
+                placeholder="Not set"
+                title="Contact admin to change Student ID"
+              />
             </div>
-            <div className="space-y-5 p-6">
-              {/* Handle and Student ID Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="handle"
-                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                  >
-                    <FaUser className="h-3.5 w-3.5 text-slate-400" />
-                    Handle
-                  </label>
-                  <input
-                    type="text"
-                    id="handle"
-                    value={handle}
-                    disabled
-                    className="w-full cursor-not-allowed rounded-lg border border-slate-600 bg-slate-900/30 px-4 py-2.5 text-sm text-slate-400 focus:outline-none"
-                    title="Username cannot be changed"
-                  />
-                </div>
 
-                <div>
-                  <label
-                    htmlFor="studentId"
-                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                  >
-                    <FaIdCard className="h-3.5 w-3.5 text-slate-400" />
-                    Student ID
-                  </label>
-                  <input
-                    type="text"
-                    id="studentId"
-                    value={studentId}
-                    disabled
-                    className="w-full cursor-not-allowed rounded-lg border border-slate-600 bg-slate-900/30 px-4 py-2.5 text-sm text-slate-400 focus:outline-none"
-                    placeholder="Not set"
-                    title="Contact admin to change Student ID"
-                  />
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <LabeledInput
+                id="displayName"
+                label="Display Name"
+                icon={<FaUser className="h-3.5 w-3.5" />}
+                value={displayName}
+                onChange={handleChange("displayName")}
+                placeholder="Enter your display name"
+                required
+              />
 
-              {/* Name and Role Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                  >
-                    <FaUser className="h-3.5 w-3.5 text-slate-400" />
-                    Display Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Enter your display name"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="role"
-                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                  >
-                    <FaShieldHalved className="h-3.5 w-3.5 text-slate-400" />
-                    Role
-                  </label>
-                  <div className="w-full rounded-lg border border-slate-600 bg-slate-900/30 px-4 py-2.5 text-sm capitalize text-slate-400">
-                    {role}
-                  </div>
-                </div>
-              </div>
-
-              {/* SSH Public Key */}
-              <div>
-                <label
-                  htmlFor="sshPublicKey"
-                  className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                >
-                  <FaKey className="h-3.5 w-3.5 text-slate-400" />
-                  SSH Public Key
-                </label>
-                <textarea
-                  id="sshPublicKey"
-                  value={sshPublicKey}
-                  onChange={(e) => setSshPublicKey(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                  placeholder="ssh-rsa AAAAB3NzaC1yc2E..."
-                />
-              </div>
+              <LabeledInput
+                id="role"
+                label="Role"
+                icon={<FaShieldHalved className="h-3.5 w-3.5" />}
+                value={role}
+                disabled
+              />
             </div>
-          </div>
 
-          {/* Change Password Card */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
-            <div className="border-b border-slate-700 bg-slate-800/50 px-6 py-4">
-              <h2 className="text-lg font-bold text-slate-100">Change Password</h2>
-            </div>
-            <div className="space-y-5 p-6">
-              {/* New Password and Confirm Password Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="newPassword"
-                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                  >
-                    <FaLock className="h-3.5 w-3.5 text-slate-400" />
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    id="newPassword"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Enter new password (optional)"
-                  />
-                </div>
+            <LabeledInput
+              id="sshPublicKey"
+              label="SSH Public Key"
+              icon={<FaKey className="h-3.5 w-3.5" />}
+              value={sshPublicKey}
+              onChange={handleChange("sshPublicKey")}
+              placeholder="ssh-rsa AAAAB3NzaC1yc2E..."
+              rows={4}
+            />
+          </Card>
 
-                <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300"
-                  >
-                    <FaLock className="h-3.5 w-3.5 text-slate-400" />
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    placeholder="Confirm new password"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <Card title="Change Password">
+            <div className="grid grid-cols-2 gap-4">
+              <LabeledInput
+                id="newPassword"
+                label="New Password"
+                icon={<FaLock className="h-3.5 w-3.5" />}
+                type="password"
+                value={newPassword}
+                onChange={handleChange("newPassword")}
+                placeholder="Enter new password (optional)"
+              />
 
-          {/* Submit Section */}
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
-            <div className="space-y-5 p-6">
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-all duration-150 hover:bg-indigo-500"
-              >
-                Save Changes
-              </button>
+              <LabeledInput
+                id="confirmPassword"
+                label="Confirm Password"
+                icon={<FaLock className="h-3.5 w-3.5" />}
+                type="password"
+                value={confirmPassword}
+                onChange={handleChange("confirmPassword")}
+                placeholder="Confirm new password"
+              />
             </div>
-          </div>
+          </Card>
+
+          <Card title="Save">
+            <LabeledInput
+              id="currentPassword"
+              label="Current Password"
+              icon={<FaLock className="h-3.5 w-3.5" />}
+              type="password"
+              value={currentPassword}
+              onChange={handleChange("currentPassword")}
+              placeholder="Enter current password to confirm changes"
+              required
+            />
+
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-all duration-150 hover:bg-indigo-500"
+            >
+              Save Changes
+            </button>
+          </Card>
         </form>
       </div>
     </div>

@@ -57,7 +57,7 @@ export default function SubmissionPage() {
     score,
     problemTitle,
     userHandle,
-    createdTime,
+    createdAt: createdAt,
     time,
     memory,
     results,
@@ -104,7 +104,7 @@ export default function SubmissionPage() {
 
             <div>
               <div className="mb-1 text-xs text-slate-400">Submission timestamp</div>
-              <div className="font-medium text-slate-100">{formatISOTime(createdTime)}</div>
+              <div className="font-medium text-slate-100">{formatISOTime(createdAt)}</div>
             </div>
 
             <div>
