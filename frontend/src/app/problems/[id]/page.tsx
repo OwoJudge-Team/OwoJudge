@@ -91,7 +91,7 @@ export default function ProblemPage() {
           <div className="flex items-center gap-6 text-slate-400">
             <div className="flex items-center gap-2">
               <FaClock className="text-indigo-400" />
-              <span className="font-medium text-slate-200">{data.timeLimit} ms</span>
+              <span className="font-medium text-slate-200">{data.timeLimit} s</span>
               <span className="text-sm">time limit</span>
             </div>
             <div className="h-1 w-1 rounded-full bg-slate-600" />
