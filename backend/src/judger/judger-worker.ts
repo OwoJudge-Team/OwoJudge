@@ -45,7 +45,9 @@ const writeUserSolution = (submission: ISubmission, dir: string) => {
     console.log(`Writing user solution file ${i}`);
     const file = submission.userSolution[i];
     const content = file.content;
-    fs.writeFileSync(path.join(dir, 'main.c'), content);
+    // Use the filename provided in the submission, but ensure it's just the basename for security
+    const filename = path.basename(file.filename);
+    fs.writeFileSync(path.join(dir, filename), content);
   }
 }
 

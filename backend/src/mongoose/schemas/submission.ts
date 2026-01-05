@@ -42,12 +42,12 @@ interface ISubmission extends Document {
   problemSerialNumber: number;
   problemTitle: string;
   username: string;
-  userHandle: string;
   userID: mongoose.Types.ObjectId;
   language: string;
   userSolution: IUserSolution[];
   status: SubmissionStatus;
-  createdTime: Date;
+  createdAt: Date;
+  updatedAt: Date;
   score?: number;
   time?: number;
   memory?: number;
@@ -59,17 +59,21 @@ const submissionSchema = new Schema<ISubmission>({
   problemSerialNumber: { type: Schema.Types.Number, required: true },
   problemTitle: { type: Schema.Types.String, required: true },
   username: { type: Schema.Types.String, required: true },
-  userHandle: { type: Schema.Types.String, required: true },
   userID: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
   language: { type: Schema.Types.String, required: true },
   userSolution: [userSolutionSchema],
   status: { type: Schema.Types.String, enum: Object.values(SubmissionStatus), default: SubmissionStatus.PD },
-  createdTime: { type: Schema.Types.Date, default: Date.now },
   score: { type: Schema.Types.Number, default: 0 },
   time: { type: Schema.Types.Number, default: 0 },
   memory: { type: Schema.Types.Number, default: 0 },
   results: { type: Schema.Types.Mixed, default: {} },
-});
+}, { timestamps: true });
+
+submissionSchema.index({ problemSerialNumber: 1 });
+submissionSchema.index({ username: 1 });
+submissionSchema.index({ userID: 1 });
+submissionSchema.index({ status: 1 });
+submissionSchema.index({ createdAt: -1 });
 
 // Auto-increment serialNumber using pre-save hook
 submissionSchema.pre('save', async function () {

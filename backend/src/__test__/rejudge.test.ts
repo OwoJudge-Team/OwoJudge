@@ -15,7 +15,7 @@ const mockSubmissionSave = vi.fn().mockResolvedValue({
     status: SubmissionStatus.PD,
     score: 0,
     results: [],
-    createdTime: MOCK_DATE
+    createdAt: MOCK_DATE
 });
 
 const mockProblemFindOne = vi.fn();

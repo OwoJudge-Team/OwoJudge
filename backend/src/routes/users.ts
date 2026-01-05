@@ -175,15 +175,19 @@ const updateUser = async (request: IRequest, response: Response) => {
   }
 
   const { oldPassword } = request.body;
-  if (!oldPassword) {
-    response.status(400).send('Old password is required');
-    return;
-  }
+  
+  // Require password verification for self-updates
+  if (oldUsername === user.username) {
+    if (!oldPassword) {
+      response.status(400).send('Password is required to update profile');
+      return;
+    }
 
-  const dbUser = await User.findOne({ username: oldUsername });
-  if (!dbUser || dbUser.password !== hashString(oldPassword)) {
-    response.status(403).send('Invalid old password');
-    return;
+    const dbUser = await User.findOne({ username: oldUsername });
+    if (!dbUser || dbUser.password !== hashString(oldPassword)) {
+      response.status(403).send('Invalid password');
+      return;
+    }
   }
 
   // Ensure oldPassword is not in updates if it was passed
