@@ -5,7 +5,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Submission, StatusToCode, SubmissionStatus } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { apiGet, apiPost } from "@/utils/api";
-import { FaClock, FaFloppyDisk, FaSpinner, FaRotateRight } from "react-icons/fa6";
+import {
+  FaClock,
+  FaFloppyDisk,
+  FaSpinner,
+  FaRotateRight,
+  FaCircleCheck,
+  FaCircleXmark,
+} from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
 import Paginator from "@/components/Paginator";
@@ -238,7 +245,7 @@ const SubmissionPage: React.FC = () => {
                       }`}
                     >
                       {user.isAdmin && (
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 align-middle">
                           <div className="flex items-center justify-center">
                             <input
                               type="checkbox"
@@ -249,56 +256,53 @@ const SubmissionPage: React.FC = () => {
                           </div>
                         </td>
                       )}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-middle">
                         <CoolLink
                           href={`/submissions/${submission.serialNumber}`}
                           text={String(submission.serialNumber)}
                         />
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-300">
+                      <td className="px-6 py-4 align-middle text-sm text-slate-300">
                         {formatISOTime(submission.createdAt)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-middle">
                         <CoolLink
                           href={`/users/${submission.username}`}
                           text={submission.userHandle}
                         />
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-middle">
                         <CoolLink
                           href={`/problems/${submission.problemSerialNumber}`}
                           text={submission.problemTitle}
                         />
                       </td>
+
                       <td className="px-6 py-4">
                         {submission.status === SubmissionStatus.PD ||
                         submission.status === SubmissionStatus.QU ? (
-                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                            <FaSpinner className="animate-spin text-indigo-400" />
-                            {StatusToCode[submission.status]}
+                          <div className="flex w-[5ch] items-center justify-center">
+                            <FaSpinner className="animate-spin text-xl text-slate-300" />
                           </div>
                         ) : (
                           <div
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide shadow-sm ${getStatusColor(submission.status)} text-white`}
+                            className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                           >
                             {StatusToCode[submission.status]}
                           </div>
                         )}
                       </td>
+
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-slate-300">
-                          <div className="flex w-5 justify-center text-slate-400">
-                            <FaClock className="h-3.5 w-3.5" />
-                          </div>
-                          <span className="text-sm font-medium">{submission.time} s</span>
+                        <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
+                          <FaClock />
+                          {submission.time}s
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-slate-300">
-                          <div className="flex w-5 justify-center text-slate-400">
-                            <FaFloppyDisk className="h-3.5 w-3.5" />
-                          </div>
-                          <span className="text-sm font-medium">{submission.memory} KB</span>
+                        <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
+                          <FaFloppyDisk />
+                          {submission.memory}MB
                         </div>
                       </td>
                     </tr>
