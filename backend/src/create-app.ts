@@ -38,7 +38,7 @@ export const createApp = (): Application => {
   const app: Application = express();
 
   app.use(cors({
-    origin: 'http://gitea:3000',
+    origin: ['http://gitea:3000', 'http://localhost:3500'],
     credentials: true,
   }));
 
