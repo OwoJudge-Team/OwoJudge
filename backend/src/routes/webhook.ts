@@ -204,7 +204,6 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
                     problemSerialNumber: problemSerialNumber,
                     problemTitle: problem.title,
                     username: submissionUsername,
-                    userHandle: owoUser.displayName,
                     userID: owoUser._id as any,
                     language: language,
                     userSolution: userSolution
@@ -214,7 +213,6 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
                     problemSerialNumber: submissionData.problemSerialNumber,
                     problemTitle: submissionData.problemTitle,
                     username: submissionData.username,
-                    userHandle: submissionData.userHandle,
                     userID: submissionData.userID,
                     language: submissionData.language
                 }, null, 2));

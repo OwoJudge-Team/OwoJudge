@@ -51,7 +51,7 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
   try {
     const total = await Submission.countDocuments(query);
     const submissions: ISubmission[] = await Submission.find(query)
-      .select('serialNumber problemSerialNumber problemTitle username userHandle userID status language createdTime score time memory')
+      .select('serialNumber problemSerialNumber problemTitle username userID status language createdTime score time memory')
       .sort({ serialNumber: -1 })
       .skip(finalOffset)
       .limit(limit);
@@ -146,7 +146,6 @@ export const createSubmission = async (request: IRequest, response: Response): P
 
     // Add the additional fields
     data.username = user.username;
-    data.userHandle = user.displayName;
     data.userID = user.id as any;
     data.problemSerialNumber = problem.serialNumber;
     data.problemTitle = problem.title;

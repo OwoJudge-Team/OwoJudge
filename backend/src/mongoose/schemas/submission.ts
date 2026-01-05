@@ -42,7 +42,6 @@ interface ISubmission extends Document {
   problemSerialNumber: number;
   problemTitle: string;
   username: string;
-  userHandle: string;
   userID: mongoose.Types.ObjectId;
   language: string;
   userSolution: IUserSolution[];
@@ -59,7 +58,6 @@ const submissionSchema = new Schema<ISubmission>({
   problemSerialNumber: { type: Schema.Types.Number, required: true },
   problemTitle: { type: Schema.Types.String, required: true },
   username: { type: Schema.Types.String, required: true },
-  userHandle: { type: Schema.Types.String, required: true },
   userID: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
   language: { type: Schema.Types.String, required: true },
   userSolution: [userSolutionSchema],

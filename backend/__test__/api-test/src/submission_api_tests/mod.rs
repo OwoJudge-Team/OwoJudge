@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::task;
 use tokio::sync::Semaphore;
-// use crate::user_api_tests::temp_user::TempUser;
+use crate::user_api_tests::temp_user::TempUser;
 
 // --- Helpers ---
 

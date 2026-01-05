@@ -1,10 +1,10 @@
-use reqwest::{Client, StatusCode, multipart};
+use reqwest::{Client, ClientBuilder, StatusCode, multipart};
 use serde_json::{Value, json};
 use rand::Rng;
 use std::path::PathBuf;
 use std::process::Command;
 use std::fs as std_fs;
-// use crate::user_api_tests::temp_user::TempUser;
+use crate::user_api_tests::temp_user::TempUser;
 
 // --- Helpers ---
 

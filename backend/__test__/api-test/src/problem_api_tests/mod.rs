@@ -1,8 +1,8 @@
 use reqwest::{Client, ClientBuilder, StatusCode, multipart};
 use serde_json::{Value, json};
 use std::path::PathBuf;
-// use tokio::fs;
-// use crate::user_api_tests::temp_user::TempUser;
+use tokio::fs;
+use crate::user_api_tests::temp_user::TempUser;
 use rand::Rng;
 use std::process::Command;
 use std::fs as std_fs;

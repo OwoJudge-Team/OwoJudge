@@ -47,7 +47,6 @@ const { mockProblem, mockUser, mockSubmission, mockContest } = vi.hoisted(() => 
         problemSerialNumber: 1,
         problemTitle: 'Test Problem',
         username: 'testuser',
-        userHandle: 'Test User',
         userID: 'user123',
         status: 'AC',
         language: 'cpp',
@@ -257,7 +256,6 @@ describe('API Response Structure Tests', () => {
                 expect(submission).toHaveProperty('problemSerialNumber');
                 expect(submission).toHaveProperty('problemTitle');
                 expect(submission).toHaveProperty('username');
-                expect(submission).toHaveProperty('userHandle');
                 expect(submission).toHaveProperty('userID');
                 expect(submission).toHaveProperty('status');
                 expect(submission).toHaveProperty('language');
@@ -280,7 +278,6 @@ describe('API Response Structure Tests', () => {
                 expect(submission).toHaveProperty('problemSerialNumber');
                 expect(submission).toHaveProperty('problemTitle');
                 expect(submission).toHaveProperty('username');
-                expect(submission).toHaveProperty('userHandle');
                 expect(submission).toHaveProperty('userID');
                 expect(submission).toHaveProperty('status');
                 expect(submission).toHaveProperty('language');
