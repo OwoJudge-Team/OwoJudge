@@ -152,11 +152,11 @@ const updateStandings = async (request: IRequest, response: Response) => {
     // Find all submissions for these problems within the contest timeframe
     const submissions = await Submission.find({
       problemSerialNumber: { $in: problemSerialNumbers },
-      createdTime: {
+      createdAt: {
         $gte: contest.startTime,
         $lte: contest.endTime
       }
-    }).sort({ createdTime: 1 });
+    }).sort({ createdAt: 1 });
 
     // Build standings from submissions
     const standingsMap = new Map<string, UserStanding>();
@@ -172,7 +172,7 @@ const updateStandings = async (request: IRequest, response: Response) => {
           totalScore: 0,
           solvedCount: 0,
           problemScores: [],
-          lastSubmissionTime: submission.createdTime
+          lastSubmissionTime: submission.createdAt
         });
       }
 
@@ -186,21 +186,21 @@ const updateStandings = async (request: IRequest, response: Response) => {
         if (score > existingProblemScore.score) {
           userStanding.totalScore += (score - existingProblemScore.score);
           existingProblemScore.score = score;
-          existingProblemScore.lastSubmissionTime = submission.createdTime;
+          existingProblemScore.lastSubmissionTime = submission.createdAt;
         }
       } else {
         // Add new problem score
         userStanding.problemScores.push({
           serialNumber,
           score,
-          lastSubmissionTime: submission.createdTime
+          lastSubmissionTime: submission.createdAt
         });
         userStanding.totalScore += score;
       }
 
       // Update last submission time
-      if (!userStanding.lastSubmissionTime || submission.createdTime > userStanding.lastSubmissionTime) {
-        userStanding.lastSubmissionTime = submission.createdTime;
+      if (!userStanding.lastSubmissionTime || submission.createdAt > userStanding.lastSubmissionTime) {
+        userStanding.lastSubmissionTime = submission.createdAt;
       }
 
       // Count solved problems (score > 0)

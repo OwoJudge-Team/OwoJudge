@@ -51,7 +51,7 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
   try {
     const total = await Submission.countDocuments(query);
     const submissions: ISubmission[] = await Submission.find(query)
-      .select('serialNumber problemSerialNumber problemTitle username userID status language createdTime score time memory')
+      .select('serialNumber problemSerialNumber problemTitle username userID status language createdAt score time memory')
       .sort({ serialNumber: -1 })
       .skip(finalOffset)
       .limit(limit);

@@ -1,9 +1,14 @@
 #!/bin/bash
 
+# Clean up previous run
+echo "Cleaning up previous run..."
+docker compose down -v --remove-orphans
+
 # Start backend with predefined admin password
 export GITEA_SSH_PORT=2222
 rm -f ./secrets/gitea_token.txt
-ADMIN_PASSWD="adminpassword" docker compose up --build -d
+# Force recreate gitea to ensure token is generated
+ADMIN_PASSWD="adminpassword" docker compose up --build -d --force-recreate
 # wait until backend logs show it is listening
 while ! docker compose logs --no-color backend 2>&1 | grep -q "Listening to port"; do
     sleep 1
@@ -16,23 +21,24 @@ while [ ! -f ./secrets/gitea_token.txt ]; do
 done
 echo "Gitea token found."
 
+# Debug: Check if backend container can see the token
+echo "Checking token in backend container..."
+docker compose exec backend ls -l /secrets/gitea_token.txt || echo "Token not found in backend container!"
+
 sleep 5
 
 # Run API tests
+echo "Running API tests..."
 cd __test__/api-test || exit 1
 cargo --quiet test -- --test-threads=1
+TEST_EXIT_CODE=$?
 cd ../..
-# Remove containers, networks and volumes created by the test
+
 if [ "$1" == '--debug' ]; then
-    docker compose logs --no-color backend
     echo "Debug mode: keeping containers up. To stop them, run 'docker compose down -v --remove-orphans'"
-    docker compose down -v --remove-orphans || true
-    exit 0
+    exit $TEST_EXIT_CODE
 fi
 
-cd __test__/api-test || exit 1
-cargo --quiet run
-cd ../..
-docker compose logs backend > api_test_output 2>&1
-
-docker compose down -v --remove-orphans || true
+echo "Cleaning up..."
+docker compose down -v --remove-orphans
+exit $TEST_EXIT_CODE

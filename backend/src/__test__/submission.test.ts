@@ -13,7 +13,7 @@ const mockSubmissions = [
         userID: 'user123',
         status: SubmissionStatus.AC,
         language: 'python',
-        createdTime: new Date('2025-01-01T00:00:00Z'),
+        createdAt: new Date('2025-01-01T00:00:00Z'),
         score: 100,
         time: 50,
         memory: 1024
@@ -26,7 +26,7 @@ const mockSubmissions = [
         userID: 'user123',
         status: SubmissionStatus.WA,
         language: 'cpp',
-        createdTime: new Date('2025-01-02T00:00:00Z'),
+        createdAt: new Date('2025-01-02T00:00:00Z'),
         score: 0,
         time: 0,
         memory: 0
@@ -39,7 +39,7 @@ const mockSubmissions = [
         userID: 'user456',
         status: SubmissionStatus.AC,
         language: 'python',
-        createdTime: new Date('2025-01-03T00:00:00Z'),
+        createdAt: new Date('2025-01-03T00:00:00Z'),
         score: 100,
         time: 60,
         memory: 2048
