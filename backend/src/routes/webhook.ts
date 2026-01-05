@@ -165,7 +165,7 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
                         const content = Buffer.from(fileContent.content, 'base64').toString('utf-8');
 
                         userSolution.push({
-                            filename: fileContent.name,
+                            filename: 'main.c',
                             content: content
                         });
 
