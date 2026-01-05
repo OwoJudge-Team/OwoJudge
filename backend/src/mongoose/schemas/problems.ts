@@ -62,6 +62,13 @@ const problemSchema = new Schema<IProblem>({
   dailyQuota: { type: Number },
   status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
+  testcase: [
+    {
+      filename: String,
+      point: Number,
+      subtask: String
+    }
+  ],
   tags: [String],
   problemRelatedTags: [String],
   submissionDetail: {
@@ -81,20 +88,20 @@ const problemSchema = new Schema<IProblem>({
 });
 
 // Auto-increment serialNumber using pre-save hook
-problemSchema.pre('save', async function() {
+problemSchema.pre('save', async function () {
   if (this.isNew && this.serialNumber === undefined) {
     // Check if counter exists to handle existing data
     const counterExists = await Counter.exists({ _id: 'problemSerialNumber' });
-    
+
     if (!counterExists) {
       // Find the highest existing serialNumber
       const lastProblem = await mongoose.model('Problem').findOne(
-        {}, 
-        { serialNumber: 1 }, 
+        {},
+        { serialNumber: 1 },
         { sort: { serialNumber: -1 } }
       );
       const maxSerial = lastProblem?.serialNumber ?? -1;
-      
+
       try {
         // Initialize counter so the next increment gives maxSerial + 1
         // We set seq to maxSerial + 1. 

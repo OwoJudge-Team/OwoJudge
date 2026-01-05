@@ -1,206 +1,101 @@
-const mongoose = require('mongoose');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const fetch = require('node-fetch');
 
-// Define the User schema
-const userSchema = new mongoose.Schema({
-  username: {
-    type: mongoose.Schema.Types.String,
-    require: true,
-    unique: true
-  },
-  displayName: {
-    type: mongoose.Schema.Types.String,
-    require: true
-  },
-  password: {
-    type: mongoose.Schema.Types.String,
-    required: true
-  },
-  isAdmin: {
-    type: mongoose.Schema.Types.Boolean,
-    required: true
-  },
-  solvedProblem: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  solvedProblems: {
-    type: mongoose.Schema.Types.Array,
-    required: true
-  },
-  rating: {
-    type: mongoose.Schema.Types.Number,
-    required: true
-  },
-  quotaUsage: {
-    type: Map,
-    of: new mongoose.Schema({
-      count: { type: Number, required: true },
-      date: { type: Date, required: true }
-    }),
-    default: {}
-  }
-});
+// Configuration
+const API_URL = process.env.API_URL || 'http://localhost:8787/api';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'aaaaaaaa';
 
-const User = mongoose.model('User', userSchema);
-
-// Hash function
-let salt;
-
-const readSalt = () => {
-  try {
-    const saltPath = path.join(__dirname, '../salt.json');
-    const SALT = JSON.parse(fs.readFileSync(saltPath, 'utf-8')).salt;
-    salt = SALT;
-  } catch (error) {
-    const saltPath = path.join(__dirname, '../salt.json');
-    salt = crypto.randomBytes(32).toString('hex');
-    fs.writeFileSync(saltPath, JSON.stringify({ salt }, null, 4));
-  }
-};
-
-const hashString = (str) => {
-  if (!salt) {
-    readSalt();
-  }
-  return crypto.scryptSync(str, salt, 32).toString('hex');
-};
-
-// Random name generators
-const firstNames = [
-  'Alice', 'Bob', 'Charlie', 'David', 'Emma', 'Frank', 'Grace', 'Henry',
-  'Iris', 'Jack', 'Kate', 'Leo', 'Maria', 'Noah', 'Olivia', 'Peter',
-  'Quinn', 'Rachel', 'Sam', 'Tina', 'Uma', 'Victor', 'Wendy', 'Xavier',
-  'Yuki', 'Zara', 'Alex', 'Bella', 'Chris', 'Diana'
-];
-
-const lastNames = [
-  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
-  'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
-  'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White',
-  'Harris', 'Clark', 'Lewis', 'Robinson', 'Walker', 'Young', 'Hall'
-];
-
-const adjectives = [
-  'Cool', 'Fast', 'Smart', 'Brave', 'Swift', 'Clever', 'Mighty', 'Sharp',
-  'Quick', 'Bright', 'Bold', 'Pro', 'Super', 'Epic', 'Ninja', 'Cyber',
-  'Code', 'Tech', 'Dev', 'Hack'
-];
-
-function getRandomElement(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function generateRandomUsername() {
-  const pattern = Math.floor(Math.random() * 3);
-  switch (pattern) {
-    case 0:
-      // firstname_lastname123
-      return `${getRandomElement(firstNames).toLowerCase()}_${getRandomElement(lastNames).toLowerCase()}${Math.floor(Math.random() * 1000)}`;
-    case 1:
-      // adjective_firstname
-      return `${getRandomElement(adjectives).toLowerCase()}_${getRandomElement(firstNames).toLowerCase()}`;
-    case 2:
-      // firstname + random number
-      return `${getRandomElement(firstNames).toLowerCase()}${Math.floor(Math.random() * 10000)}`;
-    default:
-      return `user${Math.floor(Math.random() * 100000)}`;
-  }
-}
-
-function generateRandomDisplayName() {
-  return `${getRandomElement(firstNames)} ${getRandomElement(lastNames)}`;
-}
-
-function generateRandomRating() {
-  // Generate ratings between 0 and 3000 with bias towards middle range
-  const base = Math.random() * 3000;
-  return Math.floor(base);
-}
-
-function generateSolvedProblems() {
-  const count = Math.floor(Math.random() * 50); // 0 to 50 solved problems
-  const problems = [];
-  for (let i = 0; i < count; i++) {
-    problems.push(Math.floor(Math.random() * 1000) + 1);
-  }
-  return [...new Set(problems)]; // Remove duplicates
-}
-
-function generateQuotaUsage() {
-  const usage = {};
-  const numEntries = Math.floor(Math.random() * 5);
-  for (let i = 0; i < numEntries; i++) {
-    const problemId = Math.floor(Math.random() * 1000) + 1;
-    usage[problemId] = {
-      count: Math.floor(Math.random() * 5) + 1,
-      date: new Date()
-    };
-  }
-  return usage;
-}
+// Student ID configuration
+const STUDENT_ID_START = 902001;
+const STUDENT_ID_PREFIX = 'b14';
 
 // Get command line arguments
 const args = process.argv.slice(2);
-const count = parseInt(args[0]) || 10;
-const password = args[1] || 'password123'; // Default password for all mock users
+const count = parseInt(args[0]) || 150; // Default to 150 users (b14902001 to b14902150)
+const password = args[1] || 'password123';
 
-// MongoDB URI
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
+function generateStudentId(index) {
+  const studentNumber = STUDENT_ID_START + index;
+  return `${STUDENT_ID_PREFIX}${studentNumber}`;
+}
+
+async function login() {
+  try {
+    console.log(`Logging in as ${ADMIN_USERNAME}...`);
+    const response = await fetch(`${API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+    }
+
+    const cookies = response.headers.get('set-cookie');
+    console.log('Logged in successfully');
+    return cookies;
+  } catch (error) {
+    console.error('Login error:', error.message);
+    throw error;
+  }
+}
+
+async function createUser(userData, cookie) {
+  try {
+    const response = await fetch(`${API_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': cookie
+      },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`API Error: ${response.status} - ${text}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+}
 
 async function createMockUsers() {
   try {
-    console.log(`Creating ${count} mock users...`);
-    
-    // Connect to MongoDB
-    await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
+    console.log(`Creating ${count} mock users via API...`);
+    console.log(`Student IDs: ${generateStudentId(0)} to ${generateStudentId(count - 1)}`);
+
+    const cookie = await login();
 
     const createdUsers = [];
     const failedUsers = [];
 
     for (let i = 0; i < count; i++) {
       try {
-        const username = generateRandomUsername();
-        const displayName = generateRandomDisplayName();
-        const solvedProblems = generateSolvedProblems();
-        const rating = generateRandomRating();
-        const quotaUsage = generateQuotaUsage();
-        
-        // Check if user already exists
-        const existingUser = await User.findOne({ username });
-        
-        if (existingUser) {
-          failedUsers.push({ username, reason: 'Already exists' });
-          continue;
-        }
+        const studentId = generateStudentId(i);
 
-        // Create mock user object
-        const mockUser = new User({
-          username,
-          displayName,
-          password: hashString(password),
-          isAdmin: false,
-          solvedProblem: solvedProblems.length,
-          solvedProblems: solvedProblems,
-          rating: rating,
-          quotaUsage: quotaUsage
-        });
+        const userData = {
+          username: studentId,
+          displayName: studentId,
+          password,
+          isAdmin: false
+        };
 
-        await mockUser.save();
+        const result = await createUser(userData, cookie);
+
         createdUsers.push({
-          username,
-          displayName,
-          rating,
-          solvedCount: solvedProblems.length
+          username: studentId,
+          displayName: studentId
         });
-        
-        console.log(`INFO: Created user ${i + 1}/${count}: ${username}`);
+
+        console.log(`INFO: Created user ${i + 1}/${count}: ${studentId}`);
       } catch (error) {
-        failedUsers.push({ username: `user_${i}`, reason: error.message });
-        console.log(`✗ Failed to create user ${i + 1}/${count}: ${error.message}`);
+        const studentId = generateStudentId(i);
+        failedUsers.push({ username: studentId, reason: error.message });
+        console.log(`✗ Failed to create user ${i + 1}/${count}: ${studentId} - ${error.message}`);
       }
     }
 
@@ -214,11 +109,14 @@ async function createMockUsers() {
     console.log('==========================================\n');
 
     if (createdUsers.length > 0) {
-      console.log('Created Users:');
+      console.log('Created Users (showing first 10):');
       console.log('----------------------------');
-      createdUsers.forEach(user => {
-        console.log(`Username: ${user.username.padEnd(25)} Display: ${user.displayName.padEnd(20)} Rating: ${user.rating.toString().padEnd(6)} Solved: ${user.solvedCount}`);
+      createdUsers.slice(0, 10).forEach(user => {
+        console.log(`Username: ${user.username.padEnd(25)} Display: ${user.displayName.padEnd(20)}`);
       });
+      if (createdUsers.length > 10) {
+        console.log(`... and ${createdUsers.length - 10} more`);
+      }
     }
 
     if (failedUsers.length > 0) {
@@ -232,9 +130,6 @@ async function createMockUsers() {
   } catch (error) {
     console.error('Error creating mock users:', error);
     process.exit(1);
-  } finally {
-    await mongoose.disconnect();
-    console.log('\nDisconnected from MongoDB');
   }
 }
 
