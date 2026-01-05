@@ -9,6 +9,7 @@ import {
   FaStar,
   FaUserGroup,
   FaCircleQuestion,
+  FaInfinity,
 } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -111,7 +112,7 @@ const ProblemPage: React.FC = () => {
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
                       <FaChartPie />
-                      {p.dailyQuota}
+                      {p.dailyQuota ? p.dailyQuota : <FaInfinity />}
                     </span>
                   </td>
                   <td className="px-6 py-4">
