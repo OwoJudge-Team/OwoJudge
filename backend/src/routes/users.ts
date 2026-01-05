@@ -174,6 +174,21 @@ const updateUser = async (request: IRequest, response: Response) => {
     delete updates.studentId;
   }
 
+  const { oldPassword } = request.body;
+  if (!oldPassword) {
+    response.status(400).send('Old password is required');
+    return;
+  }
+
+  const dbUser = await User.findOne({ username: oldUsername });
+  if (!dbUser || dbUser.password !== hashString(oldPassword)) {
+    response.status(403).send('Invalid old password');
+    return;
+  }
+
+  // Ensure oldPassword is not in updates if it was passed
+  delete updates.oldPassword;
+
   if (updates.password) {
     updates.password = hashString(updates.password);
   }
