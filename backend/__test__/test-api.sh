@@ -1,14 +1,9 @@
 #!/bin/bash
 
-# Clean up previous run
-echo "Cleaning up previous run..."
-docker compose down -v --remove-orphans
-
 # Start backend with predefined admin password
 export GITEA_SSH_PORT=2222
 rm -f ./secrets/gitea_token.txt
-# Force recreate gitea to ensure token is generated
-ADMIN_PASSWD="adminpassword" docker compose up --build -d --force-recreate
+ADMIN_PASSWD="adminpassword" docker compose up --build -d
 # wait until backend logs show it is listening
 while ! docker compose logs --no-color backend 2>&1 | grep -q "Listening to port"; do
     sleep 1
