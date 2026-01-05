@@ -142,7 +142,7 @@ async function createMockSubmissions() {
 
     // Login as admin to get users and problems
     console.log('Logging in as admin to fetch users and problems...');
-    const adminCookie = await login('admin', 'admin');
+    const adminCookie = await login('admin', 'aaaaaaaa');
 
     const users = await getUsers(adminCookie);
     const problems = await getProblems(adminCookie);
