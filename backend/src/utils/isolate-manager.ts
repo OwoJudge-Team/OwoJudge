@@ -16,6 +16,9 @@ export interface IsolateConfig {
   fullEnv?: boolean;
   dirs?: string[];
   cwd?: string;
+  useBash?: boolean;
+  noDefaultDirs?: boolean;
+  proc?: boolean;
 }
 
 export class IsolateManager {
@@ -238,7 +241,10 @@ export class IsolateManager {
       metaFile,
       fullEnv = false,
       dirs = [],
-      cwd
+      cwd,
+      useBash = true,
+      noDefaultDirs = false,
+      proc = false
     } = config;
 
     let isolateCommand = `isolate --box-id=${this.boxID} --cg --wait `;
@@ -246,6 +252,14 @@ export class IsolateManager {
     isolateCommand += `--time=${timeLimit} `;
     isolateCommand += `--wall-time=${wallTimeLimit} `;
     isolateCommand += `--mem=${memoryLimit} `;
+
+    if (noDefaultDirs) {
+      isolateCommand += `--no-default-dirs `;
+    }
+
+    if (proc) {
+      isolateCommand += `--proc `;
+    }
 
     if (metaFile) {
       isolateCommand += `--meta=${metaFile} `;
@@ -271,8 +285,15 @@ export class IsolateManager {
       isolateCommand += `--dir=${dir} `;
     }
 
-    const cwdPrefix = cwd ? `cd ${cwd} && ` : '';
-    isolateCommand += `--run -- /bin/bash -c "${cwdPrefix}${command}"`;
+    if (useBash) {
+      const cwdPrefix = cwd ? `cd ${cwd} && ` : '';
+      isolateCommand += `--run -- /bin/bash -c "${cwdPrefix}${command}"`;
+    } else {
+      if (cwd) {
+        isolateCommand += `--chdir=${cwd} `;
+      }
+      isolateCommand += `--run -- ${command}`;
+    }
 
     return await execAsync(isolateCommand, { timeout });
   }

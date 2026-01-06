@@ -962,3 +962,186 @@ async fn test_submission_filter_substring() {
     assert_eq!(res_status.status(), StatusCode::OK);
     // We expect at least some results since new submissions are PD
 }
+
+#[tokio::test]
+async fn test_submission_pthread() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    // Login as admin
+    login_admin(&client).await;
+
+    // Create problem as admin
+    let serial_number = create_temp_problem(&client).await;
+
+    // Login as temp user
+    let _temp_user = TempUser::new("pthread_tester", "password", &client).await;
+    let auth_resp = client
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": "pthread_tester",
+            "password": "password"
+        }))
+        .send()
+        .await
+        .expect("Failed to login");
+    assert_eq!(auth_resp.status(), StatusCode::CREATED);
+
+    // C++ code that uses pthread and handles tps-example logic
+    // tps-example expects: Input: "hello", Output: "hello"
+    let cpp_code = r#"
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
+
+struct Data {
+    int a;
+    int b;
+    int sum;
+};
+
+void* thread_func(void* arg) {
+    Data* d = (Data*)arg;
+    d->sum = d->a + d->b;
+    return NULL;
+}
+
+int main() {
+    int a, b;
+    if (!(std::cin >> a >> b)) return 0;
+
+    Data d;
+    d.a = a;
+    d.b = b;
+    
+    pthread_t thread;
+    if (pthread_create(&thread, NULL, thread_func, &d) != 0) {
+        return 1; // Return 1 => RE if thread creation fails
+    }
+    pthread_join(thread, NULL);
+    
+    std::cout << d.sum << std::endl;
+    return 0;
+}
+"#;
+
+    // Submit
+    let submit_response = client
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": serial_number,
+            "language": "g++ c++17",
+            "userSolution": [{
+                "filename": "main.cpp",
+                "content": cpp_code
+            }]
+        }))
+        .send()
+        .await
+        .expect("Failed to submit");
+    
+    assert_eq!(submit_response.status(), StatusCode::CREATED);
+    let submission: Value = submit_response.json().await.expect("Failed to parse");
+    let submission_id = submission["serialNumber"].as_i64().expect("serialNumber missing");
+
+    // Poll for result
+    let mut status = String::from("pending");
+    let mut attempts = 0;
+    // Statuses that imply incomplete: "pending", "in queue"
+    while (status == "pending" || status == "in queue") && attempts < 30 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        let resp = client
+            .get(&format!("http://localhost:8787/api/submission/{}", submission_id))
+            .send()
+            .await
+            .expect("Failed to get submission");
+        
+        let status_code = resp.status();
+        if !status_code.is_success() {
+             println!("Poll Response status: {}", status_code);
+             let text = resp.text().await.unwrap_or_default();
+             println!("Poll Response text: {}", text);
+             if status_code == StatusCode::NOT_FOUND {
+                // Wait and retry if it's just a momentary consistency issue (unlikely but possible)
+             } else {
+                 panic!("Submission poll failed with error");
+             }
+        } else {
+            let sub: Value = resp.json().await.expect("Failed to parse");
+            status = sub["status"].as_str().unwrap_or("pending").to_string();
+        }
+        attempts += 1;
+    }
+
+    println!("Pthread submission status: {}", status);
+    // If AC => allowed. If RE => banned. 
+    // We expect Runtime Error now that we removed the extra process allowance.
+    assert!(status == "Runtime Error" || status == "System Error", 
+        "Pthreads should be banned (RE or SE). Status: {}", status);
+}
+
+#[tokio::test]
+async fn test_submission_exec() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    login_admin(&client).await;
+    let serial_number = create_temp_problem(&client).await;
+    
+    // Attempt to exec ls directly (replaces process, so no fork needed)
+    let cpp_code = r#"
+#include <unistd.h>
+#include <iostream>
+
+int main() {
+    execl("/bin/ls", "ls", "/", NULL);
+    // If execl returns, it failed.
+    return 1; // Return 1 => RE
+}
+"#;
+
+    // Submit
+    let submit_response = client
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": serial_number,
+            "language": "g++ c++17",
+            "userSolution": [{
+                "filename": "main.cpp",
+                "content": cpp_code
+            }]
+        }))
+        .send()
+        .await
+        .expect("Failed to submit");
+    
+    assert_eq!(submit_response.status(), StatusCode::CREATED);
+    let submission: Value = submit_response.json().await.expect("Failed to parse");
+    let submission_id = submission["serialNumber"].as_i64().expect("serialNumber missing");
+
+    // Poll for result
+    let mut status = String::from("pending");
+    let mut attempts = 0;
+    while (status == "pending" || status == "in queue") && attempts < 30 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        let resp = client
+            .get(&format!("http://localhost:8787/api/submission/{}", submission_id))
+            .send()
+            .await
+            .expect("Failed to get submission");
+        let sub: Value = resp.json().await.expect("Failed to parse");
+        status = sub["status"].as_str().unwrap_or("pending").to_string();
+        attempts += 1;
+    }
+
+    println!("Exec submission status: {}", status);
+    // We want execl to FAIL (return 1). So we want RE.
+    // If it succeeds, it runs ls, which exits 0, resulting in WA (output mismatch) or AC.
+    // So if status is WA or AC, we failed to restrict.
+    assert!(status == "Runtime Error" || status == "System Error", 
+        "System execution should be restricted (Status: {})", status);
+}
