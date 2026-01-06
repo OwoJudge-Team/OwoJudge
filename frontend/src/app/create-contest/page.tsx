@@ -7,6 +7,7 @@ import Modal from "@/components/Modal";
 import { useState, useRef, useEffect } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { LuLoaderCircle } from "react-icons/lu";
+import DateTimePicker from '@/components/DateTimePicker';
 
 interface ProblemProps {
   serialNumber: number;
@@ -32,8 +33,6 @@ const CreateContestPage = () => {
   const [modalMessage, setModalMessage] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const startDateRef = useRef<HTMLInputElement>(null);
-  const deadlineRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
@@ -57,7 +56,6 @@ const CreateContestPage = () => {
       try {
         const res = await apiGet("/api/problems");
         const data = await res.json();
-        console.log(data);
         setProblems(data);
       } catch (error) {
         console.error("Failed to fetch problems:", error);
@@ -83,8 +81,8 @@ const CreateContestPage = () => {
             score: problem ? (problem.fullScore ?? 0) : 0,
           };
         }),
-        startTime: new Date(startTime).toISOString(),
-        endTime: new Date(deadline).toISOString(),
+        startTime: startTime,
+        endTime: deadline,
       };
 
       const res = await apiPost("/api/contests", formData, {
@@ -217,36 +215,26 @@ const CreateContestPage = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
-            <label htmlFor="startTime" className="mb-2 block text-lg font-semibold text-slate-300">
-              Start Time
-            </label>
-            <input
-              id="startTime"
-              ref={startDateRef}
-              onClick={() => startDateRef.current?.showPicker()}
-              type="datetime-local"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-500 hover:cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-              required
-            />
-          </div>
+          <div className="flex flex-row w-full gap-6 shrink-0">
+            <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm w-full">
+              <label htmlFor="startTime" className="mb-2 block text-lg font-semibold text-slate-300">
+                Start Time
+              </label>
+              <DateTimePicker
+                value={startTime}
+                onChange={(value: string) => setStartTime(value)}
+              />
+            </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
-            <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
-              Deadline
-            </label>
-            <input
-              id="deadline"
-              ref={deadlineRef}
-              onClick={() => deadlineRef.current?.showPicker()}
-              type="datetime-local"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-500 hover:cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-              required
-            />
+            <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm w-full">
+              <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
+                Deadline
+              </label>
+              <DateTimePicker
+                value={deadline}
+                onChange={(value: string) => setDeadline(value)}
+              />
+            </div>
           </div>
 
           <div className="flex gap-3">
