@@ -35,7 +35,7 @@ const { mockProblem, mockUser, mockSubmission, mockContest } = vi.hoisted(() => 
         displayName: 'Test User',
         quotaUsage: new Map(),
         save: vi.fn(),
-        isAdmin: false,
+        role: 'student',
         rating: 1500,
         solvedProblem: 10,
         solvedProblems: [1, 2],
@@ -100,6 +100,11 @@ vi.mock('../mongoose/schemas/users', () => ({
             where: vi.fn().mockReturnThis(),
             equals: vi.fn().mockReturnThis()
         })
+    },
+    UserRole: {
+        Student: 'student',
+        TA: 'ta',
+        JudgeAdmin: 'judgeAdmin'
     }
 }));
 

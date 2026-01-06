@@ -76,6 +76,12 @@ vi.mock('../routes/problems', async (importOriginal) => {
         res.status(400).send('No file uploaded');
         return;
       }
+
+      if (!req.user || req.user.role !== 'judgeAdmin' && req.user.role !== 'ta') {
+        res.status(403).send('Admin access required');
+        return;
+      }
+
       // Always return 200 for our test
       res.status(200).send('File uploaded and extracted successfully');
     }),
@@ -87,7 +93,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
 
-      if (!req.user || !req.user.isAdmin) {
+      if (!req.user || req.user.role !== 'judgeAdmin') {
         res.status(403).send('Admin access required');
         return;
       }
@@ -106,7 +112,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
 
-      if (!req.user || !req.user.isAdmin) {
+      if (!req.user || req.user.role !== 'judgeAdmin') {
         res.status(403).send('Admin access required');
         return;
       }
@@ -129,7 +135,7 @@ vi.mock('../routes/problems', async (importOriginal) => {
         return;
       }
 
-      if (!req.user || !req.user.isAdmin) {
+      if (!req.user || req.user.role !== 'judgeAdmin') {
         res.status(403).send('Admin access required');
         return;
       }
@@ -310,7 +316,7 @@ describe('problem deletion', () => {
   it('should delete a problem successfully', async () => {
     const request = {
       params: { serialNumber: '0' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       isAuthenticated: () => true
     } as unknown as IRequest;
 
@@ -328,7 +334,7 @@ describe('problem deletion', () => {
   it('should return 404 when trying to delete a non-existent problem', async () => {
     const request = {
       params: { serialNumber: '999' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       isAuthenticated: () => true
     } as unknown as IRequest;
 
@@ -349,7 +355,7 @@ describe('problem deletion', () => {
 
     const request = {
       params: {},
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       isAuthenticated: () => true
     } as unknown as IRequest;
 
@@ -371,7 +377,7 @@ describe('problem update', () => {
 
     const request = {
       params: { serialNumber: '0' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       body: {
         title: 'Updated Test Problem',
         timeLimit: 2000,
@@ -396,7 +402,7 @@ describe('problem update', () => {
 
     const request = {
       params: { serialNumber: '999' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       body: {
         title: 'This Should Fail'
       },
@@ -419,7 +425,7 @@ describe('problem update', () => {
 
     const request = {
       params: { serialNumber: '0' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
         originalname: 'updated-test-problem.tar.gz'
@@ -442,7 +448,7 @@ describe('problem update', () => {
 
     const request = {
       params: { serialNumber: '0' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       file: undefined,
       isAuthenticated: () => true
     } as unknown as IRequest;
@@ -462,7 +468,7 @@ describe('problem update', () => {
 
     const request = {
       params: { serialNumber: '999' },
-      user: { isAdmin: true },
+      user: { role: 'judgeAdmin' },
       file: {
         path: 'uploads/updated-test-problem.tar.gz',
         originalname: 'updated-test-problem.tar.gz'

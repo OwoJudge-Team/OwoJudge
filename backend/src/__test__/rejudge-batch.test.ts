@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IRequest } from '../utils/request-interface';
 import { Response } from 'express';
 import { SubmissionStatus } from '../utils/submission-status';
+import { UserRole } from '../mongoose/schemas/users';
 
 // Mock dependencies
 const mockSubmitUserSubmission = vi.fn();
@@ -50,7 +51,7 @@ describe('Batch Rejudge API', () => {
         beforeEach(() => {
             mockRequest = {
                 body: { serialNumbers: [100, 101] },
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 isAuthenticated: () => true
             };
         });
@@ -99,7 +100,7 @@ describe('Batch Rejudge API', () => {
         beforeEach(() => {
             mockRequest = {
                 body: { serialNumbers: [1, 2] },
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 isAuthenticated: () => true
             };
         });

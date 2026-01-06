@@ -81,7 +81,7 @@ async function createMockUsers() {
           username: studentId,
           displayName: studentId,
           password,
-          isAdmin: false
+          role: 'student'
         };
 
         const result = await createUser(userData, cookie);

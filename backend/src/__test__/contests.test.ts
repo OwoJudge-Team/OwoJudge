@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Response } from 'express';
 import { IRequest } from '../utils/request-interface';
 import { SubmissionStatus } from '../utils/submission-status';
+import { UserRole } from '../mongoose/schemas/users';
 
 // Use vi.hoisted to properly hoist mock function declarations
 const {
@@ -165,7 +166,27 @@ describe('Contest Routes', () => {
             mockContestSave.mockResolvedValue(savedContest);
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
+                body: {
+                    title: 'New Contest',
+                    description: 'Description',
+                    startTime: new Date(),
+                    endTime: new Date(),
+                    problems: []
+                }
+            };
+
+            await createContest(mockRequest as IRequest, mockResponse);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(201);
+        });
+
+        it('should create contest when TA', async () => {
+            const savedContest = createMockContest();
+            mockContestSave.mockResolvedValue(savedContest);
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { role: UserRole.TA } as any,
                 body: {
                     title: 'New Contest',
                     description: 'Description',
@@ -186,7 +207,21 @@ describe('Contest Routes', () => {
             mockContestFindByIdAndUpdate.mockResolvedValue(createMockContest({ title: 'Updated' }));
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
+                params: { id: 'contest1' },
+                body: { title: 'Updated' }
+            };
+
+            await updateContest(mockRequest as IRequest, mockResponse);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(200);
+        });
+
+        it('should update contest when TA', async () => {
+            mockContestFindByIdAndUpdate.mockResolvedValue(createMockContest({ title: 'Updated' }));
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { role: UserRole.TA } as any,
                 params: { id: 'contest1' },
                 body: { title: 'Updated' }
             };
@@ -199,7 +234,7 @@ describe('Contest Routes', () => {
         it('should return 400 if no ID provided', async () => {
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: {},
                 body: {}
             };
@@ -213,7 +248,7 @@ describe('Contest Routes', () => {
             mockContestFindByIdAndUpdate.mockResolvedValue(null);
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: { id: 'nonexistent' },
                 body: { title: 'Updated' }
             };
@@ -229,7 +264,7 @@ describe('Contest Routes', () => {
             mockContestFindByIdAndDelete.mockResolvedValue(createMockContest());
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: { id: 'contest1' }
             };
 
@@ -243,7 +278,7 @@ describe('Contest Routes', () => {
             mockContestFindByIdAndDelete.mockResolvedValue(null);
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: { id: 'nonexistent' }
             };
 
@@ -298,7 +333,7 @@ describe('Contest Routes', () => {
         it('should return 400 if no ID provided', async () => {
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: {}
             };
 
@@ -311,7 +346,7 @@ describe('Contest Routes', () => {
             mockContestFindById.mockResolvedValue(null);
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: { id: 'nonexistent' }
             };
 
@@ -345,7 +380,7 @@ describe('Contest Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 params: { id: 'contest1' }
             };
 

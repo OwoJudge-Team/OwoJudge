@@ -4,6 +4,7 @@ import { Response } from 'express';
 import { createSubmission } from '../routes/submission';
 import { getProblems, getProblemByID } from '../routes/problems';
 import { ProblemStatus } from '../mongoose/schemas/problems';
+import { UserRole } from '../mongoose/schemas/users';
 
 vi.mock('fs', () => ({
     existsSync: vi.fn(() => true),
@@ -33,7 +34,7 @@ const { mockProblem, mockUser, mockSubmission } = vi.hoisted(() => {
         displayName: 'Test User',
         quotaUsage: new Map(),
         save: vi.fn(),
-        isAdmin: false
+        role: 'student'
     };
 
     const mockSubmission = {
@@ -61,6 +62,11 @@ vi.mock('../mongoose/schemas/problems', () => ({
 vi.mock('../mongoose/schemas/users', () => ({
     User: {
         findOne: vi.fn().mockResolvedValue(mockUser)
+    },
+    UserRole: {
+        Student: 'student',
+        TA: 'ta',
+        JudgeAdmin: 'judgeAdmin'
     }
 }));
 

@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { IRequest } from '../utils/request-interface';
 import { getAllContests, getContestByID } from '../routes/contests';
 import { getProblems, getProblemByID } from '../routes/problems';
+import { UserRole } from '../mongoose/schemas/users';
 
 // Hoist mocks
 const {
@@ -66,24 +67,24 @@ describe('Visibility Tests', () => {
   });
 
   describe('Contests', () => {
-    it('should filter unreleased contests for non-admin users', async () => {
-      mockRequest = { user: { isAdmin: false } as any };
+    it('should filter unreleased contests for non-privileged users', async () => {
+      mockRequest = { user: { role: UserRole.Student } as any };
       await getAllContests(mockRequest as IRequest, mockResponse as Response);
       
       expect(mockContestFind).toHaveBeenCalledWith({ released: true });
     });
 
     it('should not filter contests for admin users', async () => {
-        mockRequest = { user: { isAdmin: true } as any };
+        mockRequest = { user: { role: UserRole.JudgeAdmin } as any };
         await getAllContests(mockRequest as IRequest, mockResponse as Response);
         
         expect(mockContestFind).toHaveBeenCalledWith({});
     });
 
-    it('should block access to unreleased contest for non-admin', async () => {
+    it('should block access to unreleased contest for non-privileged', async () => {
         mockRequest = { 
             params: { id: '123' },
-            user: { isAdmin: false } as any 
+            user: { role: UserRole.Student } as any 
         };
         
         const mockContest = { released: false, populate: vi.fn() };
@@ -99,7 +100,23 @@ describe('Visibility Tests', () => {
     it('should allow access to unreleased contest for admin', async () => {
         mockRequest = { 
             params: { id: '123' },
-            user: { isAdmin: true } as any 
+            user: { role: UserRole.JudgeAdmin } as any 
+        };
+        
+        const mockContest = { released: false };
+        mockContestFindById.mockReturnValue({
+            populate: vi.fn().mockResolvedValue(mockContest)
+        });
+
+        await getContestByID(mockRequest as IRequest, mockResponse as Response);
+        expect(mockResponse.status).toHaveBeenCalledWith(200);
+        expect(mockResponse.send).toHaveBeenCalledWith(mockContest);
+    });
+
+    it('should allow access to unreleased contest for TA', async () => {
+        mockRequest = { 
+            params: { id: '123' },
+            user: { role: UserRole.TA } as any 
         };
         
         const mockContest = { released: false };
@@ -114,24 +131,24 @@ describe('Visibility Tests', () => {
   });
 
   describe('Problems', () => {
-    it('should filter unreleased problems for non-admin users', async () => {
-        mockRequest = { user: { isAdmin: false } as any };
+    it('should filter unreleased problems for non-privileged users', async () => {
+        mockRequest = { user: { role: UserRole.Student } as any };
         await getProblems(mockRequest as IRequest, mockResponse as Response);
         
         expect(mockProblemFind).toHaveBeenCalledWith({ released: true });
     });
 
     it('should not filter problems for admin users', async () => {
-        mockRequest = { user: { isAdmin: true } as any };
+        mockRequest = { user: { role: UserRole.JudgeAdmin } as any };
         await getProblems(mockRequest as IRequest, mockResponse as Response);
         
         expect(mockProblemFind).toHaveBeenCalledWith({});
     });
 
-    it('should block access to unreleased problem for non-admin', async () => {
+    it('should block access to unreleased problem for non-privileged', async () => {
         mockRequest = { 
             params: { serialNumber: '1' },
-            user: { isAdmin: false } as any 
+            user: { role: UserRole.Student } as any 
         };
         
         const mockProblem = { released: false };
@@ -144,7 +161,7 @@ describe('Visibility Tests', () => {
     it('should allow access to unreleased problem for admin', async () => {
         mockRequest = { 
             params: { serialNumber: '1' },
-            user: { isAdmin: true } as any 
+            user: { role: UserRole.JudgeAdmin } as any 
         };
         
         const mockProblem = { released: false, toObject: () => ({...mockProblem}) };
@@ -163,6 +180,24 @@ describe('Visibility Tests', () => {
         // So for the "allow access" test, it will proceed to read files and likely crash/fail/log error
         // BUT we can verify that sendStatus(404) was NOT called.
         
+        try {
+            await getProblemByID(mockRequest as IRequest, mockResponse as Response);
+        } catch (e) {
+            // It might fail on fs operations, which is expected since we didn't mock fs
+        }
+        
+        expect(mockResponse.sendStatus).not.toHaveBeenCalledWith(404);
+    });
+
+    it('should allow access to unreleased problem for TA', async () => {
+        mockRequest = { 
+            params: { serialNumber: '1' },
+            user: { role: UserRole.TA } as any 
+        };
+        
+        const mockProblem = { released: false, toObject: () => ({...mockProblem}) };
+        mockProblemFindOne.mockResolvedValue(mockProblem);
+
         try {
             await getProblemByID(mockRequest as IRequest, mockResponse as Response);
         } catch (e) {
