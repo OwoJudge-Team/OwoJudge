@@ -100,22 +100,37 @@ async fn create_temp_problem(client: &Client) -> i64 {
         panic!("Failed to create problem: {}", text);
     }
     
-    // Fetch the problem to get serialNumber
-    let response = client
-        .get("http://localhost:8787/api/problems")
-        .send()
-        .await
-        .expect("Failed to get problems");
-    
-    let problems: Value = response.json().await.expect("Failed to parse JSON");
-    let problems_array = problems.as_array().expect("Expected array of problems");
-    
-    // Find the problem we just created by title (which is in problem.json inside tarball)
-    // The title in tps-example/problem.json is "TPS Example"
-    // Since we might have multiple, we take the last one which should be ours due to auto-increment
-    let problem = problems_array.last().expect("No problems found");
-    
-    problem["serialNumber"].as_i64().expect("serialNumber should be an integer")
+    let problem: Value = response.json().await.expect("Failed to parse created problem JSON");
+    let serial_number = problem["serialNumber"].as_i64().expect("serialNumber should be an integer");
+
+    // Poll for status == "ready"
+    let mut attempts = 0;
+    loop {
+        let response = client
+            .get(&format!("http://localhost:8787/api/problems/{}", serial_number))
+            .send()
+            .await
+            .expect("Failed to get problem");
+        
+        let problem: Value = response.json().await.expect("Failed to parse problem JSON");
+        if problem["status"] == "ready" {
+            break;
+        }
+        if problem["status"] == "error" {
+            panic!("Problem creation failed (status: error)");
+        }
+        
+        attempts += 1;
+        if attempts % 10 == 0 {
+            println!("Waiting for problem to be ready... attempt {}", attempts);
+        }
+        if attempts > 120 { // 60 seconds timeout
+            panic!("Problem creation timed out (status not ready)");
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    }
+
+    serial_number
 }
 
 // --- Tests ---
@@ -377,6 +392,148 @@ pub async fn random_contest_api_calls(count: usize) {
     println!("Completed {} contest requests in {:.3} seconds", count, duration.as_secs_f64());
     println!("Successes: {}", successes);
     println!("Throughput: {:.2} requests/second", count as f64 / duration.as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_contest_standings_logic() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    // 1. Login Admin
+    let auth_response = client
+        .post("http://localhost:8787/api/auth")
+        .json(&json!({
+            "username": "admin",
+            "password": "adminpassword"
+        }))
+        .send()
+        .await
+        .expect("Failed to login");
+    assert_eq!(auth_response.status(), StatusCode::CREATED);
+
+    // 2. Create Problem
+    let problem_serial = create_temp_problem(&client).await;
+    
+    // 3. Create active contest
+    let start_time = chrono::Utc::now() - chrono::Duration::minutes(5);
+    let end_time = chrono::Utc::now() + chrono::Duration::hours(2);
+
+    let contest_data = json!({
+        "title": "Standings Logic Test",
+        "description": "Testing sorting",
+        "startTime": start_time.to_rfc3339(),
+        "endTime": end_time.to_rfc3339(),
+        "problems": [
+            {
+                "serialNumber": problem_serial,
+                "score": 100
+            }
+        ],
+        "visibility": "public"
+    });
+
+    let res = client.post("http://localhost:8787/api/contests")
+        .json(&contest_data)
+        .send()
+        .await
+        .expect("Failed to create contest");
+    assert_eq!(res.status(), StatusCode::CREATED);
+    
+    let created_contest: Value = res.json().await.unwrap();
+    let contest_id = created_contest["_id"].as_str().unwrap().to_string();
+
+    // 4. Create User1 (Efficient)
+    let user1 = TempUser::new("standing_user1", "password123", &client).await;
+    let client1 = ClientBuilder::new().cookie_store(true).build().unwrap();
+     client1.post("http://localhost:8787/api/auth")
+        .json(&json!({ "username": user1.username, "password": user1.password }))
+        .send().await.unwrap();
+
+    // 5. Create User2 (Penalty)
+    let user2 = TempUser::new("standing_user2", "password123", &client).await;
+    let client2 = ClientBuilder::new().cookie_store(true).build().unwrap();
+     client2.post("http://localhost:8787/api/auth")
+        .json(&json!({ "username": user2.username, "password": user2.password }))
+        .send().await.unwrap();
+
+    // 6. User1 submits CE (Count 5)
+    // We use CEs because execution environment might be flaky with ACs in this test setup
+    let code_ce = "int main() { return 0 "; // Missing brace
+    let res = client1.post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": problem_serial,
+            "language": "gcc c17", 
+            "userSolution": [{ "filename": "main.c", "content": code_ce }]
+        }))
+        .send().await.unwrap();
+    if res.status() != StatusCode::CREATED {
+        println!("User1 Submission Failed: {:?}", res.text().await.unwrap_or_default());
+        panic!("User1 Submission failed");
+    }
+    
+    // Wait for judging
+    tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
+
+    // 7. User2 submits CE (Count 5)
+    let res = client2.post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": problem_serial,
+            "language": "gcc c17", 
+            "userSolution": [{ "filename": "main.c", "content": code_ce }]
+        }))
+        .send().await.unwrap();
+    if res.status() != StatusCode::CREATED {
+        println!("User2 CE 1 Failed: {:?}", res.text().await.unwrap_or_default());
+        panic!("User2 CE 1 failed");
+    }
+    
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+    // 8. User2 submits CE again (Count 5 + 5 = 10)
+    let res = client2.post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": problem_serial,
+            "language": "gcc c17", 
+            "userSolution": [{ "filename": "main.c", "content": code_ce }]
+        }))
+        .send().await.unwrap();
+    if res.status() != StatusCode::CREATED {
+         println!("User2 CE 2 Failed: {:?}", res.text().await.unwrap_or_default());
+        panic!("User2 CE 2 failed");
+    }
+    
+    tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
+
+    // 9. Fetch Standings
+    let res = client.get(&format!("http://localhost:8787/api/contests/{}/standings", contest_id))
+        .send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    
+    let standings: Value = res.json().await.unwrap();
+    let rows = standings.as_array().expect("Standings should be array");
+    
+    // Find our users
+    let relevant_rows: Vec<&Value> = rows.iter().filter(|r| {
+        let u = r["username"].as_str().unwrap();
+        u == user1.username || u == user2.username
+    }).collect();
+
+    assert_eq!(relevant_rows.len(), 2, "Both users should be in standings");
+    
+    // Check sorting: user1 should be first (5 vs 10)
+    let first = relevant_rows[0];
+    let second = relevant_rows[1];
+
+    println!("User1 Stats: {:?}", first);
+    println!("User2 Stats: {:?}", second);
+
+    assert_eq!(first["username"], user1.username, "User1 should be first (5 < 10)");
+    assert_eq!(first["submissionCount"], 5);
+    
+    assert_eq!(second["username"], user2.username, "User2 should be second");
+    assert_eq!(second["submissionCount"], 10);
 }
 
 
