@@ -91,6 +91,7 @@ const createMockContest = (overrides = {}) => ({
     startTime: new Date('2025-01-01T00:00:00Z'),
     endTime: new Date('2025-01-01T05:00:00Z'),
     problems: [{ serialNumber: 1, score: 100 }],
+    released: true,
     standings: [],
     save: vi.fn().mockResolvedValue(true),
     markModified: vi.fn(),

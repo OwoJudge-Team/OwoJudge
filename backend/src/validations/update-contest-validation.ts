@@ -33,6 +33,13 @@ export const updateContestValidation: Schema = {
     toDate: true,
     errorMessage: 'End time must be a valid date'
   },
+  released: {
+    in: ['body'],
+    optional: true,
+    isBoolean: true,
+    toBoolean: true,
+    errorMessage: 'Released must be a boolean'
+  },
   problems: {
     in: ['body'],
     optional: true,

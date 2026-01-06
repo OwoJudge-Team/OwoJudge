@@ -23,6 +23,7 @@ const { mockProblem, mockUser, mockSubmission } = vi.hoisted(() => {
         title: 'Test Problem',
         status: ProblemStatus.Ready,
         dailyQuota: 3,
+        released: true,
         toObject: function () { return { ...this }; }
     };
 

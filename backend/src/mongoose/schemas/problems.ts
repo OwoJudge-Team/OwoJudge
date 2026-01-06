@@ -29,6 +29,7 @@ interface IProblem extends Document {
   processes: number;
   fullScore: number;
   dailyQuota?: number;
+  released: boolean;
   status: ProblemStatus;
   scorePolicy: ScorePolicy;
   testcase: ITestcase[];
@@ -60,6 +61,7 @@ const problemSchema = new Schema<IProblem>({
   processes: { type: Number, required: true, default: 1 },
   fullScore: { type: Number, required: true },
   dailyQuota: { type: Number },
+  released: { type: Boolean, default: false },
   status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   testcase: [

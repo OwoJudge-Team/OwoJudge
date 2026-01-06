@@ -86,12 +86,14 @@ const upload = multer({
 
 const getProblems = async (request: IRequest, response: Response) => {
   try {
-    const problems: IProblem[] = await Problem.find()
-      .select('id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota')
+    const user = request.user as IUser | undefined;
+    const query = (user && user.isAdmin) ? {} : { released: true };
+
+    const problems: IProblem[] = await Problem.find(query)
+      .select('id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released')
       .sort({ serialNumber: -1 });
 
     // Calculate remaining daily quota for the logged-in user
-    const user = request.user as IUser;
     if (user && user.quotaUsage) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -140,6 +142,12 @@ const getProblemByID = async (request: IRequest, response: Response) => {
   try {
     const problem: IProblem | null = await Problem.findOne({ serialNumber });
     if (!problem) {
+      response.sendStatus(404);
+      return;
+    }
+
+    const user = request.user as IUser | undefined;
+    if(!problem.released && (!user || !user.isAdmin)){
       response.sendStatus(404);
       return;
     }
@@ -753,6 +761,18 @@ const generateTestcase = async (request: IRequest, response: Response) => {
     return;
   }
 
+  try {
+    const problem = await Problem.findOne({ serialNumber });
+    if (!problem || (!problem.released && !user.isAdmin)) {
+      response.sendStatus(404);
+      return;
+    }
+  } catch(error) {
+    console.log(error);
+    response.sendStatus(500);
+    return;
+  }
+
   const cacheKey = `${serialNumber}-${testcaseName}`;
   const userID = user.id.toString();
   const testcaseSetPath = path.join(generatedTestcasesPath, serialNumber.toString(), testcaseName);
@@ -815,6 +835,12 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
   try {
     const problem: IProblem | null = await Problem.findOne({ serialNumber });
     if (!problem) {
+      response.sendStatus(404);
+      return;
+    }
+
+    const user = request.user as IUser | undefined;
+    if(!problem.released && (!user || !user.isAdmin)){
       response.sendStatus(404);
       return;
     }

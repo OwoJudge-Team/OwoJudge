@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { validationResult, checkSchema } from 'express-validator';
 import { Contest, IContest, UserStanding } from '../mongoose/schemas/contests';
+import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import { Submission } from '../mongoose/schemas/submission';
 import { recalculateContestStandings } from '../utils/standing-utils';
@@ -12,7 +13,9 @@ const contestsRouter = Router();
 
 const getAllContests = async (request: IRequest, response: Response) => {
   try {
-    const contests: IContest[] = await Contest.find().sort({ _id: -1 });
+    const user = request.user as IUser | undefined;
+    const query = (user && user.isAdmin) ? {} : { released: true };
+    const contests: IContest[] = await Contest.find(query).sort({ _id: -1 });
     response.status(200).send(contests);
   } catch (error) {
     console.log(error);
@@ -32,6 +35,13 @@ const getContestByID = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
+
+    const user = request.user as IUser | undefined;
+    if (!contest.released && (!user || !user.isAdmin)) {
+      response.sendStatus(404);
+      return;
+    }
+
     response.status(200).send(contest);
   } catch (error) {
     console.log(error);
@@ -45,13 +55,14 @@ const createContest = async (request: IRequest, response: Response) => {
     response.status(400).send(result.array());
     return;
   }
-  const { title, description, startTime, endTime, problems } = request.body;
+  const { title, description, startTime, endTime, problems, released } = request.body;
   const newContest = new Contest({
     title,
     description,
     startTime,
     endTime,
-    problems
+    problems,
+    released: released ?? false
   });
   try {
     const savedContest: IContest = await newContest.save();
