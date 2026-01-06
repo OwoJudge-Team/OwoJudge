@@ -1,4 +1,5 @@
 import { parentPort, workerData } from 'worker_threads';
+import { updateContestStanding } from '../utils/standing-utils';
 import { Submission, ISubmission, IGroupResult } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
 import { User } from '../mongoose/schemas/users';
@@ -609,6 +610,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           problem.submissionDetail.compilationError += 1;
           problem.submissionDetail.submitted += 1;
           await problem.save();
+          await updateContestStanding(submission);
           return;
         }
         isCompiledLanguage = true;
@@ -677,6 +679,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           await problem.save();
           break;
       }
+      await updateContestStanding(submission);
     } catch (error) {
       console.error('Error during worker execution:', error);
       submission.status = SubmissionStatus.SE;
@@ -685,6 +688,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       // Update submission statistics for system error
       problem.submissionDetail.submitted += 1;
       await problem.save();
+      await updateContestStanding(submission);
     } finally {
       // Clean up work directory
       fs.rmSync(workDir, { recursive: true, force: true });
