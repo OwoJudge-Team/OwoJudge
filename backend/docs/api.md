@@ -84,7 +84,7 @@ Retrieves a specific user by their username.
       "_id": "68fb6d6e6deaffa916ced917",
       "username": "admin",
       "displayName": "Admin Administrator",
-      "isAdmin": true,
+      "role": "judgeAdmin",
       "solvedProblem": 0,
       "solvedProblems": [],
       "rating": 1500
@@ -102,26 +102,26 @@ Creates a new user.
       "username": "newuser",
       "password": "securepassword",
       "displayName": "New User",
-      "isAdmin": false
+      "role": "student"
     }
     ```
 -   **Responses:**
     -   `201 Created`: User created successfully. Returns the user object.
     -   `400 Bad Request`: Invalid user data.
-    -   `401 Unauthorized`: If the requester is not an admin.
+    -   `401 Unauthorized`: If the requester is not a judge admin.
 
 ### `PATCH /api/users/:username`
 
 Updates a user's information.
 
--   **Authentication:** Admin or the user themselves.
+-   **Authentication:** Judge Admin or the user themselves.
 -   **Request Body:** Partial user object.
     ```json
     {
       "username": "newusername",
       "password": "newpassword",
       "displayName": "New Display Name",
-      "isAdmin": true
+      "role": "judgeAdmin"
     }
     ```
 -   **Responses:**
