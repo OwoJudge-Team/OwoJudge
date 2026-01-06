@@ -220,7 +220,7 @@ const runUserSolution = async (
 
     try {
       await box.run(executeCommand, {
-        processes: problemMeta.processes + 1 + (isCompiledLanguage ? 0 : 2),
+        processes: problemMeta.processes + (isCompiledLanguage ? 0 : 2),
         timeLimit: problemMeta.timeLimit,
         wallTimeLimit: problemMeta.timeLimit,
         memoryLimit: problemMeta.memoryLimit * 1024,
