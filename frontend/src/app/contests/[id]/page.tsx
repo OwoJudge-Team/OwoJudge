@@ -17,6 +17,7 @@ import {
   FaUserGroup,
 } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
+import Loading from "@/components/Loading";
 
 export default function ContestPage() {
   const id = useParams().id;
@@ -74,23 +75,7 @@ export default function ContestPage() {
   }, [id, user]);
 
   if (!contest) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-lg text-slate-300">Loading contest...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-lg text-slate-300">Please login to view the contest.</p>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading contest..." />;
   }
 
   return (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
+import Loading from "@/components/Loading";
 import { User } from "@/types/user";
 
 export default function UsersPage() {
@@ -26,13 +27,7 @@ export default function UsersPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background px-8 py-12">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center text-xl text-slate-300">Loading...</div>
-        </div>
-      </div>
-    );
+    return <Loading />;
   }
 
   return (

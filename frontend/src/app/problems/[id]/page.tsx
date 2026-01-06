@@ -4,10 +4,11 @@ import { apiGet, apiDelete } from "@/utils/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
-import { FaClock, FaMemory, FaSpinner } from "react-icons/fa6";
+import { FaClock, FaMemory } from "react-icons/fa6";
 import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
+import Loading from "@/components/Loading";
 
 const SHOW_SUBMIT = false;
 
@@ -60,14 +61,7 @@ export default function ProblemPage() {
   };
 
   if (!data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <FaSpinner className="mb-4 inline-block h-12 w-12 animate-spin text-indigo-500" />
-          <p className="text-lg text-slate-300">Loading problem...</p>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading problem..." />;
   }
 
   return (
@@ -91,7 +85,7 @@ export default function ProblemPage() {
           <div className="flex items-center gap-6 text-slate-400">
             <div className="flex items-center gap-2">
               <FaClock className="text-indigo-400" />
-              <span className="font-medium text-slate-200">{data.timeLimit} ms</span>
+              <span className="font-medium text-slate-200">{data.timeLimit} s</span>
               <span className="text-sm">time limit</span>
             </div>
             <div className="h-1 w-1 rounded-full bg-slate-600" />

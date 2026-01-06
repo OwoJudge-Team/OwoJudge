@@ -6,7 +6,8 @@ import Link from "next/link";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
 import { User } from "@/types/user";
-import { FaTrophy, FaCircleCheck, FaUserShield, FaLock } from "react-icons/fa6";
+import { FaTrophy, FaCircleCheck, FaUserShield } from "react-icons/fa6";
+import Loading from "@/components/Loading";
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -15,18 +16,11 @@ export default function UserDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const userRes = await apiGet(`/api/users/${username}`);
-
-        if (userRes.status === 401) {
-          setIsUnauthorized(true);
-          setLoading(false);
-          return;
-        }
 
         if (!userRes.ok) {
           throw new Error("User not found");
@@ -37,16 +31,7 @@ export default function UserDetailPage() {
         setLoading(false);
       } catch (err) {
         console.error(err);
-        let errorMessage = "An unexpected error occurred while loading the user.";
-        if (err instanceof Error) {
-          if (err.message === "User not found") {
-            errorMessage = "User not found.";
-          } else if (err.name === "TypeError") {
-            errorMessage =
-              "Network error: unable to reach the server. Please check your connection and try again.";
-          }
-        }
-        setError(errorMessage);
+        setError("User not found");
         setLoading(false);
       }
     };
@@ -57,47 +42,7 @@ export default function UserDetailPage() {
   }, [username]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background px-8 py-12">
-        <div className="mx-auto max-w-5xl">
-          <div className="text-center text-xl text-slate-300">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isUnauthorized) {
-    return (
-      <div className="min-h-screen bg-background px-8 py-12">
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-12 text-center shadow-xl">
-            <div className="mb-6 flex justify-center">
-              <div className="rounded-full bg-slate-700 p-6">
-                <FaLock className="h-12 w-12 text-slate-400" />
-              </div>
-            </div>
-            <h1 className="mb-4 text-3xl font-bold text-slate-100">Login Required</h1>
-            <p className="mb-8 text-lg text-slate-400">
-              You must be logged in to view user profiles.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Link
-                href="/login"
-                className="rounded-lg bg-indigo-600 px-6 py-2.5 font-semibold text-white transition hover:bg-indigo-500"
-              >
-                Log In
-              </Link>
-              <Link
-                href="/users"
-                className="rounded-lg bg-slate-700 px-6 py-2.5 font-semibold text-slate-200 transition hover:bg-slate-600"
-              >
-                Back to Users
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading profile..." />;
   }
 
   if (error || !user) {

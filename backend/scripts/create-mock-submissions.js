@@ -140,9 +140,10 @@ async function createMockSubmissions() {
   try {
     console.log(`Creating ${count} mock submissions via API...`);
 
-    // Login as admin to get users and problems
-    console.log('Logging in as admin to fetch users and problems...');
-    const adminCookie = await login('admin', 'aaaaaaaa');
+    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+    console.log(`Logging in as ${ADMIN_USERNAME} to fetch users and problems...`);
+    const adminCookie = await login(ADMIN_USERNAME, ADMIN_PASSWORD);
 
     const users = await getUsers(adminCookie);
     const problems = await getProblems(adminCookie);
