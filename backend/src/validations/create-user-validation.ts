@@ -1,3 +1,5 @@
+import { UserRole } from '../mongoose/schemas/users';
+
 export const createUserValidation = {
   username: {
     isLength: {
@@ -44,11 +46,11 @@ export const createUserValidation = {
       errorMessage: 'Password should be a string'
     }
   },
-  isAdmin: {
-    isBoolean: {
-      errorMessage: 'isAdmin must be a boolean'
-    },
-    toBoolean: true
+  role: {
+    isIn: {
+      options: [Object.values(UserRole)],
+      errorMessage: 'Invalid role'
+    }
   },
   studentId: {
     isString: {

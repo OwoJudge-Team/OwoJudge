@@ -1,10 +1,16 @@
 import mongoose, { ObjectId } from 'mongoose';
 
+export enum UserRole {
+  Student = 'student',
+  TA = 'ta',
+  JudgeAdmin = 'judgeAdmin'
+}
+
 interface IUser extends mongoose.Document {
   username: string;
   displayName: string;
   password: string;
-  isAdmin: boolean;
+  role: UserRole;
   solvedProblem: number;
   solvedProblems: any;
   rating: number;
@@ -30,9 +36,11 @@ const userSchema = new mongoose.Schema<IUser>({
     type: mongoose.Schema.Types.String,
     required: true
   },
-  isAdmin: {
-    type: mongoose.Schema.Types.Boolean,
-    required: true
+  role: {
+    type: mongoose.Schema.Types.String,
+    enum: Object.values(UserRole),
+    required: true,
+    default: UserRole.Student
   },
   solvedProblem: {
     type: mongoose.Schema.Types.Number,

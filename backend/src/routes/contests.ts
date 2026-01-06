@@ -7,14 +7,15 @@ import { Submission } from '../mongoose/schemas/submission';
 import { recalculateContestStandings } from '../utils/standing-utils';
 import { createContestValidation } from '../validations/create-contest-validation';
 import { updateContestValidation } from '../validations/update-contest-validation';
-import { isAdmin, isAuthenticated } from '../middleware/auth';
+import { isJudgeAdmin, isTA, isAuthenticated } from '../middleware/auth';
+import { UserRole } from '../mongoose/schemas/users';
 
 const contestsRouter = Router();
 
 const getAllContests = async (request: IRequest, response: Response) => {
   try {
     const user = request.user as IUser | undefined;
-    const query = (user && user.isAdmin) ? {} : { released: true };
+    const query = (user && (user.role === UserRole.JudgeAdmin || user.role === UserRole.TA)) ? {} : { released: true };
     const contests: IContest[] = await Contest.find(query).sort({ _id: -1 });
     response.status(200).send(contests);
   } catch (error) {
@@ -37,7 +38,7 @@ const getContestByID = async (request: IRequest, response: Response) => {
     }
 
     const user = request.user as IUser | undefined;
-    if (!contest.released && (!user || !user.isAdmin)) {
+    if (!contest.released && (!user || (user.role !== UserRole.JudgeAdmin && user.role !== UserRole.TA))) {
       response.sendStatus(404);
       return;
     }
@@ -166,15 +167,15 @@ const updateStandings = async (request: IRequest, response: Response) => {
 contestsRouter.get('/api/contests', getAllContests);
 contestsRouter.get('/api/contests/:id', getContestByID);
 contestsRouter.get('/api/contests/:id/standings', getStandings);
-contestsRouter.post('/api/contests', isAdmin, checkSchema(createContestValidation), createContest);
+contestsRouter.post('/api/contests', isTA, checkSchema(createContestValidation), createContest);
 contestsRouter.post('/api/contests/:id/standings/update', isAuthenticated, updateStandings);
 contestsRouter.patch(
   '/api/contests/:id',
-  isAdmin,
+  isTA,
   checkSchema(updateContestValidation),
   updateContest
 );
-contestsRouter.delete('/api/contests/:id', isAdmin, deleteContest);
+contestsRouter.delete('/api/contests/:id', isJudgeAdmin, deleteContest);
 
 export default contestsRouter;
 export { getAllContests, getContestByID, createContest, updateContest, deleteContest, getStandings, updateStandings };

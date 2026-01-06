@@ -1,3 +1,5 @@
+import { UserRole } from '../mongoose/schemas/users';
+
 export const updateUserValidation = {
   displayName: {
     isLength: {
@@ -25,11 +27,11 @@ export const updateUserValidation = {
     },
     optional: true
   },
-  isAdmin: {
-    isBoolean: {
-      errorMessage: 'isAdmin must be a boolean'
+  role: {
+    isIn: {
+      options: [Object.values(UserRole)],
+      errorMessage: 'Invalid role'
     },
-    toBoolean: true,
     optional: true
   },
   gitPublicKey: {

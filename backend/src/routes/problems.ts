@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Problem, IProblem, ProblemStatus } from '../mongoose/schemas/problems';
 import { updateProblemValidation } from '../validations/update-problem-validation';
-import { IUser } from '../mongoose/schemas/users';
+import { IUser, UserRole } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import multer from 'multer';
 import { readFileSync } from 'fs';
@@ -17,7 +17,7 @@ import * as path from 'path';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
 import { submitUserSubmission } from '../judger/judger';
-import { isAdmin, isAuthenticated } from '../middleware/auth';
+import { isJudgeAdmin, isTA, isAuthenticated } from '../middleware/auth';
 
 const execAsync = promisify(exec);
 
@@ -87,7 +87,7 @@ const upload = multer({
 const getProblems = async (request: IRequest, response: Response) => {
   try {
     const user = request.user as IUser | undefined;
-    const query = (user && user.isAdmin) ? {} : { released: true };
+    const query = (user && (user.role === UserRole.JudgeAdmin || user.role === UserRole.TA)) ? {} : { released: true };
 
     const problems: IProblem[] = await Problem.find(query)
       .select('id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released')
@@ -147,7 +147,7 @@ const getProblemByID = async (request: IRequest, response: Response) => {
     }
 
     const user = request.user as IUser | undefined;
-    if(!problem.released && (!user || !user.isAdmin)){
+    if(!problem.released && (!user || (user.role !== UserRole.JudgeAdmin && user.role !== UserRole.TA))){
       response.sendStatus(404);
       return;
     }
@@ -459,8 +459,8 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
 
 const deleteProblem = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
-  if (!request.isAuthenticated() || !request.user || !user.isAdmin) {
-    response.status(401).send('Please login as an admin first');
+  if (!request.isAuthenticated() || !request.user || user.role !== UserRole.JudgeAdmin) {
+    response.status(401).send('Please login as a Judge Admin first');
     return;
   }
   const serialNumber = parseInt(request.params.serialNumber);
@@ -763,7 +763,7 @@ const generateTestcase = async (request: IRequest, response: Response) => {
 
   try {
     const problem = await Problem.findOne({ serialNumber });
-    if (!problem || (!problem.released && !user.isAdmin)) {
+    if (!problem || (!problem.released && (user.role !== UserRole.JudgeAdmin && user.role !== UserRole.TA))) {
       response.sendStatus(404);
       return;
     }
@@ -840,7 +840,7 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
     }
 
     const user = request.user as IUser | undefined;
-    if(!problem.released && (!user || !user.isAdmin)){
+    if(!problem.released && (!user || (user.role !== UserRole.JudgeAdmin && user.role !== UserRole.TA))){
       response.sendStatus(404);
       return;
     }
@@ -869,7 +869,7 @@ problemsRouter.get('/api/problems/:serialNumber', isAuthenticated, getProblemByI
 problemsRouter.get('/api/problems/:serialNumber/testcases/:testcaseName', isAuthenticated, generateTestcase);
 problemsRouter.get('/api/problems/:serialNumber/allowed-languages', isAuthenticated, getAllowedLanguages);
 
-problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Response, next) => {
+problemsRouter.post('/api/problems', isTA, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);
@@ -882,10 +882,10 @@ problemsRouter.post('/api/problems', isAdmin, (request: IRequest, response: Resp
   });
 }, createProblem);
 
-problemsRouter.delete('/api/problems/:serialNumber', isAdmin, deleteProblem);
-problemsRouter.patch('/api/problems/:serialNumber', isAdmin, checkSchema(updateProblemValidation), updateProblem);
+problemsRouter.delete('/api/problems/:serialNumber', isJudgeAdmin, deleteProblem);
+problemsRouter.patch('/api/problems/:serialNumber', isTA, checkSchema(updateProblemValidation), updateProblem);
 
-problemsRouter.put('/api/problems/:serialNumber', isAdmin, (request: IRequest, response: Response, next) => {
+problemsRouter.put('/api/problems/:serialNumber', isTA, (request: IRequest, response: Response, next) => {
   upload(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       response.status(400).send(`Multer error: ${err.message}`);

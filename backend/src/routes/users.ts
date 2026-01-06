@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
-import { User, IUser } from '../mongoose/schemas/users';
+import { User, IUser, UserRole } from '../mongoose/schemas/users';
 import { createUserValidation } from '../validations/create-user-validation';
 import { hashString } from '../utils/hash-password';
 import { getUsersValidation } from '../validations/get-user-validation';
 import { updateUserValidation } from '../validations/update-user-validation';
 import { IRequest } from '../utils/request-interface';
 import { giteaService } from '../utils/gitea-service';
-import { isAdmin, isAuthenticated } from '../middleware/auth';
+import { isJudgeAdmin, isAuthenticated } from '../middleware/auth';
 import { usernameParamValidation } from '../validations/username-param-validation';
 
 const usersRouter = Router();
@@ -72,14 +72,14 @@ const createUser = async (request: IRequest, response: Response) => {
     return;
   }
 
-  const { username, password, displayName, isAdmin, studentId } = matchedData(request) as IUser;
+  const { username, password, displayName, role, studentId } = matchedData(request) as IUser;
 
   try {
     // Step 1: Create OwoJudge user first (without Gitea data)
     const newUser = new User({
       username,
       displayName,
-      isAdmin,
+      role: role || UserRole.Student,
       studentId,
       password: hashString(password)
       // giteaId and gitSshUrl will be filled in later
@@ -161,16 +161,16 @@ const updateUser = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
 
   // Authorization: Only admin or self can update
-  if (oldUsername !== user.username && !user.isAdmin) {
+  if (oldUsername !== user.username && user.role !== UserRole.JudgeAdmin) {
     response.status(403).send('Not authorized to update this user');
     return;
   }
 
   const updates = matchedData(request);
 
-  // Only admin can change isAdmin, studentId, giteaId status
-  if (!user.isAdmin) {
-    delete updates.isAdmin;
+  // Only admin can change role, studentId, giteaId status
+  if (user.role !== UserRole.JudgeAdmin) {
+    delete updates.role;
     delete updates.studentId;
   }
 
@@ -232,8 +232,8 @@ const updateUser = async (request: IRequest, response: Response) => {
 
 usersRouter.get('/api/users', checkSchema(getUsersValidation), getAllUsers);
 usersRouter.get('/api/users/:username', isAuthenticated, checkSchema(usernameParamValidation), getUserByUsername);
-usersRouter.post('/api/users', isAdmin, checkSchema(createUserValidation), createUser);
-usersRouter.delete('/api/users/:username', isAdmin, checkSchema(usernameParamValidation), deleteUser);
+usersRouter.post('/api/users', isJudgeAdmin, checkSchema(createUserValidation), createUser);
+usersRouter.delete('/api/users/:username', isJudgeAdmin, checkSchema(usernameParamValidation), deleteUser);
 usersRouter.patch('/api/users/:username', isAuthenticated, checkSchema(usernameParamValidation), checkSchema(updateUserValidation), updateUser);
 
 export default usersRouter;
