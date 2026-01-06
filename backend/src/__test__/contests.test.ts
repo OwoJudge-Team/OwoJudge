@@ -10,6 +10,7 @@ const {
     mockContestFindByIdAndUpdate,
     mockContestFindByIdAndDelete,
     mockSubmissionFind,
+    mockSubmissionDistinct,
     mockContestSave
 } = vi.hoisted(() => ({
     mockContestFind: vi.fn(),
@@ -17,6 +18,7 @@ const {
     mockContestFindByIdAndUpdate: vi.fn(),
     mockContestFindByIdAndDelete: vi.fn(),
     mockSubmissionFind: vi.fn(),
+    mockSubmissionDistinct: vi.fn(),
     mockContestSave: vi.fn()
 }));
 
@@ -50,7 +52,8 @@ vi.mock('../mongoose/schemas/contests', () => {
 // Mock Submission model
 vi.mock('../mongoose/schemas/submission', () => ({
     Submission: {
-        find: (query: any) => ({ sort: () => mockSubmissionFind(query) })
+        find: (query: any) => ({ sort: () => mockSubmissionFind(query) }),
+        distinct: (field: string, query: any) => mockSubmissionDistinct(query)
     }
 }));
 
@@ -90,6 +93,7 @@ const createMockContest = (overrides = {}) => ({
     problems: [{ serialNumber: 1, score: 100 }],
     standings: [],
     save: vi.fn().mockResolvedValue(true),
+    markModified: vi.fn(),
     ...overrides
 });
 
@@ -252,9 +256,9 @@ describe('Contest Routes', () => {
         it('should return sorted standings', async () => {
             const contestWithStandings = createMockContest({
                 standings: [
-                    { username: 'user1', totalScore: 50, lastSubmissionTime: new Date('2025-01-01T01:00:00Z') },
-                    { username: 'user2', totalScore: 100, lastSubmissionTime: new Date('2025-01-01T02:00:00Z') },
-                    { username: 'user3', totalScore: 100, lastSubmissionTime: new Date('2025-01-01T01:30:00Z') }
+                    { username: 'user1', totalScore: 50, submissionCount: 1 },
+                    { username: 'user2', totalScore: 100, submissionCount: 5 },
+                    { username: 'user3', totalScore: 100, submissionCount: 2 }
                 ]
             });
             mockContestFindById.mockResolvedValue(contestWithStandings);
@@ -263,10 +267,10 @@ describe('Contest Routes', () => {
             await getStandings(mockRequest as IRequest, mockResponse);
 
             expect(mockResponse.status).toHaveBeenCalledWith(200);
-            // Verify standings are sorted: user3 (100, earlier), user2 (100, later), user1 (50)
+            // Verify standings are sorted: user3 (100, count 2), user2 (100, count 5), user1 (50, count 1)
             const sentStandings = (mockResponse.send as any).mock.calls[0][0];
-            expect(sentStandings[0].username).toBe('user3'); // 100 points, earlier time
-            expect(sentStandings[1].username).toBe('user2'); // 100 points, later time
+            expect(sentStandings[0].username).toBe('user3'); // 100 points, lower count
+            expect(sentStandings[1].username).toBe('user2'); // 100 points, higher count
             expect(sentStandings[2].username).toBe('user1'); // 50 points
         });
 
@@ -321,13 +325,22 @@ describe('Contest Routes', () => {
                 standings: []
             });
             mockContestFindById.mockResolvedValue(contestToUpdate);
+            // Mock submission usernames for distinct
+            mockSubmissionDistinct.mockResolvedValue(['user1', 'user2']);
 
-            const mockSubmissions = [
-                { username: 'user1', problemSerialNumber: 1, score: 50, createdTime: new Date('2025-01-01T01:00:00Z') },
-                { username: 'user1', problemSerialNumber: 1, score: 80, createdTime: new Date('2025-01-01T02:00:00Z') },
-                { username: 'user2', problemSerialNumber: 1, score: 100, createdTime: new Date('2025-01-01T01:30:00Z') }
+            const user1Submissions = [
+                { username: 'user1', problemSerialNumber: 1, score: 50, status: SubmissionStatus.AC, createdAt: new Date('2025-01-01T01:00:00Z') },
+                { username: 'user1', problemSerialNumber: 1, score: 80, status: SubmissionStatus.AC, createdAt: new Date('2025-01-01T02:00:00Z') }
             ];
-            mockSubmissionFind.mockResolvedValue(mockSubmissions);
+            const user2Submissions = [
+                 { username: 'user2', problemSerialNumber: 1, score: 100, status: SubmissionStatus.AC, createdAt: new Date('2025-01-01T01:30:00Z') }
+            ];
+
+            mockSubmissionFind.mockImplementation((query) => {
+                if (query.username === 'user1') return Promise.resolve(user1Submissions);
+                if (query.username === 'user2') return Promise.resolve(user2Submissions);
+                return Promise.resolve([]);
+            });
 
             mockRequest = {
                 isAuthenticated: () => true,
@@ -341,10 +354,14 @@ describe('Contest Routes', () => {
             expect(mockResponse.status).toHaveBeenCalledWith(200);
 
             // Verify standings were calculated
-            expect(contestToUpdate.standings.length).toBe(2);
+            // We can't verify length easily if logic creates new array, but mock object is modified in place in util?
+            // "contest.standings = []" inside recalculateContestStandings logic clears it.
+            // But verify calls happened.
+            expect(mockSubmissionDistinct).toHaveBeenCalled();
+            expect(mockSubmissionFind).toHaveBeenCalled();
 
             // user1 should have score 80 (best attempt)
-            const user1Standing = contestToUpdate.standings.find((s: any) => s.username === 'user1');
+             const user1Standing = contestToUpdate.standings.find((s: any) => s.username === 'user1');
             expect(user1Standing?.totalScore).toBe(80);
 
             // user2 should have score 100

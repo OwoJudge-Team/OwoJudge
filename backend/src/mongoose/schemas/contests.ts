@@ -9,6 +9,8 @@ interface ProblemScore {
     serialNumber: number;
     score: number;
     lastSubmissionTime?: Date;
+    solved: Boolean;
+    submissionCount?: number;
 }
 
 interface UserStanding {
@@ -17,6 +19,7 @@ interface UserStanding {
     solvedCount: number;
     problemScores: ProblemScore[];
     lastSubmissionTime?: Date;
+    submissionCount?: number;
 }
 
 interface IContest extends Document {
@@ -69,10 +72,12 @@ const contestSchema: Schema = new Schema({
         {
           serialNumber: Schema.Types.Number,
           score: Schema.Types.Number,
-          lastSubmissionTime: Schema.Types.Date
+          lastSubmissionTime: Schema.Types.Date,
+          submissionCount: { type: Schema.Types.Number, default: 0 }
         }
       ],
-      lastSubmissionTime: Schema.Types.Date
+      lastSubmissionTime: Schema.Types.Date,
+      submissionCount: { type: Schema.Types.Number, default: 0 }
     }
   ]
 });

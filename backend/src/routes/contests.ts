@@ -3,6 +3,7 @@ import { validationResult, checkSchema } from 'express-validator';
 import { Contest, IContest, UserStanding } from '../mongoose/schemas/contests';
 import { IRequest } from '../utils/request-interface';
 import { Submission } from '../mongoose/schemas/submission';
+import { recalculateContestStandings } from '../utils/standing-utils';
 import { createContestValidation } from '../validations/create-contest-validation';
 import { updateContestValidation } from '../validations/update-contest-validation';
 import { isAdmin, isAuthenticated } from '../middleware/auth';
@@ -113,16 +114,15 @@ const getStandings = async (request: IRequest, response: Response) => {
       return;
     }
 
-    // Sort standings by totalScore (descending), then by lastSubmissionTime (ascending - earlier is better)
+    // Sort standings by totalScore (descending), then by submissionCount (ascending)
     const sortedStandings = [...contest.standings].sort((a, b) => {
       if (b.totalScore !== a.totalScore) {
         return b.totalScore - a.totalScore;
       }
-      // If scores are equal, earlier submission time is better
-      if (a.lastSubmissionTime && b.lastSubmissionTime) {
-        return a.lastSubmissionTime.getTime() - b.lastSubmissionTime.getTime();
-      }
-      return 0;
+      // If scores are equal, lower submission count (penalty) is better
+      const countA = a.submissionCount || 0;
+      const countB = b.submissionCount || 0;
+      return countA - countB;
     });
 
     response.status(200).send(sortedStandings);
@@ -140,80 +140,14 @@ const updateStandings = async (request: IRequest, response: Response) => {
   }
 
   try {
-    const contest: IContest | null = await Contest.findById(id);
-    if (!contest) {
-      response.sendStatus(404);
-      return;
-    }
-
-    // Get all problem IDs in the contest
-    const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
-    
-    // Find all submissions for these problems within the contest timeframe
-    const submissions = await Submission.find({
-      problemSerialNumber: { $in: problemSerialNumbers },
-      createdAt: {
-        $gte: contest.startTime,
-        $lte: contest.endTime
-      }
-    }).sort({ createdAt: 1 });
-
-    // Build standings from submissions
-    const standingsMap = new Map<string, UserStanding>();
-
-    for (const submission of submissions) {
-      const username = submission.username;
-      const serialNumber = submission.problemSerialNumber;
-      const score = submission.score || 0;
-
-      if (!standingsMap.has(username)) {
-        standingsMap.set(username, {
-          username,
-          totalScore: 0,
-          solvedCount: 0,
-          problemScores: [],
-          lastSubmissionTime: submission.createdAt
-        });
-      }
-
-      const userStanding = standingsMap.get(username)!;
-
-      // Find if this problem already has a score
-      const existingProblemScore = userStanding.problemScores.find(ps => ps.serialNumber === serialNumber);
-      
-      if (existingProblemScore) {
-        // Update if this submission has a better score
-        if (score > existingProblemScore.score) {
-          userStanding.totalScore += (score - existingProblemScore.score);
-          existingProblemScore.score = score;
-          existingProblemScore.lastSubmissionTime = submission.createdAt;
-        }
-      } else {
-        // Add new problem score
-        userStanding.problemScores.push({
-          serialNumber,
-          score,
-          lastSubmissionTime: submission.createdAt
-        });
-        userStanding.totalScore += score;
-      }
-
-      // Update last submission time
-      if (!userStanding.lastSubmissionTime || submission.createdAt > userStanding.lastSubmissionTime) {
-        userStanding.lastSubmissionTime = submission.createdAt;
-      }
-
-      // Count solved problems (score > 0)
-      userStanding.solvedCount = userStanding.problemScores.filter(ps => ps.score > 0).length;
-    }
-
-    // Convert map to array
-    contest.standings = Array.from(standingsMap.values());
-    await contest.save();
-
-    response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
+     const contest = await recalculateContestStandings(id);
+     response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
   } catch (error) {
     console.log(error);
+    if (error instanceof Error && error.message === 'Contest not found') {
+       response.sendStatus(404);
+       return;
+    }
     response.status(500).send(error);
   }
 };
