@@ -66,7 +66,7 @@ const extractProblemInfo = (filename: string): { problemSerialNumber: number; la
 /**
  * Handle Gitea webhook for push events
  */
-const handleGiteaWebhook = async (request: Request, response: Response): Promise<void> => {
+export const handleGiteaWebhook = async (request: Request, response: Response): Promise<void> => {
     // Log incoming webhook request FIRST to confirm it's reaching the handler
     console.log('='.repeat(80));
     console.log('[Webhook] Incoming request to /api/webhook/gitea');
@@ -186,6 +186,38 @@ const handleGiteaWebhook = async (request: Request, response: Response): Promise
                 if (!problem) {
                     console.error(`[Webhook] Problem with serial number ${problemSerialNumber} not found, skipping submission`);
                     continue;
+                }
+
+                // Check daily quota
+                if (problem.dailyQuota && problem.dailyQuota > 0) {
+                    if (!owoUser.quotaUsage) {
+                        owoUser.quotaUsage = new Map();
+                    }
+
+                    const problemID = problem.id.toString();
+                    const usage = owoUser.quotaUsage.get(problemID);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    // Reset quota if it's a new day or no usage record exists
+                    let currentCount = 0;
+                    if (usage && usage.date >= today) {
+                        currentCount = usage.count;
+                    }
+
+                    if (currentCount >= problem.dailyQuota) {
+                        console.log(`[Webhook] Daily quota exceeded for user ${submissionUsername} on problem ${problemSerialNumber}. Skipping.`);
+                        continue;
+                    }
+
+                    // Increment quota usage
+                    owoUser.quotaUsage.set(problemID, { 
+                        count: currentCount + 1, 
+                        date: today 
+                    });
+                    
+                    // Save user quota update
+                    await owoUser.save();
                 }
 
                 console.log(`[Webhook] owoUser found:`, JSON.stringify({
