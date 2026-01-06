@@ -54,10 +54,7 @@ const ProblemPage: React.FC = () => {
                   Score
                 </th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  AC Count
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Status
+                  AC / Tried
                 </th>
               </tr>
             </thead>
@@ -86,13 +83,8 @@ const ProblemPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                      <FaUserGroup /> ?
+                      <FaUserGroup /> ? / ?
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border-[3px] border-dashed border-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
-                      <FaCircleQuestion /> ???
-                    </span>
                   </td>
                 </tr>
               )}
@@ -126,26 +118,8 @@ const ProblemPage: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
                       <FaUserGroup />
-                      {p.submissionDetail.accepted.toLocaleString()}
+                      {p.userDetail.solved} / {p.userDetail.attempted}
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {p.userDetail.solved ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-green-50 shadow-sm">
-                        <FaCircleCheck />
-                        Solved
-                      </span>
-                    ) : p.userDetail.attempted ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-red-50 shadow-sm">
-                        <FaCircleXmark />
-                        {p.userDetail.attempted} {p.userDetail.attempted === 1 ? "Try" : "Tries"}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-600/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-200 shadow-sm">
-                        <FaCircleDot />
-                        Unseen
-                      </span>
-                    )}
                   </td>
                 </tr>
               ))}
