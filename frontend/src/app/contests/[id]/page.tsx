@@ -3,19 +3,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/utils/api";
-// import contests from "@/constants/contests";
 import { Contest, Standing } from "@/types/contests";
 import { formatISOTime } from "@/utils/time";
 import { Problem } from "@/types/problems";
 import { useParams } from "next/navigation";
-import {
-  FaChartPie,
-  FaCircleCheck,
-  FaCircleDot,
-  FaCircleXmark,
-  FaStar,
-  FaUserGroup,
-} from "react-icons/fa6";
+import { FaChartPie, FaStar, FaUserGroup } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import Loading from "@/components/Loading";
 

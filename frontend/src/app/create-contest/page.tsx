@@ -7,7 +7,7 @@ import Modal from "@/components/Modal";
 import { useState, useRef, useEffect } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { LuLoaderCircle } from "react-icons/lu";
-import DateTimePicker from '@/components/DateTimePicker';
+import DateTimePicker from "@/components/DateTimePicker";
 
 interface ProblemProps {
   serialNumber: number;
@@ -215,25 +215,22 @@ const CreateContestPage = () => {
             </div>
           </div>
 
-          <div className="flex flex-row w-full gap-6 shrink-0">
-            <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm w-full">
-              <label htmlFor="startTime" className="mb-2 block text-lg font-semibold text-slate-300">
+          <div className="flex w-full shrink-0 flex-row gap-6">
+            <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
+              <label
+                htmlFor="startTime"
+                className="mb-2 block text-lg font-semibold text-slate-300"
+              >
                 Start Time
               </label>
-              <DateTimePicker
-                value={startTime}
-                onChange={(value: string) => setStartTime(value)}
-              />
+              <DateTimePicker value={startTime} onChange={(value: string) => setStartTime(value)} />
             </div>
 
-            <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm w-full">
+            <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
               <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
                 Deadline
               </label>
-              <DateTimePicker
-                value={deadline}
-                onChange={(value: string) => setDeadline(value)}
-              />
+              <DateTimePicker value={deadline} onChange={(value: string) => setDeadline(value)} />
             </div>
           </div>
 

@@ -1,16 +1,7 @@
 "use client";
 
 import { Problem } from "@/types/problems";
-import {
-  FaChartPie,
-  FaCircleCheck,
-  FaCircleDot,
-  FaCircleXmark,
-  FaStar,
-  FaUserGroup,
-  FaCircleQuestion,
-  FaInfinity,
-} from "react-icons/fa6";
+import { FaChartPie, FaStar, FaUserGroup, FaInfinity } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/utils/api";
