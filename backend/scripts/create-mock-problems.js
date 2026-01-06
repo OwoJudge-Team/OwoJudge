@@ -8,7 +8,7 @@ const FormData = require('form-data');
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'aaaaaaaa';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
 
 // Problem templates with various themes
 const problemTitles = [
@@ -95,6 +95,7 @@ function generateRandomProblem(index) {
     tags,
     problemRelatedTags,
     dailyQuota,
+    released: true,
     createdTime: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)) // Random date in last year
   };
 }

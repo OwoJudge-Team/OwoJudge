@@ -219,38 +219,17 @@ const runUserSolution = async (
 
     const executeCommand = languageSupport[submission.language as keyof typeof languageSupport].executeCommand;
 
-    const runConfig: any = {
-      processes: problemMeta.processes + (isCompiledLanguage ? 0 : 2),
-      timeLimit: problemMeta.timeLimit,
-      wallTimeLimit: problemMeta.timeLimit,
-      memoryLimit: problemMeta.memoryLimit * 1024,
-      metaFile,
-      stdin: path.basename(testcaseInput),
-      stdout: path.basename(userOutputFile),
-      stderr: path.basename(userErrorFile)
-    };
-
-    if (isCompiledLanguage) {
-      runConfig.useBash = false;
-      runConfig.noDefaultDirs = true;
-      runConfig.proc = true;
-      // Only mount necessary libraries, excluding /bin and /usr/bin to prevent exec syscall exploitation
-      runConfig.dirs = [
-        '/lib', 
-        '/usr/lib', 
-        ...(fs.existsSync('/lib64') ? ['/lib64'] : []),
-        ...(fs.existsSync('/usr/lib64') ? ['/usr/lib64'] : []),
-        '/etc',
-        '/dev/null',
-        '/dev/zero',
-        '/dev/full',
-        '/dev/random',
-        '/dev/urandom'
-      ];
-    }
-
     try {
-      await box.run(executeCommand, runConfig, (problemMeta.timeLimit + 1) * 1000);
+      await box.run(executeCommand, {
+        processes: problemMeta.processes + (isCompiledLanguage ? 0 : 2),
+        timeLimit: problemMeta.timeLimit,
+        wallTimeLimit: problemMeta.timeLimit,
+        memoryLimit: problemMeta.memoryLimit * 1024,
+        metaFile,
+        stdin: path.basename(testcaseInput),
+        stdout: path.basename(userOutputFile),
+        stderr: path.basename(userErrorFile)
+      }, (problemMeta.timeLimit + 1) * 1000);
     } catch (error) {
       console.error(`[${workDir}] Execution failed:`, error);
     }
