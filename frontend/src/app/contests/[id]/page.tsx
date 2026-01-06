@@ -78,10 +78,6 @@ export default function ContestPage() {
     return <Loading message="Loading contest..." />;
   }
 
-  if (!user) {
-    return <Loading message="Please login to view the contest." />;
-  }
-
   return (
     <div className="mx-auto max-w-4xl p-6">
       <div className="mb-8 flex items-center justify-between">

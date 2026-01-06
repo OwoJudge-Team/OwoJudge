@@ -105,7 +105,7 @@ const CreateContestPage = () => {
     }
   };
 
-  if (!user || !user.isAdmin) {
+  if (!user?.isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-lg text-slate-300">Access denied. Admins only.</p>

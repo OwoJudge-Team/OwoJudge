@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useEffect, Fragment } from "react";
+import React, { useEffect, Fragment, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { apiGet } from "@/utils/api";
+import { apiGet, apiPost } from "@/utils/api";
 import { Submission, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getStatusColor } from "@/utils/submission-status";
+import { useAuth } from "@/contexts/AuthContext";
+import { FaRotateRight } from "react-icons/fa6";
 
 import Loading from "@/components/Loading";
 
@@ -25,23 +27,45 @@ const LANGUAGE_MAPPING: { [key: string]: string } = {
 
 export default function SubmissionPage() {
   const id = useParams().id;
+  const { user } = useAuth();
 
-  const [submission, setSubmission] = React.useState<Submission | null>(null);
+  const [submission, setSubmission] = useState<Submission | null>(null);
+  const [isRejudging, setIsRejudging] = useState(false);
+
+  const fetchSubmission = useCallback(async () => {
+    try {
+      const res = await apiGet(`/api/submission/${id}`);
+      const data = await res.json();
+      setSubmission(data);
+    } catch (error) {
+      console.error("Failed to fetch submission:", error);
+    }
+  }, [id]);
 
   useEffect(() => {
-    const fetchSubmission = async () => {
-      try {
-        const res = await apiGet(`/api/submission/${id}`);
-        const data = await res.json();
-        console.log(data);
-        setSubmission(data);
-      } catch (error) {
-        console.error("Failed to fetch submission:", error);
-      }
-    };
-
     fetchSubmission();
-  }, [id]);
+  }, [fetchSubmission]);
+
+  const handleRejudge = async () => {
+    if (!confirm("Are you sure you want to rejudge this submission?")) return;
+
+    setIsRejudging(true);
+    try {
+      const res = await apiPost(`/api/rejudge/submission/${id}`);
+      if (res.ok) {
+        await fetchSubmission();
+        alert("Rejudge triggered successfully.");
+      } else {
+        const errorMsg = await res.text();
+        alert(`Failed to trigger rejudge: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Rejudge error:", error);
+      alert("An error occurred while triggering rejudge.");
+    } finally {
+      setIsRejudging(false);
+    }
+  };
 
   if (!submission) {
     return <Loading message="Loading submission..." />;
@@ -52,7 +76,7 @@ export default function SubmissionPage() {
     score,
     problemTitle,
     userHandle,
-    createdAt: createdAt,
+    createdAt,
     time,
     memory,
     results,
@@ -63,7 +87,20 @@ export default function SubmissionPage() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <div className="mb-8 flex items-center justify-between">
-        <div className="text-2xl font-bold text-slate-300">Submission #{id}</div>
+        <div className="flex items-center gap-4">
+          <div className="text-2xl font-bold text-slate-300">Submission #{id}</div>
+          {user?.isAdmin && (
+            <button
+              onClick={handleRejudge}
+              disabled={isRejudging}
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-800"
+              title="Rejudge Submission"
+            >
+              <FaRotateRight className={`${isRejudging ? "animate-spin" : ""}`} />
+              {isRejudging ? "Rejudging..." : "Rejudge"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-8 rounded-lg border border-slate-700 bg-slate-800 shadow-sm">

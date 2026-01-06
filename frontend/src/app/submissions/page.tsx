@@ -105,14 +105,6 @@ const SubmissionPage: React.FC = () => {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-slate-300">Please log in to view submissions.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
@@ -142,7 +134,7 @@ const SubmissionPage: React.FC = () => {
           </div>
 
           {/* Batch Actions */}
-          {user.isAdmin && selectedSubmissions.size > 0 && (
+          {user?.isAdmin && selectedSubmissions.size > 0 && (
             <button
               onClick={handleBatchRejudge}
               disabled={isRejudging}
@@ -194,7 +186,7 @@ const SubmissionPage: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-slate-800/50 text-slate-400">
               <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider">
-                {user.isAdmin && (
+                {user?.isAdmin && (
                   <th className="w-12 px-6 py-4">
                     <div className="flex items-center justify-center">
                       <input
@@ -221,7 +213,7 @@ const SubmissionPage: React.FC = () => {
               {submissions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={user.isAdmin ? 8 : 7}
+                    colSpan={user?.isAdmin ? 8 : 7}
                     className="px-6 py-8 text-center text-slate-500"
                   >
                     No submissions found.
@@ -237,7 +229,7 @@ const SubmissionPage: React.FC = () => {
                         isSelected ? "bg-indigo-500/10" : ""
                       }`}
                     >
-                      {user.isAdmin && (
+                      {user?.isAdmin && (
                         <td className="px-6 py-4 align-middle">
                           <div className="flex items-center justify-center">
                             <input
