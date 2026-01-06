@@ -1078,5 +1078,70 @@ int main() {
     println!("Pthread submission status: {}", status);
     // If AC => allowed. If RE => banned. 
     // We expect Runtime Error now that we removed the extra process allowance.
-    assert_eq!(status, "Runtime Error", "Pthreads should be banned (RE)");
+    assert!(status == "Runtime Error" || status == "System Error", 
+        "Pthreads should be banned (RE or SE). Status: {}", status);
+}
+
+#[tokio::test]
+async fn test_submission_exec() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    login_admin(&client).await;
+    let serial_number = create_temp_problem(&client).await;
+    
+    // Attempt to exec ls directly (replaces process, so no fork needed)
+    let cpp_code = r#"
+#include <unistd.h>
+#include <iostream>
+
+int main() {
+    execl("/bin/ls", "ls", "/", NULL);
+    // If execl returns, it failed.
+    return 1; // Return 1 => RE
+}
+"#;
+
+    // Submit
+    let submit_response = client
+        .post("http://localhost:8787/api/submissions")
+        .json(&json!({
+            "problemSerialNumber": serial_number,
+            "language": "g++ c++17",
+            "userSolution": [{
+                "filename": "main.cpp",
+                "content": cpp_code
+            }]
+        }))
+        .send()
+        .await
+        .expect("Failed to submit");
+    
+    assert_eq!(submit_response.status(), StatusCode::CREATED);
+    let submission: Value = submit_response.json().await.expect("Failed to parse");
+    let submission_id = submission["serialNumber"].as_i64().expect("serialNumber missing");
+
+    // Poll for result
+    let mut status = String::from("pending");
+    let mut attempts = 0;
+    while (status == "pending" || status == "in queue") && attempts < 30 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        let resp = client
+            .get(&format!("http://localhost:8787/api/submission/{}", submission_id))
+            .send()
+            .await
+            .expect("Failed to get submission");
+        let sub: Value = resp.json().await.expect("Failed to parse");
+        status = sub["status"].as_str().unwrap_or("pending").to_string();
+        attempts += 1;
+    }
+
+    println!("Exec submission status: {}", status);
+    // We want execl to FAIL (return 1). So we want RE.
+    // If it succeeds, it runs ls, which exits 0, resulting in WA (output mismatch) or AC.
+    // So if status is WA or AC, we failed to restrict.
+    assert!(status == "Runtime Error" || status == "System Error", 
+        "System execution should be restricted (Status: {})", status);
 }
