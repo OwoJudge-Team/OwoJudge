@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiFetch } from "@/utils/api";
 import { Card, LabeledInput } from "./components";
 import { initialState, settingsReducer, SettingsState } from "./settingsReducer";
+import Loading from "@/components/Loading";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -120,11 +121,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-lg text-slate-300">Loading settings...</p>
-      </div>
-    );
+    return <Loading message="Loading settings..." />;
   }
 
   return (

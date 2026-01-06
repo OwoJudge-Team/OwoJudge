@@ -7,6 +7,7 @@ import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
 import { User } from "@/types/user";
 import { FaTrophy, FaCircleCheck, FaUserShield, FaLock } from "react-icons/fa6";
+import Loading from "@/components/Loading";
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -57,13 +58,7 @@ export default function UserDetailPage() {
   }, [username]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background px-8 py-12">
-        <div className="mx-auto max-w-5xl">
-          <div className="text-center text-xl text-slate-300">Loading...</div>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading profile..." />;
   }
 
   if (isUnauthorized) {

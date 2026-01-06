@@ -4,10 +4,11 @@ import { apiGet, apiDelete } from "@/utils/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
-import { FaClock, FaMemory, FaSpinner } from "react-icons/fa6";
+import { FaClock, FaMemory } from "react-icons/fa6";
 import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
+import Loading from "@/components/Loading";
 
 const SHOW_SUBMIT = false;
 
@@ -60,14 +61,7 @@ export default function ProblemPage() {
   };
 
   if (!data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <FaSpinner className="mb-4 inline-block h-12 w-12 animate-spin text-indigo-500" />
-          <p className="text-lg text-slate-300">Loading problem...</p>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading problem..." />;
   }
 
   return (

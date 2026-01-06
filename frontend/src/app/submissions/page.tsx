@@ -5,14 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Submission, StatusToCode, SubmissionStatus } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
 import { apiGet, apiPost } from "@/utils/api";
-import {
-  FaClock,
-  FaFloppyDisk,
-  FaSpinner,
-  FaRotateRight,
-  FaCircleCheck,
-  FaCircleXmark,
-} from "react-icons/fa6";
+import { FaClock, FaFloppyDisk, FaSpinner, FaRotateRight } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
 import Paginator from "@/components/Paginator";
@@ -278,7 +271,7 @@ const SubmissionPage: React.FC = () => {
                         />
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-middle">
                         {submission.status === SubmissionStatus.PD ||
                         submission.status === SubmissionStatus.QU ? (
                           <div className="flex w-[5ch] items-center justify-center">

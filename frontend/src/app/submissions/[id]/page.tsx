@@ -9,6 +9,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getStatusColor } from "@/utils/submission-status";
 
+import Loading from "@/components/Loading";
+
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
   Python: "python",
@@ -42,14 +44,7 @@ export default function SubmissionPage() {
   }, [id]);
 
   if (!submission) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="text-center">
-          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <p className="text-lg text-gray-600">Loading submission...</p>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading submission..." />;
   }
 
   const {
