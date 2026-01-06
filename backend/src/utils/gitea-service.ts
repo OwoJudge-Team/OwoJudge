@@ -38,13 +38,39 @@ interface GiteaFileContent {
   size: number;
 }
 
-
-
 interface AddPublicKeyOptions {
   key: string;
   read_only?: boolean;
   title?: string;
 }
+
+/**
+ * Load the README content from the git_tutorial.md file
+ * Falls back to a simple message if the file cannot be read
+ */
+const loadReadmeContent = (): string => {
+  // In Docker, the docs are at /app/docs/
+  // In development, they're at ../../docs/
+  const dockerPath = '/app/docs/git_tutorial.md';
+  const localPath = path.resolve(__dirname, '../../docs/git_tutorial.md');
+  const tutorialPath = fs.existsSync(dockerPath) ? dockerPath : localPath;
+
+  try {
+    if (fs.existsSync(tutorialPath)) {
+      return fs.readFileSync(tutorialPath, 'utf-8');
+    }
+  } catch (error) {
+    console.error(`[Gitea] Failed to read git_tutorial.md: ${error}`);
+  }
+
+  // Fallback content if file cannot be read
+  return `# OwoJudge Git Repository
+
+Welcome to your OwoJudge Git repository!
+
+Please refer to the OwoJudge documentation for instructions on how to submit your solutions.
+`;
+};
 
 class GiteaService {
   private _config: GiteaConfig | null = null;
@@ -165,14 +191,53 @@ class GiteaService {
 
     const endpoint = `/api/v1/admin/users/${username}/repos`;
 
+    // Create empty repo first
     const payload = {
-      default_branch: defaultBranch,
       name: repoName,
-      private: false,
+      private: true,
+      auto_init: false
     };
 
     const repo = await this.request<GiteaRepo>(endpoint, 'POST', payload);
-    return repo
+
+    // Create README.md with tutorial content
+    try {
+      await this.createFile(username, repoName, 'README.md', {
+        content: loadReadmeContent(),
+        message: 'Initial commit: Add Git Tutorial',
+        branch: defaultBranch
+      });
+    } catch (error) {
+      console.error(`[Gitea] Failed to create README for ${repoName}:`, error);
+      // We still return the repo even if README creation fails
+    }
+
+    return repo;
+  }
+
+  /**
+   * Create a file in a repository
+   */
+  async createFile(
+    owner: string,
+    repo: string,
+    filepath: string,
+    options: {
+      content: string,
+      message: string,
+      branch?: string
+    }
+  ): Promise<void> {
+    const { content, message, branch } = options;
+    const endpoint = `/api/v1/repos/${owner}/${repo}/contents/${filepath}`;
+
+    const payload = {
+      content: Buffer.from(content).toString('base64'),
+      message,
+      branch
+    };
+
+    await this.request(endpoint, 'POST', payload);
   }
 
   /**
