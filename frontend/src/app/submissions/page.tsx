@@ -9,6 +9,7 @@ import { FaClock, FaFloppyDisk, FaSpinner, FaRotateRight } from "react-icons/fa6
 import CoolLink from "@/components/cool-link";
 import { getStatusColor } from "@/utils/submission-status";
 import Paginator from "@/components/Paginator";
+import { isAdmin, isAdminOrTA } from "@/utils/users";
 
 const SubmissionPage: React.FC = () => {
   const [view, setView] = useState<"global" | "user">("global");
@@ -110,31 +111,33 @@ const SubmissionPage: React.FC = () => {
       <div className="mx-auto max-w-6xl">
         <div className="mb-4 flex items-center justify-between">
           {/* View Switch (Global/User Submissions) */}
-          <div className="flex items-center">
-            <button
-              onClick={() => setView("global")}
-              className={`mr-4 rounded-lg px-4 py-2 ${
-                view === "global"
-                  ? "bg-slate-700 text-slate-100"
-                  : "text-slate-300 hover:text-slate-100"
-              } transition`}
-            >
-              Global Submissions
-            </button>
-            <button
-              onClick={() => setView("user")}
-              className={`rounded-lg px-4 py-2 ${
-                view === "user"
-                  ? "bg-slate-700 text-slate-100"
-                  : "text-slate-300 hover:text-slate-100"
-              } transition`}
-            >
-              My Submissions
-            </button>
-          </div>
+          {isAdminOrTA(user) && (
+            <div className="flex items-center">
+              <button
+                onClick={() => setView("global")}
+                className={`mr-4 rounded-lg px-4 py-2 ${
+                  view === "global"
+                    ? "bg-slate-700 text-slate-100"
+                    : "text-slate-300 hover:text-slate-100"
+                } transition`}
+              >
+                Global Submissions
+              </button>
+              <button
+                onClick={() => setView("user")}
+                className={`rounded-lg px-4 py-2 ${
+                  view === "user"
+                    ? "bg-slate-700 text-slate-100"
+                    : "text-slate-300 hover:text-slate-100"
+                } transition`}
+              >
+                My Submissions
+              </button>
+            </div>
+          )}
 
           {/* Batch Actions */}
-          {user?.isAdmin && selectedSubmissions.size > 0 && (
+          {isAdmin(user) && selectedSubmissions.size > 0 && (
             <button
               onClick={handleBatchRejudge}
               disabled={isRejudging}
@@ -148,15 +151,19 @@ const SubmissionPage: React.FC = () => {
 
         {/* Filters */}
         <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 p-4 shadow-xl">
-          <div className={`grid grid-cols-1 gap-4 md:grid-cols-3`}>
+          <div
+            className={`grid grid-cols-1 gap-4 ${isAdminOrTA(user) ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+          >
             {/* User Search */}
-            <input
-              type="text"
-              placeholder="Search by UserName"
-              className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              value={searchUser}
-              onChange={(e) => setSearchUser(e.target.value)}
-            />
+            {isAdminOrTA(user) && (
+              <input
+                type="text"
+                placeholder="Search by UserName"
+                className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                value={searchUser}
+                onChange={(e) => setSearchUser(e.target.value)}
+              />
+            )}
             {/* Problem Search */}
             <input
               type="text"
@@ -186,7 +193,7 @@ const SubmissionPage: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-slate-800/50 text-slate-400">
               <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider">
-                {user?.isAdmin && (
+                {isAdmin(user) && (
                   <th className="w-12 px-6 py-4">
                     <div className="flex items-center justify-center">
                       <input
@@ -213,7 +220,7 @@ const SubmissionPage: React.FC = () => {
               {submissions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={user?.isAdmin ? 8 : 7}
+                    colSpan={isAdmin(user) ? 8 : 7}
                     className="px-6 py-8 text-center text-slate-500"
                   >
                     No submissions found.
@@ -229,7 +236,7 @@ const SubmissionPage: React.FC = () => {
                         isSelected ? "bg-indigo-500/10" : ""
                       }`}
                     >
-                      {user?.isAdmin && (
+                      {isAdmin(user) && (
                         <td className="px-6 py-4 align-middle">
                           <div className="flex items-center justify-center">
                             <input

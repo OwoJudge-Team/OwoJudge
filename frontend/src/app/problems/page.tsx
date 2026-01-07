@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
+import { isAdminOrTA } from "@/utils/users";
 
 const ProblemPage: React.FC = () => {
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -50,7 +51,7 @@ const ProblemPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {user && user.isAdmin && (
+              {isAdminOrTA(user) && (
                 <tr>
                   <td className="px-6 py-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[3px] border-dashed border-slate-700/60 text-sm font-semibold text-slate-300">

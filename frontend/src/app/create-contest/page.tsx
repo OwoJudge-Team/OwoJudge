@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { LuLoaderCircle } from "react-icons/lu";
 import DateTimePicker from "@/components/DateTimePicker";
+import { isAdminOrTA } from "@/utils/users";
 
 interface ProblemProps {
   serialNumber: number;
@@ -103,7 +104,7 @@ const CreateContestPage = () => {
     }
   };
 
-  if (!user?.isAdmin) {
+  if (!user || !isAdminOrTA(user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-lg text-slate-300">Access denied. Admins only.</p>

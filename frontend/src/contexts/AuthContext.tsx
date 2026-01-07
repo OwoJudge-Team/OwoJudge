@@ -2,15 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { authApi } from "@/utils/api";
-
-interface User {
-  id: string;
-  username: string;
-  displayName: string;
-  isAdmin: boolean;
-  solvedProblem: number;
-  rating: number;
-}
+import { User } from "@/types/user";
 
 interface AuthContextType {
   user: User | null;

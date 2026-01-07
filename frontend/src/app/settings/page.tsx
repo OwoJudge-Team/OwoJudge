@@ -39,7 +39,7 @@ export default function SettingsPage() {
               username: userData.username || "",
               studentId: userData.studentId || "",
               displayName: userData.displayName || "",
-              role: userData.isAdmin ? "admin" : "user",
+              role: userData.role,
               sshPublicKey: userData.gitPublicKey || "",
             },
           });

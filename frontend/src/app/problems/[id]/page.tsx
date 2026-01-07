@@ -9,6 +9,7 @@ import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
 import Loading from "@/components/Loading";
+import { isAdmin } from "@/utils/users";
 
 const SHOW_SUBMIT = false;
 
@@ -72,7 +73,7 @@ export default function ProblemPage() {
           <div className="mb-4 flex items-baseline gap-4">
             <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
             <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
-            {user && user.isAdmin && (
+            {isAdmin(user) && (
               <button
                 className="ml-auto rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
                 onClick={() => setIsModalOpen(true)}

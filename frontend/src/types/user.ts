@@ -1,9 +1,15 @@
+export enum UserRole {
+  Student = "student",
+  TA = "ta",
+  JudgeAdmin = "judgeAdmin",
+}
+
 export interface User {
   _id: string;
   username: string;
   displayName: string;
-  isAdmin: boolean;
+  role: UserRole;
   rating: number;
-  solvedProblemsCount: number;
+  solvedProblem: number;
   solvedProblems: (string | number)[];
 }

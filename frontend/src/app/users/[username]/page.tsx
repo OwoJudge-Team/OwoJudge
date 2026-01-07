@@ -6,8 +6,9 @@ import Link from "next/link";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
 import { User } from "@/types/user";
-import { FaTrophy, FaCircleCheck, FaUserShield } from "react-icons/fa6";
+import { FaTrophy, FaCircleCheck, FaUserShield, FaUserPen } from "react-icons/fa6";
 import Loading from "@/components/Loading";
+import { isAdmin, isTA } from "@/utils/users";
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -76,9 +77,14 @@ export default function UserDetailPage() {
             <div>
               <div className="mb-2 flex items-center gap-3">
                 <h1 className="text-4xl font-bold text-slate-100">{user.displayName}</h1>
-                {user.isAdmin && (
+                {isAdmin(user) && (
                   <span className="flex items-center gap-1 rounded-full bg-rose-900/50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-200 ring-1 ring-rose-500/50">
                     <FaUserShield /> Admin
+                  </span>
+                )}
+                {isTA(user) && (
+                  <span className="flex items-center gap-1 rounded-full bg-lime-900/50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-lime-200 ring-1 ring-lime-500/50">
+                    <FaUserPen /> TA
                   </span>
                 )}
               </div>
@@ -98,9 +104,7 @@ export default function UserDetailPage() {
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
                   <FaCircleCheck className="text-emerald-500" /> Solved
                 </div>
-                <div className="text-3xl font-bold text-emerald-400">
-                  {user.solvedProblemsCount}
-                </div>
+                <div className="text-3xl font-bold text-emerald-400">{user.solvedProblem}</div>
               </div>
             </div>
           </div>

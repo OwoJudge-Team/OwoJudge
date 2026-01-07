@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatISOTime, compareToCurrentTime } from "@/utils/time";
 import { FaClock } from "react-icons/fa";
 import CoolLink from "@/components/cool-link";
+import { isAdminOrTA } from "@/utils/users";
 
 const END_TIME_COLOR = [
   "bg-emerald-600/90",
@@ -58,7 +59,7 @@ const ContestPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {user && user.isAdmin && (
+              {isAdminOrTA(user) && (
                 <tr className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
                     <CoolLink href="/create-contest" text="Create New Contest" />

@@ -6,6 +6,7 @@ import { FaArrowUpFromBracket } from "react-icons/fa6";
 import { apiPost } from "@/utils/api";
 import { LuLoaderCircle } from "react-icons/lu";
 import Modal from "@/components/Modal";
+import { isAdminOrTA } from "@/utils/users";
 
 const CreateProblemPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -57,7 +58,7 @@ const CreateProblemPage: React.FC = () => {
     }
   };
 
-  if (!user?.isAdmin) {
+  if (!user || !isAdminOrTA(user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-lg text-slate-300">Access denied. Admins only.</p>

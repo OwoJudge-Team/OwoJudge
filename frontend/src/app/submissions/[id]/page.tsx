@@ -10,8 +10,8 @@ import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getStatusColor } from "@/utils/submission-status";
 import { useAuth } from "@/contexts/AuthContext";
 import { FaRotateRight } from "react-icons/fa6";
-
 import Loading from "@/components/Loading";
+import { isAdmin } from "@/utils/users";
 
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
@@ -89,7 +89,7 @@ export default function SubmissionPage() {
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="text-2xl font-bold text-slate-300">Submission #{id}</div>
-          {user?.isAdmin && (
+          {isAdmin(user) && (
             <button
               onClick={handleRejudge}
               disabled={isRejudging}
