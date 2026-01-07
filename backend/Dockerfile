@@ -30,6 +30,9 @@ RUN apt-get update && apt-get install -y \
     systemd \
     netcat-openbsd \
     systemd-sysv \
+    python3 \
+    python3-pip \
+    python3-venv \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
@@ -43,6 +46,7 @@ WORKDIR /app
 # Note: Running as root for isolate and cgroup operations
 
 # Install tps
+ENV TPS_LOCAL_REPO=/usr/share/tps
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ioi-2017/tps/master/online-installer/install.sh)"
 
 # Clone and build isolate

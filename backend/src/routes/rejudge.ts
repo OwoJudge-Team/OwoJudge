@@ -5,7 +5,7 @@ import { Problem, IProblem } from '../mongoose/schemas/problems';
 import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
-import { isAdmin } from '../middleware/auth';
+import { isJudgeAdmin } from '../middleware/auth';
 
 const rejudgeRouter: Router = Router();
 
@@ -137,9 +137,9 @@ export const rejudgeProblem = async (request: IRequest, response: Response): Pro
   }
 };
 
-rejudgeRouter.post('/api/rejudge/submissions', isAdmin, rejudgeSubmissions);
-rejudgeRouter.post('/api/rejudge/problems', isAdmin, rejudgeProblems);
-rejudgeRouter.post('/api/rejudge/submission/:serialNumber', isAdmin, rejudgeSubmission);
-rejudgeRouter.post('/api/rejudge/problem/:serialNumber', isAdmin, rejudgeProblem);
+rejudgeRouter.post('/api/rejudge/submissions', isJudgeAdmin, rejudgeSubmissions);
+rejudgeRouter.post('/api/rejudge/problems', isJudgeAdmin, rejudgeProblems);
+rejudgeRouter.post('/api/rejudge/submission/:serialNumber', isJudgeAdmin, rejudgeSubmission);
+rejudgeRouter.post('/api/rejudge/problem/:serialNumber', isJudgeAdmin, rejudgeProblem);
 
 export default rejudgeRouter;

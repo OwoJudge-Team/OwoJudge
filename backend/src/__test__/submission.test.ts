@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Response } from 'express';
 import { IRequest } from '../utils/request-interface';
 import { SubmissionStatus } from '../utils/submission-status';
+import { UserRole } from '../mongoose/schemas/users';
 
 // Mock data
 const mockSubmissions = [
@@ -84,7 +85,12 @@ vi.mock('../mongoose/schemas/users', () => ({
     User: {
         findOne: vi.fn()
     },
-    IUser: {}
+    IUser: {},
+    UserRole: {
+        Student: 'student',
+        TA: 'ta',
+        JudgeAdmin: 'judgeAdmin'
+    }
 }));
 
 vi.mock('../judger/judger', () => ({
@@ -127,7 +133,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'testuser', isAdmin: false } as any,
+                user: { username: 'testuser', role: UserRole.Student } as any,
                 query: {}
             };
 
@@ -153,7 +159,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'admin', isAdmin: true } as any,
+                user: { username: 'admin', role: UserRole.JudgeAdmin } as any,
                 query: {}
             };
 
@@ -169,7 +175,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'testuser', isAdmin: false } as any,
+                user: { username: 'testuser', role: UserRole.Student } as any,
                 query: { problemSerialNumber: '1' }
             };
 
@@ -187,7 +193,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'testuser', isAdmin: false } as any,
+                user: { username: 'testuser', role: UserRole.Student } as any,
                 query: { status: 'AC' }
             };
 
@@ -204,7 +210,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'admin', isAdmin: true } as any,
+                user: { username: 'admin', role: UserRole.JudgeAdmin } as any,
                 query: { username: 'test' }
             };
 
@@ -222,7 +228,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'testuser', isAdmin: false } as any,
+                user: { username: 'testuser', role: UserRole.Student } as any,
                 params: { serialNumber: '9999999' }
             };
 
@@ -236,7 +242,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'testuser', isAdmin: false } as any,
+                user: { username: 'testuser', role: UserRole.Student } as any,
                 params: { serialNumber: '1000001' }
             };
 
@@ -251,7 +257,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'testuser', isAdmin: false } as any,
+                user: { username: 'testuser', role: UserRole.Student } as any,
                 params: { serialNumber: '1000003' }
             };
 
@@ -265,7 +271,7 @@ describe('Submission Routes', () => {
 
             mockRequest = {
                 isAuthenticated: () => true,
-                user: { username: 'admin', isAdmin: true } as any,
+                user: { username: 'admin', role: UserRole.JudgeAdmin } as any,
                 params: { serialNumber: '1000003' }
             };
 

@@ -3,7 +3,7 @@ import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
 import { Problem, ProblemStatus } from '../mongoose/schemas/problems';
-import { User, IUser } from '../mongoose/schemas/users';
+import { User, IUser, UserRole } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
@@ -13,18 +13,19 @@ const submissionRouter: Router = Router();
 
 export const getSubmissions = async (request: IRequest, response: Response): Promise<void> => {
   const user = request.user as IUser;
-  const query: any = user.isAdmin ? {} : { username: user.username };
+  const isPrivileged = user.role === UserRole.JudgeAdmin || user.role === UserRole.TA;
+  const query: any = isPrivileged ? {} : { username: user.username };
 
   // Add filters from query parameters
   const { username, userID, problemSerialNumber, status, minScore, maxScore } = request.query;
   if (username) {
-    if (user.isAdmin) {
+    if (isPrivileged) {
       query.username = { $regex: username, $options: 'i' };
     } else if (username === user.username) {
       query.username = username;
     }
   }
-  if (userID && (user.isAdmin || userID === user.id.toString())) {
+  if (userID && (isPrivileged || userID === user.id.toString())) {
     query.userID = userID;
   }
   if (problemSerialNumber) {
@@ -75,7 +76,7 @@ export const getSubmissionByID = async (request: IRequest, response: Response): 
     }
 
     // Check if user is authorized to view this submission
-    if (!user.isAdmin && submission.username !== user.username) {
+    if ((user.role !== UserRole.JudgeAdmin && user.role !== UserRole.TA) && submission.username !== user.username) {
       response.status(403).send('You are not authorized to view this submission');
       return;
     }
@@ -116,7 +117,7 @@ export const createSubmission = async (request: IRequest, response: Response): P
     }
 
     // Check daily quota
-    if (problem.dailyQuota && problem.dailyQuota > 0) {
+    if (problem.dailyQuota && problem.dailyQuota > 0 && user.role !== UserRole.JudgeAdmin && user.role !== UserRole.TA) {
       if (!user.quotaUsage) {
         user.quotaUsage = new Map();
       }

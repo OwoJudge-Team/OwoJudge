@@ -30,7 +30,7 @@ const { mockProblem, mockUser, mockSubmission } = vi.hoisted(() => {
         giteaId: 12345,
         quotaUsage: new Map(),
         save: vi.fn(),
-        isAdmin: false
+        role: 'student'
     };
 
     const mockSubmission = {

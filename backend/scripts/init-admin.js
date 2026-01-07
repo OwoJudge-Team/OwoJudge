@@ -17,9 +17,11 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.String,
     required: true
   },
-  isAdmin: {
-    type: mongoose.Schema.Types.Boolean,
-    required: true
+  role: {
+    type: mongoose.Schema.Types.String,
+    enum: ['student', 'ta', 'judgeAdmin'],
+    required: true,
+    default: 'student'
   },
   solvedProblem: {
     type: mongoose.Schema.Types.Number,
@@ -135,7 +137,7 @@ async function createAdminUser() {
       username: ROOT_USERNAME,
       displayName: `${ROOT_USERNAME.charAt(0).toUpperCase()}${ROOT_USERNAME.slice(1)} Administrator`,
       password: hashString(adminPassword),
-      isAdmin: true,
+      role: 'judgeAdmin',
       solvedProblem: 0,
       solvedProblems: [],
       rating: 0

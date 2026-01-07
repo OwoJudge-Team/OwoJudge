@@ -24,7 +24,7 @@ impl TempUser {
                 "username": username,
                 "password": password,
                 "displayName": format!("{username}_display"),
-                "isAdmin": false
+                "role": "student"
             }))
             .send()
             .await

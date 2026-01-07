@@ -43,6 +43,8 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
         .arg("-C")
         .arg(&temp_dir)
         .arg("-m")
+        .arg("--no-xattrs")
+        .arg("--no-mac-metadata")
         .status()
         .expect("Failed to execute tar command");
     
@@ -73,6 +75,8 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
         .arg(&new_tar_path)
         .arg("-C")
         .arg(&temp_dir)
+        .arg("--no-xattrs")
+        .arg("--no-mac-metadata")
         .arg("tps-example")
         .status()
         .expect("Failed to create new tarball");

@@ -109,6 +109,11 @@ export const updateProblemValidation = {
         min: 0
       },
       errorMessage: 'Daily quota should be a non-negative integer'
-    }
-  }
+    }  },
+  released: {
+    optional: true,
+    isBoolean: {
+      errorMessage: 'Released must be a boolean'
+    },
+    toBoolean: true  }
 };

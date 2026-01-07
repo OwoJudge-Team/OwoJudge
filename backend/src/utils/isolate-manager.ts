@@ -272,7 +272,7 @@ export class IsolateManager {
     }
 
     const cwdPrefix = cwd ? `cd ${cwd} && ` : '';
-    isolateCommand += `--run -- /bin/bash -c "exec ${cwdPrefix}${command}"`;
+    isolateCommand += `--run -- /bin/bash -c "${cwdPrefix}${command}"`;
 
     return await execAsync(isolateCommand, { timeout });
   }

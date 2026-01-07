@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi, beforeEach, Mock } from 
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { getAllUsers, createUser, getUserByUsername, updateUser, deleteUser } from '../routes/users';
+import { UserRole } from '../mongoose/schemas/users';
 
 vi.mock('express-validator', () => ({
     validationResult: vi.fn(() => ({ isEmpty: () => true, array: () => [] })),
@@ -58,7 +59,14 @@ vi.mock('../mongoose/schemas/users', () => {
   User.findOne = mockFindOne;
   User.findOneAndDelete = mockFindOneAndDelete;
   User.findOneAndUpdate = mockFindOneAndUpdate;
-  return { User };
+  return { 
+    User,
+    UserRole: {
+        Student: 'student',
+        TA: 'ta',
+        JudgeAdmin: 'judgeAdmin'
+    }
+  };
 });
 
 describe('User Routes', () => {
@@ -140,9 +148,9 @@ describe('User Routes', () => {
         username: 'testuser',
         displayName: 'Test User',
         password: 'Testtest',
-        isAdmin: false
+        role: UserRole.Student
       },
-      user: { isAdmin: true },
+      user: { role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
@@ -168,9 +176,9 @@ describe('User Routes', () => {
         username: 'testuser',
         displayName: 'Test User',
         password: 'Testtest',
-        isAdmin: 'true'
+        role: 'invalid_role'
       },
-      user: { isAdmin: true },
+      user: { role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
@@ -189,9 +197,9 @@ describe('User Routes', () => {
         username: 'testuser',
         displayName: 'Test User',
         password: 'Testtest',
-        isAdmin: false
+        role: UserRole.Student
       },
-      user: { isAdmin: true },
+      user: { role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
@@ -210,7 +218,7 @@ describe('User Routes', () => {
   it('should delete user', async () => {
     const req = {
       params: { username: 'testuser' },
-      user: { isAdmin: true },
+      user: { role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     let data: any;
@@ -232,7 +240,7 @@ describe('User Routes', () => {
     const req = {
       params: { username: 'admin' },
       body: { oldPassword: 'password', displayName: 'New Name' },
-      user: { username: 'admin', isAdmin: true },
+      user: { username: 'admin', role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     
@@ -257,7 +265,7 @@ describe('User Routes', () => {
     const req = {
       params: { username: 'admin' },
       body: { displayName: 'New Name' },
-      user: { username: 'admin', isAdmin: true },
+      user: { username: 'admin', role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     
@@ -275,7 +283,7 @@ describe('User Routes', () => {
     const req = {
       params: { username: 'admin' },
       body: { oldPassword: 'wrong_password', displayName: 'New Name' },
-      user: { username: 'admin', isAdmin: true },
+      user: { username: 'admin', role: UserRole.JudgeAdmin },
       isAuthenticated: () => true
     } as unknown as Request;
     

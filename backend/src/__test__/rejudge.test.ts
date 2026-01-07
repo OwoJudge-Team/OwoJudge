@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IRequest } from '../utils/request-interface';
 import { Response } from 'express';
 import { SubmissionStatus } from '../utils/submission-status';
+import { UserRole } from '../mongoose/schemas/users';
 
 // Mock values
 const MOCK_DATE = new Date('2025-01-01T00:00:00.000Z');
@@ -64,7 +65,7 @@ describe('Rejudge API', () => {
         beforeEach(() => {
             mockRequest = {
                 params: { serialNumber: '100' },
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 isAuthenticated: () => true
             };
         });
@@ -100,7 +101,7 @@ describe('Rejudge API', () => {
         beforeEach(() => {
             mockRequest = {
                 params: { serialNumber: '1001' },
-                user: { isAdmin: true } as any,
+                user: { role: UserRole.JudgeAdmin } as any,
                 isAuthenticated: () => true
             };
         });

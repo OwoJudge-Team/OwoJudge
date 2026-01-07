@@ -31,11 +31,14 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
     let original_tar_path = get_example_problem_path();
     
     let status = Command::new("tar")
+        .env("COPYFILE_DISABLE", "1")
         .arg("-xzf")
         .arg(&original_tar_path)
         .arg("-C")
         .arg(&temp_dir)
         .arg("-m")
+        .arg("--no-xattrs")
+        .arg("--no-mac-metadata")
         .status()
         .expect("Failed to execute tar command");
     
@@ -58,10 +61,13 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
 
     let new_tar_path = temp_dir.join(format!("{}.tar.gz", problem_id));
     let status = Command::new("tar")
+        .env("COPYFILE_DISABLE", "1")
         .arg("-czf")
         .arg(&new_tar_path)
         .arg("-C")
         .arg(&temp_dir)
+        .arg("--no-xattrs")
+        .arg("--no-mac-metadata")
         .arg("tps-example")
         .status()
         .expect("Failed to create new tarball");
@@ -406,7 +412,7 @@ async fn create_user(client: &Client, username: &str) {
         "username": username,
         "password": "password123",
         "displayName": format!("User {}", username),
-        "isAdmin": false
+        "role": "student"
     });
 
     let response = client
@@ -1079,4 +1085,69 @@ int main() {
     // If AC => allowed. If RE => banned. 
     // We expect Runtime Error now that we removed the extra process allowance.
     assert_eq!(status, "Runtime Error", "Pthreads should be banned (RE)");
+}
+
+#[tokio::test]
+async fn test_submission_no_se() {
+    let client = ClientBuilder::new()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to build client");
+
+    // Login as admin
+    login_admin(&client).await;
+    let serial_number = create_temp_problem(&client).await;
+
+    // Create a submission with correct solution
+    let submission_body = json!({
+        "problemSerialNumber": serial_number,
+        "language": "g++ c++17",
+        "userSolution": [
+            {
+                "filename": "main.cpp",
+                "content": "#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}"
+            }
+        ]
+    });
+
+    let response = client
+        .post("http://localhost:8787/api/submissions")
+        .json(&submission_body)
+        .send()
+        .await
+        .expect("Failed to submit");
+    
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let submission: Value = response.json().await.expect("Failed to parse submission");
+    let submission_serial_number = submission["serialNumber"].as_i64().expect("Missing serialNumber");
+
+    // Wait for judging to complete
+    let mut attempts = 0;
+    let mut status = String::new();
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        
+        let response = client
+            .get(&format!("http://localhost:8787/api/submission/{}", submission_serial_number))
+            .send()
+            .await
+            .expect("Failed to get submission");
+        
+        let sub_data: Value = response.json().await.expect("Failed to parse submission");
+        let result_status = sub_data["status"].as_str().unwrap_or("").to_string();
+        
+        // Wait until processed
+        if result_status != "pending" && result_status != "in queue" && result_status != "JU" {
+             status = result_status;
+             break;
+        }
+        
+        attempts += 1;
+        if attempts > 60 { // 30 seconds
+             panic!("Submission judging timed out");
+        }
+    }
+
+    assert_ne!(status, "System Error", "Submission resulted in System Error (SE), which should not happen for a valid request");
+    assert_eq!(status, "Accepted", "Expected Accepted for valid A+B solution");
 }

@@ -25,6 +25,7 @@ const { mockProblem, mockUser, mockSubmission, mockContest } = vi.hoisted(() => 
         userDetail: {},
         fullScore: 100,
         dailyQuota: 5,
+        released: true,
         toObject: function () { return { ...this }; }
     };
 
@@ -34,7 +35,7 @@ const { mockProblem, mockUser, mockSubmission, mockContest } = vi.hoisted(() => 
         displayName: 'Test User',
         quotaUsage: new Map(),
         save: vi.fn(),
-        isAdmin: false,
+        role: 'student',
         rating: 1500,
         solvedProblem: 10,
         solvedProblems: [1, 2],
@@ -66,7 +67,9 @@ const { mockProblem, mockUser, mockSubmission, mockContest } = vi.hoisted(() => 
         endTime: new Date(),
         problems: [{ serialNumber: 1, score: 100 }],
         standings: [],
-        createdTime: new Date()
+        createdTime: new Date(),
+        released: true,
+        populate: vi.fn().mockReturnThis()
     };
 
     return { mockProblem, mockUser, mockSubmission, mockContest };
@@ -97,6 +100,11 @@ vi.mock('../mongoose/schemas/users', () => ({
             where: vi.fn().mockReturnThis(),
             equals: vi.fn().mockReturnThis()
         })
+    },
+    UserRole: {
+        Student: 'student',
+        TA: 'ta',
+        JudgeAdmin: 'judgeAdmin'
     }
 }));
 

@@ -34,6 +34,11 @@ cargo --quiet test -- --test-threads=1
 TEST_EXIT_CODE=$?
 cd ../..
 
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo "Tests failed! Dumping backend logs..."
+    docker compose logs backend
+fi
+
 if [ "$1" == '--debug' ]; then
     echo "Debug mode: keeping containers up. To stop them, run 'docker compose down -v --remove-orphans'"
     exit $TEST_EXIT_CODE
