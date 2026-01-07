@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/users";
 import { FaUser, FaGear, FaArrowRightFromBracket, FaChevronDown, FaStar } from "react-icons/fa6";
 
 const UserMenu: React.FC = () => {
@@ -81,7 +82,7 @@ const UserMenu: React.FC = () => {
                 <span className="text-xs font-semibold">SOLVED</span>
                 {user.solvedProblem}
               </span>
-              {user.isAdmin && (
+              {isAdmin(user) && (
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-800/50 px-3 py-1.5 text-sm font-medium text-indigo-200">
                   <span className="text-xs font-semibold">ADMIN</span>
                 </span>
