@@ -85,7 +85,7 @@ pub async fn random_user_api_calls(count: usize) {
                         .await,
                     "post_user" => client_cloned
                         .post("http://localhost:8787/api/users")
-                        .json(&json!({"username": format!("created_{}", username), "password": "password", "displayName": "Created", "isAdmin": false}))
+                        .json(&json!({"username": format!("created_{}", username), "password": "password", "displayName": "Created", "role": "student"}))
                         .send()
                         .await,
                     "patch_user" => client_cloned
@@ -260,7 +260,7 @@ async fn test_get_users_with_auth_status() {
         user.get("displayName").is_some(),
         "expected displayName field"
     );
-    assert!(user.get("isAdmin").is_some(), "expected isAdmin field");
+    assert!(user.get("role").is_some(), "expected role field");
     assert!(
         user.get("solvedProblem").is_some()
             || user.get("solvedProblems").is_some()
@@ -307,7 +307,7 @@ async fn test_create_user() {
             "username": "newuser",
             "password": "securepassword",
             "displayName": "New User",
-            "isAdmin": false
+            "role": "student"
         }))
         .send()
         .await
@@ -326,7 +326,7 @@ async fn test_create_user() {
                 "username": "testuser",
                 "password": "testpassword",
                 "displayName": "Another User",
-                "isAdmin": false
+                "role": "student"
             }))
             .send()
             .await
@@ -338,7 +338,7 @@ async fn test_create_user() {
                 "username": "anotheruser",
                 "password": "anotherpassword",
                 "displayName": "Another User",
-                "isAdmin": true
+                "role": "judgeAdmin"
             }))
             .send()
             .await
@@ -366,7 +366,7 @@ async fn test_create_user() {
             "username": "createduser",
             "password": "createdpassword",
             "displayName": "Created User",
-            "isAdmin": false
+            "role": "student"
         }))
         .send()
         .await

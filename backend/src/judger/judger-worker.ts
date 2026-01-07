@@ -321,7 +321,7 @@ const runAllTests = async (
         const genMetaFile = path.join(workDir, 'tps-gen.meta');
 
         // Run tps gen inside isolate with generous limits
-        await box.run('tps gen', {
+        await box.run('/usr/local/bin/tps gen', {
           processes: 50,
           timeLimit: 600,
           wallTimeLimit: 3600,
@@ -329,7 +329,7 @@ const runAllTests = async (
           metaFile: genMetaFile,
           stderr: 'tps-gen.error',
           fullEnv: true,
-          dirs: ['/usr/bin', '/bin', '/lib', '/etc'],
+          dirs: ['/usr', '/bin', '/lib', '/etc'],
           cwd: '/box'
         }, 4000000);
 

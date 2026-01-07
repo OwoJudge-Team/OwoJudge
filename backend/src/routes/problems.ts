@@ -368,7 +368,7 @@ const createProblem = async (request: IRequest, response: Response): Promise<voi
                 const genMetaFile = path.join(workDir, 'tps-gen.meta');
 
                 // Run tps gen inside isolate with generous limits
-                await box.run('tps gen', {
+                await box.run('/usr/local/bin/tps gen', {
                   processes: 50,
                   timeLimit: 600,
                   wallTimeLimit: 3600,
@@ -667,7 +667,7 @@ const updateProblemWithFile = async (request: IRequest, response: Response): Pro
                 const genMetaFile = path.join(workDir, 'tps-gen.meta');
 
                 // Run tps gen inside isolate with generous limits
-                await box.run('tps gen', {
+                await box.run('/usr/local/bin/tps gen', {
                   processes: 50,
                   timeLimit: 600,
                   wallTimeLimit: 3600,

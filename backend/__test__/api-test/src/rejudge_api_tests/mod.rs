@@ -56,10 +56,13 @@ fn create_tarball_with_id(problem_id: &str) -> Vec<u8> {
 
     let new_tar_path = temp_dir.join(format!("{}.tar.gz", problem_id));
     let status = Command::new("tar")
+        .env("COPYFILE_DISABLE", "1")
         .arg("-czf")
         .arg(&new_tar_path)
         .arg("-C")
         .arg(&temp_dir)
+        .arg("--no-xattrs")
+        .arg("--no-mac-metadata")
         .arg("tps-example")
         .status()
         .expect("Failed to create new tarball");
