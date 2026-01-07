@@ -7,7 +7,7 @@ export interface Standing {
     serialNumber: number;
     score: number;
     lastSubmissionTime: string;
-  };
+  }[];
 }
 
 export interface Contest {

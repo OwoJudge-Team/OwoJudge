@@ -14,7 +14,7 @@ import Loading from "@/components/Loading";
 export default function ContestPage() {
   const id = useParams().id;
 
-  const problemScores = new Map<number, number>();
+  const [problemScores, setProblemScores] = useState<Map<number, number>>(new Map());
   const [contest, setContest] = useState<Contest | null>(null);
   const [userStanding, setUserStanding] = useState<Standing | null>(null);
   const [rank, setRank] = useState<number>(0);
@@ -44,9 +44,11 @@ export default function ContestPage() {
 
           problemScores.clear();
           if (userStand) {
-            for (const [serialNumber, score] of Object.entries(userStand.problemScores)) {
-              problemScores.set(Number(serialNumber), Number(score));
+            const tmpProblemScores = new Map<number, number>();
+            for (const ps of userStand.problemScores) {
+              tmpProblemScores.set(ps.serialNumber, ps.score);
             }
+            setProblemScores(tmpProblemScores);
           }
 
           const userRank = standingData.findIndex((s) => s.username === user.username) + 1 || 0;
