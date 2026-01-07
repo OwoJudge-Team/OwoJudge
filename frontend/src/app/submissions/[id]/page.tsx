@@ -75,7 +75,7 @@ export default function SubmissionPage() {
     status,
     score,
     problemTitle,
-    userHandle,
+    username,
     createdAt,
     time,
     memory,
@@ -131,7 +131,7 @@ export default function SubmissionPage() {
 
             <div>
               <div className="mb-1 text-xs text-gray-400">User</div>
-              <div className="font-medium text-slate-100">{userHandle}</div>
+              <div className="font-medium text-slate-100">{username}</div>
             </div>
 
             <div>
@@ -146,7 +146,7 @@ export default function SubmissionPage() {
 
             <div>
               <div className="mb-1 text-xs text-slate-400">Memory</div>
-              <div className="font-medium text-slate-100">{memory} MB</div>
+              <div className="font-medium text-slate-100">{memory} KB</div>
             </div>
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function SubmissionPage() {
                       >
                         <td className="px-4 py-3 text-sm">{testcase.testcase}</td>
                         <td className="px-4 py-3 text-sm">{testcase.time.toFixed(3)} s</td>
-                        <td className="px-4 py-3 text-sm">{testcase.memory} MB</td>
+                        <td className="px-4 py-3 text-sm">{testcase.memory} KB</td>
                         <td className={`px-4 py-3 text-sm font-medium`}>
                           <div
                             className={`${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}

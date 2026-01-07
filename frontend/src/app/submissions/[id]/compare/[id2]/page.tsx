@@ -247,7 +247,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
           <div className="flex items-center gap-2 text-slate-400">
             <FaUser className="text-slate-500" /> User
           </div>
-          <div className="font-medium text-slate-200">{submission.userHandle}</div>
+          <div className="font-medium text-slate-200">{submission.username}</div>
 
           <div className="flex items-center gap-2 text-slate-400">
             <FaCode className="text-slate-500" /> Language
@@ -446,11 +446,11 @@ function TestcaseRow({ row }: { row: PairedResult }) {
                     </tr>
                     <tr>
                       <td className="px-4 py-2 font-medium text-slate-400">Memory</td>
-                      <td className="px-4 py-2 text-slate-300">{row.left?.memory}MB</td>
-                      <td className="px-4 py-2 text-slate-300">{row.right?.memory}MB</td>
+                      <td className="px-4 py-2 text-slate-300">{row.left?.memory}KB</td>
+                      <td className="px-4 py-2 text-slate-300">{row.right?.memory}KB</td>
                       <td className="px-4 py-2 font-mono">
                         {row.left && row.right
-                          ? getDiff(row.left.memory, row.right.memory, "MB")
+                          ? getDiff(row.left.memory, row.right.memory, "KB")
                           : "-"}
                       </td>
                     </tr>

@@ -260,7 +260,7 @@ const SubmissionPage: React.FC = () => {
                       <td className="px-6 py-4 align-middle">
                         <CoolLink
                           href={`/users/${submission.username}`}
-                          text={submission.userHandle}
+                          text={submission.username}
                         />
                       </td>
                       <td className="px-6 py-4 align-middle">
@@ -294,7 +294,7 @@ const SubmissionPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                           <FaFloppyDisk />
-                          {submission.memory}MB
+                          {submission.memory}KB
                         </div>
                       </td>
                     </tr>
