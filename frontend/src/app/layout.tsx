@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "OwoJudge",
-  description: "(Owo)b Online Judge",
+  description: "d(Owo)b Online Judge",
 };
 
 export default function RootLayout({
