@@ -1,0 +1,55 @@
+name: Backend Check
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-chack.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-chack.yml'
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run Unit Tests
+      run: npm run test
+
+    - name: Run API Tests
+      run: |
+        chmod +x ./__test__/test-api.sh
+        # Run with --debug to keep containers running for the isolate test
+        ./__test__/test-api.sh --debug
+
+    - name: Test Isolate Functionality
+      run: |
+        echo "Verifying Isolate with CGroup support..."
+        # Initialize an isolate box (using ID 100 to avoid conflicts)
+        docker compose exec -T backend isolate --cg --init --box-id=100
+        
+        # Run a simple process inside isolate to verify functionality
+        docker compose exec -T backend isolate --cg --box-id=100 --processes=10 --run -- /bin/bash -c "echo 'Isolate CGroup Functional check passed'"
+        
+        # Cleanup the isolate box
+        docker compose exec -T backend isolate --cg --cleanup --box-id=100
+
+    - name: Teardown
+      if: always()
+      run: docker compose down -v --remove-orphans
