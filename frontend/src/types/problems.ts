@@ -21,4 +21,5 @@ export interface Problem {
   };
   dailyQuota: number;
   description?: string;
+  released: boolean;
 }

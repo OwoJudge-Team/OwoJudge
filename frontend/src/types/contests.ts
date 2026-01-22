@@ -22,4 +22,5 @@ export interface Contest {
   }[];
   createdTime: string; // ISO string
   standings: Standing[];
+  released: boolean;
 }

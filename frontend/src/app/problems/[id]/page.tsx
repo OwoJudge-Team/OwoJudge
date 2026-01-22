@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { apiGet, apiDelete } from "@/utils/api";
+import { apiGet, apiDelete, apiFetch } from "@/utils/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
@@ -10,6 +10,7 @@ import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
 import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
+import Toggle from "@/components/Toggle";
 
 const SHOW_SUBMIT = false;
 
@@ -42,6 +43,32 @@ export default function ProblemPage() {
     fetchProblem();
   }, [id]);
 
+  const toggleRelease = async () => {
+    try {
+      const res = await apiFetch(`/api/problems/${id}`, {
+        method: "PATCH",
+        body: { released: !data?.released },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (res.ok) {
+        setData((prevData) =>
+          prevData ? { ...prevData, released: !prevData.released } : prevData
+        );
+        setMessage(`Problem is now ${!data?.released ? "released" : "unreleased"}.`);
+        setFinished(true);
+        setIsModalOpen(true);
+      } else {
+        setMessage(`Problem is not ${!data?.released ? "released" : "unreleased"} successfully.`);
+        setFinished(true);
+        setIsModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error toggling release status:", error);
+    }
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -73,14 +100,6 @@ export default function ProblemPage() {
           <div className="mb-4 flex items-baseline gap-4">
             <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
             <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
-            {isAdmin(user) && (
-              <button
-                className="ml-auto rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
-                onClick={() => setIsModalOpen(true)}
-              >
-                Delete Problem
-              </button>
-            )}
           </div>
 
           <div className="flex items-center gap-6 text-slate-400">
@@ -102,6 +121,37 @@ export default function ProblemPage() {
         {data.description && (
           <section className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
             <MarkdownRenderer content={data.description} />
+          </section>
+        )}
+
+        {isAdmin(user) && (
+          <section className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
+            <h2 className="mb-4 text-2xl font-bold text-slate-100">Admin Actions</h2>
+            <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
+                <p className="text-slate-300">
+                  Toggling the released status of the problem changes the visibility of the problem
+                  to users.
+                </p>
+                <div className="flex flex-row items-center gap-2">
+                  <Toggle enabled={data.released} onClick={toggleRelease} />
+                  <p className="text-lg text-slate-200">
+                    {data.released ? "Released" : "Not Released"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-semibold text-slate-200">Delete Problem</h3>
+                <p className="text-slate-300">Deleting the problem irreversibly.</p>
+                <button
+                  className="w-fit rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  Delete Problem
+                </button>
+              </div>
+            </div>
           </section>
         )}
 
