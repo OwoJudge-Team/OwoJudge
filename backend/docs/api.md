@@ -368,7 +368,7 @@ containing both the input and output files.
 -   **Parameters:**
   -   `serialNumber` (number): The serial number of the problem.
   -   `testcaseName` (string): The name of the test case to generate.
--   **Response:** `application/gzip` (.tar.gz) containing `{testcaseName}.in` and `{testcaseName}.out`.
+-   **Response:** `application/gzip` (.tar.gz) containing `{actualTestName}.in` and `{actualTestName}.out`, where `actualTestName` is the resolved test name (which may differ from the requested `testcaseName` depending on how the generator parses the test name).
 -   **Status Codes:**
   -   `200 OK`: Successfully generated test case archive.
   -   `401 Unauthorized`: User not authenticated.
