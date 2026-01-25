@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FaRotateRight } from "react-icons/fa6";
 import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
+import { HiDocumentAdd } from "react-icons/hi";
+import Modal from "@/components/Modal";
 
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
@@ -31,6 +33,11 @@ export default function SubmissionPage() {
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [isRejudging, setIsRejudging] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [currentTestcase, setCurrentTestcase] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [finished, setFinished] = useState(false);
 
   const fetchSubmission = useCallback(async () => {
     try {
@@ -66,6 +73,27 @@ export default function SubmissionPage() {
       setIsRejudging(false);
     }
   };
+
+  const handleGenerateTestcase = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await apiGet(`/api/problems/${submission?.problemSerialNumber}/testcases/${currentTestcase}`);
+      console.log(`/api/problems/${submission?.problemSerialNumber}/testcases/${currentTestcase}`);
+      if (res.ok) {
+        const data = await res.text();
+        console.log(data);
+        setMessage("Testcase generated successfully.");
+      } else {
+        setMessage("Unable to generate the testcase.");
+      }
+    } catch (error) {
+      setMessage("An error occurred while generating the testcase.");
+      console.error("Error generating testcase:", error);
+    } finally {
+      setIsGenerating(false);
+      setFinished(true);
+    }
+  }
 
   if (!submission) {
     return <Loading message="Loading submission..." />;
@@ -184,7 +212,18 @@ export default function SubmissionPage() {
                         key={`${groupName}-${index}`}
                         className="border-t border-slate-700 text-slate-100"
                       >
-                        <td className="px-4 py-3 text-sm">{testcase.testcase}</td>
+                        <td className="group/button px-4 py-3 text-sm hover:text-indigo-400">
+                          <button className="inline-flex items-center" onClick={() => {
+                            setCurrentTestcase(groupName + '-' + testcase.testcase.split('-')[1]);
+                            setMessage(`Generate new test data for test case ${testcase.testcase}?`);
+                            setIsModalOpen(true);
+                          }}>
+                            <span className="group-hover/button:translate-x-1 transition-transform duration-150">
+                              {testcase.testcase}
+                            </span>
+                            <HiDocumentAdd className="text-lg -translate-y-[1px] -translate-x-2 opacity-0 transition-all duration-150 group-hover/button:translate-x-2 group-hover/button:opacity-100" />
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-sm">{testcase.time.toFixed(3)} s</td>
                         <td className="px-4 py-3 text-sm">{testcase.memory} KB</td>
                         <td className={`px-4 py-3 text-sm font-medium`}>
@@ -214,6 +253,20 @@ export default function SubmissionPage() {
           {userSolution[0].content}
         </SyntaxHighlighter>
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          if (finished) {
+            setFinished(false);
+          }
+        }}
+        onConfirm={handleGenerateTestcase}
+        message={message}
+        confirm={!isGenerating && !finished}
+        loading={isGenerating}
+      />
     </div>
   );
 }
