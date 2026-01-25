@@ -989,7 +989,7 @@ const generateTestcase = async (request: IRequest, response: Response) => {
       error,
     );
     response
-      .status(400)
+      .status(500)
       .send(
         `Failed to generate testcase: ${error instanceof Error ? error.message : "An unknown error occurred"}`,
       );
