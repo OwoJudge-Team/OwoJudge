@@ -180,6 +180,7 @@ export default function ProblemPage() {
         message={message}
         confirm={!isDeleting && !finished}
         loading={isDeleting}
+        style="danger"
       />
     </div>
   );
