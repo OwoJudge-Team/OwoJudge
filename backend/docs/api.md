@@ -361,17 +361,18 @@ Retrieves the list of programming languages allowed for submissions to a specifi
 
 ### `GET /api/problems/:serialNumber/testcases/:testcaseName`
 
-Generates or retrieves a test case for a specific problem.
+Generates a single test case using the specified test name and returns a compressed archive
+containing both the input and output files.
 
 -   **Authentication:** Required.
 -   **Parameters:**
-    -   `serialNumber` (number): The serial number of the problem.
-    -   `testcaseName` (string): The name of the test case to generate.
--   **Response:** Plain text test case input.
+  -   `serialNumber` (number): The serial number of the problem.
+  -   `testcaseName` (string): The name of the test case to generate.
+-   **Response:** `application/gzip` (.tar.gz) containing `{testcaseName}.in` and `{testcaseName}.out`.
 -   **Status Codes:**
-    -   `200 OK`: Successfully generated/retrieved test case.
-    -   `401 Unauthorized`: User not authenticated.
-    -   `500 Internal Server Error`: Failed to generate test case.
+  -   `200 OK`: Successfully generated test case archive.
+  -   `401 Unauthorized`: User not authenticated.
+  -   `500 Internal Server Error`: Failed to generate test case.
 
 ## Submissions
 

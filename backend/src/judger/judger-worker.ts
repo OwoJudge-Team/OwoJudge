@@ -373,6 +373,49 @@ const runAllTests = async (
     subtaskTestCases.get(subtaskName)!.push(testcaseName);
   }
 
+  // Also scan the tests directory to find all test cases (including dynamically generated ones)
+  const testsDir = path.join(problemDir, 'tests');
+  if (fs.existsSync(testsDir)) {
+    const dirContents = fs.readdirSync(testsDir);
+    const inputFiles = new Set<string>();
+    
+    for (const file of dirContents) {
+      if (file.endsWith('.in')) {
+        const testcaseName = file.slice(0, -3);
+        inputFiles.add(testcaseName);
+      }
+    }
+
+    // Merge directory scan results with mapping file results
+    // For each testcase found in directory, add it to the subtask if not already there
+    for (const testcaseName of inputFiles) {
+      let foundInMapping = false;
+      
+      // Check if this testcase is already in the mapping
+      for (const [subtaskName, cases] of subtaskTestCases.entries()) {
+        if (cases.includes(testcaseName)) {
+          foundInMapping = true;
+          break;
+        }
+      }
+      
+      // If not in mapping, try to infer subtask from testcase name pattern (subtask-index format)
+      if (!foundInMapping) {
+        const testcaseParts = testcaseName.split('-');
+        if (testcaseParts.length >= 1) {
+          const inferredSubtask = testcaseParts[0];
+          // If the inferred subtask exists in the subtasks, add it
+          if (inferredSubtask in subtasks.subtasks) {
+            if (!subtaskTestCases.has(inferredSubtask)) {
+              subtaskTestCases.set(inferredSubtask, []);
+            }
+            subtaskTestCases.get(inferredSubtask)!.push(testcaseName);
+          }
+        }
+      }
+    }
+  }
+
   const allTestCases = new Set<string>();
   for (const subtaskName of Object.keys(subtasks.subtasks)) {
     const cases = subtaskTestCases.get(subtaskName);

@@ -525,8 +525,11 @@ async fn test_get_testcase() {
         .expect("Failed to get testcase");
     
     assert_eq!(response.status(), StatusCode::OK);
-    let content = response.text().await.expect("Failed to get text");
-    assert!(!content.is_empty(), "Testcase content should not be empty");
+    let content = response.bytes().await.expect("Failed to get bytes");
+    assert!(!content.is_empty(), "Testcase archive should not be empty");
+    assert!(content.len() > 2, "Testcase archive should have content");
+    assert_eq!(content[0], 0x1F, "Expected gzip header byte 0");
+    assert_eq!(content[1], 0x8B, "Expected gzip header byte 1");
 }
 
 pub async fn random_problem_api_calls(count: usize) {
