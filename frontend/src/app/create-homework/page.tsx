@@ -115,7 +115,7 @@ const CreateContestPage = () => {
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-3xl">
-        <h1 className="mb-6 text-2xl font-bold text-slate-100">Create New Contest</h1>
+        <h1 className="mb-6 text-2xl font-bold text-slate-100">Create New Homework</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
@@ -244,7 +244,7 @@ const CreateContestPage = () => {
               {loading ? (
                 <LuLoaderCircle className="animate-spin text-2xl text-slate-100" />
               ) : (
-                "Create Contest"
+                "Create Homework"
               )}
             </button>
           </div>

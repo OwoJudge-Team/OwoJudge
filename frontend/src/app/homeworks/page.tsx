@@ -62,7 +62,7 @@ const ContestPage: React.FC = () => {
               {isAdminOrTA(user) && (
                 <tr className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
-                    <CoolLink href="/create-contest" text="Create New Contest" />
+                    <CoolLink href="/create-homework" text="Create New Homework" />
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex max-w-60 items-center justify-start gap-3 rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1">
@@ -83,7 +83,7 @@ const ContestPage: React.FC = () => {
               {contests.map((contest) => (
                 <tr key={contest._id} className="transition hover:bg-neutral">
                   <td className="px-6 py-4">
-                    <CoolLink href={`/contests/${contest._id}`} text={contest.title} />
+                    <CoolLink href={`/homeworks/${contest._id}`} text={contest.title} />
                   </td>
                   <td className="px-6 py-4">
                     <div

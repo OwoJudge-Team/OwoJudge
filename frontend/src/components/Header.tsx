@@ -8,7 +8,7 @@ import UserMenu from "./UserMenu";
 const navItems = [
   { name: "Problems", href: "/problems", icon: FaCode },
   { name: "Submissions", href: "/submissions", icon: FaFile },
-  { name: "Contests", href: "/contests", icon: FaTrophy },
+  { name: "Homeworks", href: "/homeworks", icon: FaTrophy },
 ];
 
 const Header: React.FC = () => {
@@ -22,7 +22,7 @@ const Header: React.FC = () => {
           href="/"
           className="text-3xl font-bold text-slate-100 transition-all duration-150 hover:text-indigo-400"
         >
-          OwoJudge
+          DSA Judge+
         </Link>
 
         {/* Navigation */}

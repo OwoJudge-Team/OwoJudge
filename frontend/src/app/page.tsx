@@ -12,7 +12,7 @@ const HomePage: React.FC = () => {
           <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600/20 shadow-xl">
             <FaCode className="h-10 w-10 text-indigo-400" />
           </div>
-          <h1 className="mb-6 text-5xl font-bold text-slate-100">OwoJudge</h1>
+          <h1 className="mb-6 text-5xl font-bold text-slate-100">DSA Judge+</h1>
           <p className="mb-8 text-xl text-slate-300">
             Solve problems, compete, and improve your coding skills
           </p>
