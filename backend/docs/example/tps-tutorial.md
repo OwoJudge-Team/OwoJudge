@@ -39,7 +39,7 @@ Contains standard problem information.
     "name": "Problem",
     "code": "tps-example",
     "title": "Problem Title",
-    "type": "Batch",          // Usually "Batch", "Communication", or "OutputOnly"
+    "type": "Batch",          // We only support "Batch"
     "time_limit": 1.0,        // Seconds
     "memory_limit": 2048,     // Megabytes
     "score_policy": "sum"     // How subtask scores are aggregated
