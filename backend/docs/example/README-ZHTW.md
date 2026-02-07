@@ -7,8 +7,10 @@
 3. Validator
 4. Checker
 5. Metadata
+6. 打包
 
 接下來我將逐一介紹這些步驟。包括一些你可能會覺得有用的工具。
+
 
 ## 1. 問題敘述
 
@@ -31,6 +33,7 @@
 ```
 
 根據政策，我們可能會稍微修改描述的結構。但總體而言，我們應該遵循上述的格式。
+
 
 ## 2. Generator
 
@@ -82,6 +85,7 @@ gen_sub5 5 300000 100000 bon97dus2
 
 如果你想產生一個圖 (graph)，你可以考慮使用 `bicycle-parking-tree/gen` 目錄中的 `GraphGen.h`，或者自己寫一個。
 
+
 ## 3. Validator
 
 Validator 是一個用來檢查 generator 產生的測試輸入是否合法的程式。一般來說，你應該根據問題的描述來編寫 validators，而不是根據 generator。
@@ -122,6 +126,7 @@ int main(int argc, char* argv[]) {
 inf.quitf(_fail, "Unknown operation %d", op);
 ```
 
+
 ## 4. Checker
 
 通常，我們可以保留預設的 checker。但如果你希望自己寫一個。你可以參考 `bicycle-parking-tree/checker` 目錄中的 `checker.cpp`。
@@ -147,6 +152,7 @@ quitf(_ok, "%d tokens", n);
 ```
 
 如果你希望對單一測資給部分分數，請聯繫我們。
+
 
 ## 5. Metadata
 
@@ -191,4 +197,13 @@ quitf(_ok, "%d tokens", n);
   "process_limit": 1,
   "dailyQuota": 5
 }
+```
+
+
+## 6. 打包
+
+我們使用 tar.gz 來打包問題檔案。你可以用以下指令來建立打包後的檔案：
+
+```bash
+tar -czvf problem_name.tar.gz problem_directory
 ```

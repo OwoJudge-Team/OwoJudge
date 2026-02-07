@@ -11,6 +11,7 @@ Designing a problem with this modified TPS consists of five steps:
 3. Validator
 4. Checker
 5. Metadata
+6. Packaging
 
 I'll go through each of these steps. Including the tools that you might find useful.
 
@@ -131,7 +132,7 @@ inf.quitf(_fail, "Unknown operation %d", op);
 ```
 
 
-## Checker
+## 4. Checker
 
 Usually, we can keep the default checker. But if you wish to write your own. You can refer to the `checker.cpp` in the `bicycle-parking-tree/checker` directory.
 
@@ -158,7 +159,7 @@ quitf(_ok, "%d tokens", n);
 If you wish to report a partial score, contact us.
 
 
-## Metadata
+## 5. Metadata
 
 There are two metadata files: `problem.json` and `judgemeta.json`.
 
@@ -201,4 +202,12 @@ The `full_score` is the total score of the problem. The `tags` and `problemRelat
   "process_limit": 1,
   "dailyQuota": 5
 }
+```
+
+## 6. Packaging
+
+We use tar.gz to package the problem files. You can use the following command to create the package:
+
+```bash
+tar -czvf problem_name.tar.gz problem_directory
 ```
