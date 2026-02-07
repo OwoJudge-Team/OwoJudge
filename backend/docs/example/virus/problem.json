@@ -1,0 +1,12 @@
+{
+  "name": "virus",
+  "code": "virus",
+  "title": "Virus",
+  "type": "Batch",
+  "has_grader": false,
+  "java_enabled": false,
+  "python_enabled": false,
+  "time_limit": 0.7,
+  "memory_limit": 512,
+  "description": "Task description"
+}

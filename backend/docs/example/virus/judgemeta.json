@@ -1,0 +1,15 @@
+{
+  "full_score": 100,
+  "tags": [
+      "basic"
+  ],
+  "problemRelatedTags": [
+      "math"
+  ],
+  "allowed_languages": [
+      "gcc c17",
+      "gcc c23"
+  ],
+  "process_limit": 1,
+  "dailyQuota": 5
+}
