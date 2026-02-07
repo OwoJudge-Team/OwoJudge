@@ -108,7 +108,8 @@ int main(int argc, char* argv[]) {
   // Read '\n' at the end of the line.
   inf.readEoln();
   for (int i = 0; i < n; ++i) {
-    // Here we pass "u[" + to_string(i) + "]" as the name. If the input u[5] is invalid, the validator will notify you that "u[5]" is invalid.
+    // Here we pass "u[" + to_string(i) + "]" as the name. If the input u[5] is
+    // invalid, the validator will notify you that "u[5]" is invalid.
     int u = inf.readInt(0, n, "u[" + to_string(i) + "]");
     // Read a space after the integer.
     inf.readSpace();
