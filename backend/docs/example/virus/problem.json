@@ -3,6 +3,7 @@
   "code": "virus",
   "title": "Virus",
   "type": "Batch",
+  "score_policy": "sum",
   "has_grader": false,
   "java_enabled": false,
   "python_enabled": false,
