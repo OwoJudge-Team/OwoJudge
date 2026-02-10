@@ -18,11 +18,11 @@ export default function UserDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [domain, setDomain] = useState('');
+  const [domain, setDomain] = useState("");
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setDomain(window.location.hostname); 
+    if (typeof window !== "undefined") {
+      setDomain(window.location.hostname);
     }
 
     const fetchUser = async () => {
@@ -95,7 +95,7 @@ export default function UserDetailPage() {
                 )}
               </div>
               <p className="text-xl text-slate-400">@{user.username}</p>
-              <div className="flex mt-1 text-xl text-slate-400 items-center">
+              <div className="mt-1 flex items-center text-xl text-slate-400">
                 <FaGitAlt />
                 <p>{`git@${domain}:${sshPort}/${user.username}/${user.username}-dsa.git`}</p>
               </div>
