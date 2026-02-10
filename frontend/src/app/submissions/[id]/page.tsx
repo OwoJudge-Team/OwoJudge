@@ -99,7 +99,8 @@ export default function SubmissionPage() {
         window.URL.revokeObjectURL(url);
         setMessage("Testcase generated successfully.");
       } else {
-        setMessage("Unable to generate the testcase.");
+        const errorMsg = await res.text();
+        setMessage(`Unable to generate the testcase: ${errorMsg}`);
       }
     } catch (error) {
       setMessage("An error occurred while generating the testcase.");
@@ -231,7 +232,7 @@ export default function SubmissionPage() {
                           <button
                             className="inline-flex items-center"
                             onClick={() => {
-                              setCurrentTestcase(groupName + "-" + testcase.testcase.split("-")[1]);
+                              setCurrentTestcase(testcase.testcase);
                               setMessage(
                                 `Generate new test data for test case ${testcase.testcase}?`
                               );
