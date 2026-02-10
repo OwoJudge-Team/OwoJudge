@@ -6,19 +6,25 @@ import Link from "next/link";
 import { apiGet } from "@/utils/api";
 import CoolLink from "@/components/cool-link";
 import { User } from "@/types/user";
-import { FaTrophy, FaCircleCheck, FaUserShield, FaUserPen } from "react-icons/fa6";
+import { FaTrophy, FaCircleCheck, FaUserShield, FaUserPen, FaGitAlt } from "react-icons/fa6";
 import Loading from "@/components/Loading";
 import { isAdmin, isTA } from "@/utils/users";
 
 export default function UserDetailPage() {
   const params = useParams();
   const username = params.username;
+  const sshPort = process.env.GITEA_SSH_PORT || 2222;
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [domain, setDomain] = useState('');
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setDomain(window.location.hostname); 
+    }
+
     const fetchUser = async () => {
       try {
         const userRes = await apiGet(`/api/users/${username}`);
@@ -89,6 +95,10 @@ export default function UserDetailPage() {
                 )}
               </div>
               <p className="text-xl text-slate-400">@{user.username}</p>
+              <div className="flex mt-1 text-xl text-slate-400 items-center">
+                <FaGitAlt />
+                <p>{`git@${domain}:${sshPort}/${user.username}/${user.username}-dsa.git`}</p>
+              </div>
             </div>
 
             {/* Stats Row within Header */}
