@@ -152,47 +152,47 @@ export const generateSingleTestcase = async (problemSerialNumber: string, testca
     throw new Error('Required files/directories (gen directory, gen/data) not found in problem directory.');
   }
 
-  // Parse the 'data' file to find the target command
-  const dataFileContent = fs.readFileSync(dataFilePath, 'utf8');
-  const lines = dataFileContent.split('\n');
+  // Find the command in gen_summary
+  const genSummaryCandidates = [
+    path.join(problemDir, 'tests', 'gen_summary'),
+    path.join(problemDir, 'gen', 'gen_summary'),
+  ];
 
-  const testcaseParts = testcaseName.split('-');
-  if (testcaseParts.length < 2) {
-    throw new Error(`Invalid testcaseName format: ${testcaseName}. Expected format: 'subtask-index'`);
+  let command: string | null = null;
+  let subtaskName = 'unknown';
+
+  // Try to infer subtask from name (e.g. 1-public-02 -> 1)
+  const nameParts = testcaseName.split('-');
+  if (nameParts.length > 0) {
+    subtaskName = nameParts[0];
   }
-  const subtaskName = testcaseParts[0];
-  const testcaseIndex = parseInt(testcaseParts[1], 10) - 1;
 
-  if (isNaN(testcaseIndex) || testcaseIndex < 0) {
-    throw new Error(`Invalid testcase index: ${testcaseParts[1]}`);
-  }
-
-  let inTargetSubtask = false;
-  let genCommands: string[] = [];
-  let genCommandLineNumbers: number[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
-    if (trimmedLine.startsWith('@subtask')) {
-      inTargetSubtask = trimmedLine.split(/\s+/)[1] === subtaskName;
-      continue;
+  for (const genSummaryPath of genSummaryCandidates) {
+    if (fs.existsSync(genSummaryPath)) {
+      const summaryContent = fs.readFileSync(genSummaryPath, 'utf8');
+      const lines = summaryContent.split('\n');
+      for (const line of lines) {
+        if (!line.trim() || line.trim().startsWith('#')) continue;
+        
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 3 && parts[0] === testcaseName) {
+           command = parts.slice(2).join(' ');
+           break;
+        }
+      }
     }
-    if (inTargetSubtask && trimmedLine.startsWith('gen ')) {
-      genCommands.push(trimmedLine);
-      genCommandLineNumbers.push(i + 1);
-    }
+    if (command) break;
   }
 
-  if (testcaseIndex >= genCommands.length) {
-    throw new Error(`Testcase index ${testcaseIndex + 1} out of bounds for subtask ${subtaskName}`);
+  if (!command) {
+     throw new Error(`Testcase '${testcaseName}' not found in gen_summary.`);
   }
-
-  const command = genCommands[testcaseIndex];
-  const commandLineNumber = genCommandLineNumbers[testcaseIndex];
 
   if (command.startsWith('manual ')) {
     throw new Error(`Testcase ${testcaseName} is manual and cannot be generated`);
   }
+
+  const commandLineNumber = -1;
 
   const randomArg = `--rand=${Math.floor(Math.random() * 1e9)}`;
 
@@ -278,37 +278,7 @@ export const generateSingleTestcase = async (problemSerialNumber: string, testca
 
       const input = fs.readFileSync(outputPath, 'utf8');
 
-      // Read gen_summary to find the actual test name for this generation
-      let actualTestName = testcaseName;
-      const genSummaryCandidates = [
-        path.join(problemDir, 'tests', 'gen_summary'),
-        path.join(problemDir, 'gen', 'gen_summary'),
-      ];
-      for (const genSummaryPath of genSummaryCandidates) {
-        if (!fs.existsSync(genSummaryPath)) {
-          continue;
-        }
-        try {
-          const genSummaryContent = fs.readFileSync(genSummaryPath, 'utf8');
-          const summaryLines = genSummaryContent
-            .split('\n')
-            .filter(line => line.trim() && !line.startsWith('#'));
-
-          for (const line of summaryLines) {
-            const parts = line.split(/\s+/);
-            if (parts.length >= 2) {
-              const genTestName = parts[0];
-              const genLineNumber = parseInt(parts[1], 10);
-              if (!isNaN(genLineNumber) && genLineNumber === commandLineNumber) {
-                actualTestName = genTestName;
-                break;
-              }
-            }
-          }
-        } catch (summaryError) {
-          console.warn('Could not read gen_summary, using default test name:', summaryError);
-        }
-      }
+      const actualTestName = testcaseName;
 
       const output = await computeOutputWithSolution(problemDir, input);
       return { input, output, actualTestName, subtaskName };
