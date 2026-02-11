@@ -184,33 +184,8 @@ echo
 
 if [ ${ret} -eq 0 ]; then
 	cecho success "Finished."
+	exit 0
 else
 	cecho fail "Terminated."
+	exit ${ret}
 fi
-
-manual_dir="${GEN_DIR}/manual"
-if [ -d "${manual_dir}" ]; then
-	for src in "${tests_dir}"/0-*.out; do
-		# skip if no matches
-		[ -e "$src" ] || continue
-		filename=$(basename "$src")
-		if [[ "$filename" =~ ^0-(.*)\.out$ ]]; then
-			suffix="${BASH_REMATCH[1]}"
-			dest="${manual_dir}/sample-${suffix}.out"
-			in_file="${manual_dir}/sample-${suffix}.in"
-			if [ -f "${in_file}" ]; then
-				cp -p "$src" "$dest"
-				echo "Copied '${src}' -> '${dest}'"
-			else
-				cecho yellow "Skipping '${src}': '${in_file}' not found."
-			fi
-		fi
-	done
-	sync_src="${INTERNALS}/sync-sample-meta.py"
-	sync_script=$(readlink -f "${sync_src}")
-	"${PYTHON}" "${sync_script}" -p "${BASE_DIR}"
-else
-	cecho yellow "Warning: manual directory '${manual_dir}' does not exist."
-fi
-
-exit ${ret}
