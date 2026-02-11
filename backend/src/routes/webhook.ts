@@ -3,7 +3,7 @@ import { validationResult, checkSchema, matchedData } from 'express-validator';
 import { giteaService } from '../utils/gitea-service';
 import { Submission, ISubmission, IUserSolution } from '../mongoose/schemas/submission';
 import { User } from '../mongoose/schemas/users';
-import { Problem } from '../mongoose/schemas/problems';
+import { Problem, ProblemStatus } from '../mongoose/schemas/problems';
 import { giteaWebhookValidation } from '../validations/gitea-webhook-validation';
 import { submitUserSubmission } from '../judger/judger';
 
@@ -185,6 +185,11 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                 const problem = await Problem.findOne({ serialNumber: problemSerialNumber });
                 if (!problem) {
                     console.error(`[Webhook] Problem with serial number ${problemSerialNumber} not found, skipping submission`);
+                    continue;
+                }
+
+                if (problem.status !== ProblemStatus.Ready) {
+                    console.log(`[Webhook] Problem ${problemSerialNumber} is not ready (Status: ${problem.status}), skipping submission`);
                     continue;
                 }
 
