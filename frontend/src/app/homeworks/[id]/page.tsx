@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiGet, apiFetch } from "@/utils/api";
+import { apiGet, apiFetch, apiDelete } from "@/utils/api";
 import { Contest, Standing } from "@/types/contests";
 import { formatISOTime } from "@/utils/time";
 import { Problem } from "@/types/problems";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { FaChartPie, FaStar, FaUserGroup } from "react-icons/fa6";
 import CoolLink from "@/components/cool-link";
 import Loading from "@/components/Loading";
@@ -22,8 +22,12 @@ export default function ContestPage() {
   const [userStanding, setUserStanding] = useState<Standing | null>(null);
   const [rank, setRank] = useState<number>(0);
   const [problems, setProblems] = useState<Problem[]>([]);
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [finished, setFinished] = useState(false);
 
   const { user } = useAuth();
 
@@ -65,6 +69,9 @@ export default function ContestPage() {
         const allProblems: Problem[] = await problemsRes.json();
         const contestProblems = allProblems.filter((p) => problemIDs.has(p.serialNumber));
         setProblems(contestProblems);
+        setMessage(
+          `Are you sure you want to delete homework ${contestData.title}? This action cannot be undone.`
+        );
       } catch (error) {
         console.error("Failed to fetch contest:", error);
       }
@@ -86,16 +93,37 @@ export default function ContestPage() {
         setContest((prevContest) =>
           prevContest ? { ...prevContest, released: !prevContest.released } : prevContest
         );
-        setMessage(`Problem is now ${!contest?.released ? "released" : "unreleased"}.`);
+        setMessage(`Homework is now ${!contest?.released ? "released" : "unreleased"}.`);
+        setFinished(true);
         setIsModalOpen(true);
       } else {
         setMessage(
-          `Problem is not ${!contest?.released ? "released" : "unreleased"} successfully.`
+          `Homework is not ${!contest?.released ? "released" : "unreleased"} successfully.`
         );
+        setFinished(true);
         setIsModalOpen(true);
       }
     } catch (error) {
       console.error("Error toggling release status:", error);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await apiDelete(`/api/contests/${id}`);
+      if (res.ok) {
+        setMessage("Homework deleted successfully. Back to homeworks list.");
+        setSuccess(true);
+      } else {
+        setMessage("Failed to delete the homework.");
+      }
+    } catch (error) {
+      setMessage("An error occurred while deleting the homework.");
+      console.error("Error deleting homework:", error);
+    } finally {
+      setIsDeleting(false);
+      setFinished(true);
     }
   };
 
@@ -206,8 +234,8 @@ export default function ContestPage() {
             <div className="flex flex-col gap-3">
               <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
               <p className="text-slate-300">
-                Toggling the released status of the contest changes the visibility of the contest to
-                users.
+                Toggling the released status of the homework changes the visibility of the homework
+                to users.
               </p>
               <div className="flex flex-row items-center gap-2">
                 <Toggle enabled={contest.released} onClick={toggleRelease} />
@@ -215,6 +243,16 @@ export default function ContestPage() {
                   {contest.released ? "Released" : "Not Released"}
                 </p>
               </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <h3 className="text-xl font-semibold text-slate-200">Delete Homework</h3>
+              <p className="text-slate-300">Deleting the homework irreversibly.</p>
+              <button
+                className="w-fit rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
+                onClick={() => setIsModalOpen(true)}
+              >
+                Delete Homework
+              </button>
             </div>
           </div>
         </section>
@@ -224,8 +262,20 @@ export default function ContestPage() {
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          if (success) {
+            router.push("/homeworks");
+          } else if (finished) {
+            setFinished(false);
+            setMessage(
+              `Are you sure you want to delete homework ${contest.title}? This action cannot be undone.`
+            );
+          }
         }}
+        onConfirm={handleDelete}
         message={message}
+        confirm={!isDeleting && !finished}
+        loading={isDeleting}
+        style="danger"
       />
     </div>
   );
