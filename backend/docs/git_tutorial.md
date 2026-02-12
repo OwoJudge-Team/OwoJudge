@@ -146,7 +146,7 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... your_email@example.com
 在 **Settings** 頁面或個人資料頁面，你可以看到你的 **Git Repository** URL，格式類似：
 
 ```
-git@dsajudge:b14902000/b14902000-dsa.git
+ssh://git@dsajudge:b14902000/b14902000-dsa.git
 ```
 
 ### 步驟二：Clone Repository
@@ -159,7 +159,7 @@ git clone <你的 Git Repository URL>
 
 例如：
 ```bash
-git clone git@dsajudge:22/b14902000/b14902000-dsa.git
+git clone ssh://git@dsajudge:22/b14902000/b14902000-dsa.git
 ```
 
 如果一切正常，你會看到一個以你的使用者名稱命名的資料夾被建立。

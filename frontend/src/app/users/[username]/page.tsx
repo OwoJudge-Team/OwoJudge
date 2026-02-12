@@ -97,7 +97,7 @@ export default function UserDetailPage() {
               <p className="text-xl text-slate-400">@{user.username}</p>
               <div className="mt-1 flex items-center text-xl text-slate-400">
                 <FaGitAlt />
-                <p>{`git@${domain}:${sshPort}/${user.username}/${user.username}-dsa.git`}</p>
+                <p>{`ssh://git@${domain}:${sshPort}/${user.username}/${user.username}-dsa.git`}</p>
               </div>
             </div>
 
