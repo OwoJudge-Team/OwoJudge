@@ -108,6 +108,7 @@ services:
       - ROOT_USERNAME=admin
       - ADMIN_PASSWD=${ADMIN_PASSWD:-aaaaaaaa}
       - GITEA_BASE_URL=http://gitea:3000
+      - SALT=${BACKEND_SALT:-justasalt}
     expose:
       - "8787"
     volumes:
