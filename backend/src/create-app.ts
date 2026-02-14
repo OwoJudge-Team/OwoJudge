@@ -14,6 +14,7 @@ import webhookRouter from './routes/webhook.js';
 import rejudgeRouter from './routes/rejudge.js';
 
 // Custom middleware to apply express.json() only to non-multipart requests
+// Also captures raw body for webhook signature verification
 const conditionalJsonParser = (req: Request, res: Response, next: NextFunction) => {
   const contentType = req.headers['content-type'] || '';
 
@@ -22,8 +23,13 @@ const conditionalJsonParser = (req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
-  // For all other requests, use the JSON parser
-  return express.json()(req, res, next);
+  // For all other requests, use the JSON parser with raw body capture
+  return express.json({
+    verify: (req: any, _res, buf) => {
+      // Store the raw body buffer for webhook signature verification
+      req.rawBody = buf;
+    }
+  })(req, res, next);
 };
 
 export const createApp = (): Application => {

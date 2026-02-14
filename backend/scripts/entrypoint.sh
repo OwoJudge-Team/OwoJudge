@@ -66,6 +66,7 @@ echo "Checking for existing webhook..."
 GITEA_HTTP_PORT=${GITEA_HTTP_PORT:-3000}
 BACKEND_PORT=${BACKEND_PORT:-8787}
 WEBHOOK_BRANCH_FILTER=${WEBHOOK_BRANCH_FILTER:-main}
+GITEA_WEBHOOK_SECRET=${GITEA_WEBHOOK_SECRET:-}
 WEBHOOK_URL="http://backend:${BACKEND_PORT}/api/webhook/gitea"
 
 # Check if webhook already exists
@@ -78,6 +79,7 @@ echo "Existing webhook check result: $EXISTING_WEBHOOK"
 
 if [ -z "$EXISTING_WEBHOOK" ]; then
   echo "Creating new system webhook..."
+  echo $GITEA_WEBHOOK_SECRET
   curl -X POST "http://gitea:${GITEA_HTTP_PORT}/api/v1/admin/hooks" \
     -H "Authorization: token $TOKEN" \
     -H "Content-Type: application/json" \
@@ -86,7 +88,8 @@ if [ -z "$EXISTING_WEBHOOK" ]; then
       \"branch_filter\": \"${WEBHOOK_BRANCH_FILTER}\",
       \"config\": {
         \"url\": \"${WEBHOOK_URL}\",
-        \"content_type\": \"json\"
+        \"content_type\": \"json\",
+        \"secret\": \"${GITEA_WEBHOOK_SECRET}\"
       },
       \"events\": [
         \"push\"

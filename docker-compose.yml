@@ -17,6 +17,7 @@ services:
       - GITEA__security__INSTALL_LOCK=true
       - GITEA__server__ROOT_URL=http://gitea:3000/
       - GITEA__WEBHOOK__ALLOWED_HOST_LIST=backend,localhost,127.0.0.1,::1
+      - GITEA_WEBHOOK_SECRET=${GITEA_WEBHOOK_SECRET:-}
     restart: always
     networks:
       - judge-network
@@ -81,6 +82,7 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017/judge
       - ROOT_USERNAME=${ROOT_USERNAME:-admin}
       - GITEA_BASE_URL=http://gitea:3000
+      - GITEA_WEBHOOK_SECRET=${GITEA_WEBHOOK_SECRET:-}
       - ADMIN_PASSWD=${ADMIN_PASSWD:-admin1234}
     volumes:
       - ./backend/uploads:/app/uploads
