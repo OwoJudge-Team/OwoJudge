@@ -9,7 +9,7 @@ import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
 import Loading from "@/components/Loading";
-import { isAdmin } from "@/utils/users";
+import { isAdmin, isAdminOrTA } from "@/utils/users";
 import Toggle from "@/components/Toggle";
 
 const SHOW_SUBMIT = false;
@@ -124,33 +124,51 @@ export default function ProblemPage() {
           </section>
         )}
 
-        {isAdmin(user) && (
+        {isAdminOrTA(user) && (
           <section className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
-            <h2 className="mb-4 text-2xl font-bold text-slate-100">Admin Actions</h2>
+            <h2 className="mb-4 text-2xl font-bold text-slate-100">Previledged Actions</h2>
             <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-3">
-                <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
-                <p className="text-slate-300">
-                  Toggling the released status of the problem changes the visibility of the problem
-                  to users.
-                </p>
-                <div className="flex flex-row items-center gap-2">
-                  <Toggle enabled={data.released} onClick={toggleRelease} />
-                  <p className="text-lg text-slate-200">
-                    {data.released ? "Released" : "Not Released"}
+              {isAdminOrTA(user) && (
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-xl font-semibold text-slate-200">Update Problem</h3>
+                  <p className="text-slate-300">
+                    Re-upload a compressed problem file (.tar.gz) to update the problem.
                   </p>
+                  <button
+                    className="w-fit rounded-lg bg-indigo-600 p-2 hover:bg-indigo-700"
+                    onClick={() => router.push(`/problems/update/${data.serialNumber}`)}
+                  >
+                    Update Problem
+                  </button>
                 </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <h3 className="text-xl font-semibold text-slate-200">Delete Problem</h3>
-                <p className="text-slate-300">Deleting the problem irreversibly.</p>
-                <button
-                  className="w-fit rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
-                  onClick={() => setIsModalOpen(true)}
-                >
-                  Delete Problem
-                </button>
-              </div>
+              )}
+              {isAdmin(user) && (
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
+                  <p className="text-slate-300">
+                    Toggling the released status of the problem changes the visibility of the
+                    problem to users.
+                  </p>
+                  <div className="flex flex-row items-center gap-2">
+                    <Toggle enabled={data.released} onClick={toggleRelease} />
+                    <p className="text-lg text-slate-200">
+                      {data.released ? "Released" : "Not Released"}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {isAdmin(user) && (
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-xl font-semibold text-slate-200">Delete Problem</h3>
+                  <p className="text-slate-300">Deleting the problem irreversibly.</p>
+                  <button
+                    className="w-fit rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
+                    onClick={() => setIsModalOpen(true)}
+                  >
+                    Delete Problem
+                  </button>
+                </div>
+              )}
             </div>
           </section>
         )}

@@ -39,7 +39,7 @@ const ProblemTable = ({
               </div>
             </td>
             <td className="px-6 py-4">
-              <CoolLink href={`/create-problem`} text="Create New Problem" />
+              <CoolLink href={`/problems/create`} text="Create New Problem" />
             </td>
             <td className="px-6 py-4">
               <span className="inline-flex items-center gap-1.5 rounded-lg border-[3px] border-dashed border-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
