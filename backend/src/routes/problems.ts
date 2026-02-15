@@ -105,7 +105,7 @@ const getProblems = async (request: IRequest, response: Response) => {
 
     const problems: IProblem[] = await Problem.find(query)
       .select(
-        "id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released",
+        "id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released hasGrader",
       )
       .sort({ serialNumber: -1 });
 
@@ -333,6 +333,22 @@ const createProblem = async (
       const metadataContent = readFileSync(metadataPath, "utf8");
       const metadata = JSON.parse(metadataContent);
 
+      if (metadata.has_grader !== undefined) {
+        const graderPath = path.join(problemDir, "grader");
+        const hasGraderDir =
+          fs.existsSync(graderPath) && fs.statSync(graderPath).isDirectory();
+        if (!!metadata.has_grader !== hasGraderDir) {
+          fs.rmSync(problemDir, { recursive: true, force: true });
+          spawnSync("rm", ["-f", targetPath]);
+          response
+            .status(400)
+            .send(
+              `Metadata has_grader (${metadata.has_grader}) does not match problem structure (grader directory exists: ${hasGraderDir})`,
+            );
+          return;
+        }
+      }
+
       let judgeMeta: any = {};
       try {
         if (fs.existsSync(judgeMetaPath)) {
@@ -346,6 +362,9 @@ const createProblem = async (
       let newProblem: IProblem;
       try {
         newProblem = new Problem({
+          hasGrader:
+            fs.existsSync(path.join(problemDir, "grader")) &&
+            fs.statSync(path.join(problemDir, "grader")).isDirectory(),
           createdTime: metadata.createdTime || new Date(),
           title: metadata.title,
           fileName: fileName,
@@ -699,6 +718,22 @@ const updateProblemWithFile = async (
       const metadataContent = readFileSync(metadataPath, "utf8");
       const metadata = JSON.parse(metadataContent);
 
+      if (metadata.has_grader !== undefined) {
+        const graderPath = path.join(newProblemDir, "grader");
+        const hasGraderDir =
+          fs.existsSync(graderPath) && fs.statSync(graderPath).isDirectory();
+        if (!!metadata.has_grader !== hasGraderDir) {
+          fs.rmSync(newProblemDir, { recursive: true, force: true });
+          spawnSync("rm", ["-f", targetPath]);
+          response
+            .status(400)
+            .send(
+              `Metadata has_grader (${metadata.has_grader}) does not match problem structure (grader directory exists: ${hasGraderDir})`,
+            );
+          return;
+        }
+      }
+
       let judgeMeta: any = {};
       try {
         if (fs.existsSync(judgeMetaPath)) {
@@ -743,6 +778,9 @@ const updateProblemWithFile = async (
         fs.renameSync(newProblemDir, finalProblemDir);
 
         const updateData = {
+          hasGrader:
+            fs.existsSync(path.join(finalProblemDir, "grader")) &&
+            fs.statSync(path.join(finalProblemDir, "grader")).isDirectory(),
           createdTime: metadata.createdTime || new Date(),
           title: metadata.title,
           fileName: fileName,

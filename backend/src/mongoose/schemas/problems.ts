@@ -32,6 +32,7 @@ interface IProblem extends Document {
   released: boolean;
   status: ProblemStatus;
   scorePolicy: ScorePolicy;
+  hasGrader?: boolean;
   testcase: ITestcase[];
   tags?: string[];
   problemRelatedTags?: string[];
@@ -64,6 +65,7 @@ const problemSchema = new Schema<IProblem>({
   released: { type: Boolean, default: false },
   status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
+  hasGrader: { type: Boolean, default: false },
   testcase: [
     {
       filename: String,

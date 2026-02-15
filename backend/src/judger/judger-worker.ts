@@ -296,6 +296,7 @@ const runAllTests = async (
 
   const checkerCompiled = await compileChecker(problemDir, workDir);
   if (!checkerCompiled) {
+    console.log('Fail to compile checker');
     return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {}, time: 0, memory: 0 };
   }
 
@@ -496,11 +497,28 @@ const runAllTests = async (
 
 const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<{ status: SubmissionStatus; errorMessage?: string }> => {
   const metaFile = path.join(workDir, 'compile.meta');
-  const boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
+  let boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
+
+  const problem = await Problem.findOne({ serialNumber: submission.problemSerialNumber });
 
   return await IsolateManager.withBox(async (box) => {
     const boxDir = box.getBoxDir();
     const boxID = box.getBoxID();
+
+    if (problem?.hasGrader) {
+      const graderDir = path.join('problems', submission.problemSerialNumber.toString(), 'grader', submission.language);
+      if (fs.existsSync(graderDir)) {
+        const files = fs.readdirSync(graderDir);
+        for (const file of files) {
+          fs.copyFileSync(path.join(graderDir, file), path.join(boxDir, file));
+        }
+        if (submission.language.startsWith('g++')) {
+          boxCompileCommand = boxCompileCommand.replace('main.cpp', '*.cpp');
+        } else if (submission.language.startsWith('gcc')) {
+          boxCompileCommand = boxCompileCommand.replace('main.c', '*.c');
+        }
+      }
+    }
 
     try {
       // Write user solution to box
