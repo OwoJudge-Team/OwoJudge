@@ -1,0 +1,12 @@
+{
+  "samples": [
+    [
+      "gen/manual/sample-01.in",
+      "gen/manual/sample-01.out"
+    ],
+    [
+      "gen/manual/sample-02.in",
+      "gen/manual/sample-02.out"
+    ]
+  ]
+}
