@@ -7,8 +7,7 @@ import { Contest, Standing } from "@/types/contests";
 import { formatISOTime } from "@/utils/time";
 import { Problem } from "@/types/problems";
 import { useParams, useRouter } from "next/navigation";
-import { FaChartPie, FaStar, FaUserGroup } from "react-icons/fa6";
-import CoolLink from "@/components/cool-link";
+import ProblemTable from "@/components/ProblemTable";
 import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
 import Toggle from "@/components/Toggle";
@@ -17,7 +16,6 @@ import Modal from "@/components/Modal";
 export default function ContestPage() {
   const id = useParams().id;
 
-  const [problemScores, setProblemScores] = useState<Map<number, number>>(new Map());
   const [contest, setContest] = useState<Contest | null>(null);
   const [userStanding, setUserStanding] = useState<Standing | null>(null);
   const [rank, setRank] = useState<number>(0);
@@ -51,15 +49,6 @@ export default function ContestPage() {
           const userStand = standingData.find((s) => s.username === user.username) || null;
           setUserStanding(userStand);
 
-          problemScores.clear();
-          if (userStand) {
-            const tmpProblemScores = new Map<number, number>();
-            for (const ps of userStand.problemScores) {
-              tmpProblemScores.set(ps.serialNumber, ps.score);
-            }
-            setProblemScores(tmpProblemScores);
-          }
-
           const userRank = standingData.findIndex((s) => s.username === user.username) + 1 || 0;
           setRank(userRank);
         }
@@ -68,6 +57,25 @@ export default function ContestPage() {
         const problemsRes = await apiGet(`/api/problems`);
         const allProblems: Problem[] = await problemsRes.json();
         const contestProblems = allProblems.filter((p) => problemIDs.has(p.serialNumber));
+        if (userStanding) {
+          const tmpProblemScores = new Map<number, number>();
+          for (const ps of userStanding.problemScores) {
+            tmpProblemScores.set(ps.serialNumber, ps.score);
+          }
+          // Replace the fullscore in problems with the score the user got in the contest
+          contestProblems.forEach((p) => {
+            if (tmpProblemScores.has(p.serialNumber)) {
+              p.fullScore = tmpProblemScores.get(p.serialNumber)!;
+            } else {
+              p.fullScore = 0;
+            }
+          });
+        } else {
+          // If user has no standing, set all problem scores to 0
+          contestProblems.forEach((p) => {
+            p.fullScore = 0;
+          });
+        }
         setProblems(contestProblems);
         setMessage(
           `Are you sure you want to delete homework ${contestData.title}? This action cannot be undone.`
@@ -165,66 +173,8 @@ export default function ContestPage() {
         </div>
       </div>
 
-      {/* TODO: Refactor the problem table into a shared component */}
       <div className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-slate-700 bg-slate-800/50">
-              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                ID
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Problem
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Quota
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Score
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                AC / Tried
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700/50">
-            {problems.map((p) => (
-              <tr
-                key={p.serialNumber}
-                className="group transition-all duration-150 hover:bg-slate-700/50"
-              >
-                <td className="px-6 py-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/60 text-sm font-semibold text-slate-300">
-                    {p.serialNumber}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <CoolLink href={`/problems/${p.serialNumber}`} text={p.title} />
-                </td>
-                <td className="px-6 py-4">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-800/50 px-3 py-1.5 text-sm font-medium text-blue-200">
-                    <FaChartPie />
-                    {p.dailyQuota}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 items-center gap-1 rounded-lg bg-amber-800/50 px-3 text-sm font-semibold text-amber-200">
-                      <FaStar />
-                      {problemScores.get(p.serialNumber) ?? 0}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                    <FaUserGroup />
-                    {p.userDetail.solved} / {p.userDetail.attempted}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ProblemTable showCreateProblem={false} problems={problems} />
       </div>
 
       {isAdmin(user) && (
