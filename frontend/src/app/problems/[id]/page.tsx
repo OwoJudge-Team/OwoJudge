@@ -111,7 +111,7 @@ export default function ProblemPage() {
             <div className="h-1 w-1 rounded-full bg-slate-600" />
             <div className="flex items-center gap-2">
               <FaMemory className="text-purple-400" />
-              <span className="font-medium text-slate-200">{data.memoryLimit} KB</span>
+              <span className="font-medium text-slate-200">{data.memoryLimit} MB</span>
               <span className="text-sm">memory limit</span>
             </div>
           </div>
