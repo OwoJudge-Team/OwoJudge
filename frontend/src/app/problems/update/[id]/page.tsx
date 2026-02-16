@@ -34,8 +34,8 @@ const UpdateProblemPage: React.FC = () => {
         } else {
           let msg = `Upload failed (${res.status})`;
           try {
-            const data = await res.json();
-            if (data && data.message) msg = data.message;
+            const data = await res.text();
+            if (data) msg = data;
           } catch {}
           setModalMessage(msg);
         }
