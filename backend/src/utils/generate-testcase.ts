@@ -21,6 +21,14 @@ const EXTENSION_LANGUAGE_MAP: Record<string, keyof typeof languageSupport> = {
   '.sh': 'bash',
 };
 
+const LANGUAGE_GRADER_DIR_MAP: Record<string, string[]> = {
+  'gcc c17': ['gcc c17', 'c', 'C'],
+  'g++ c++17': ['g++ c++17', 'cpp', 'CPP', 'C++', 'c++', 'cc'],
+  'rust': ['rust', 'rs'],
+  'python3': ['python3', 'py', 'python'],
+  'nodejs': ['nodejs', 'js', 'javascript'],
+};
+
 const resolveSolutionFile = (problemDir: string): string => {
   const solutionDir = path.join(problemDir, 'solution');
   const solutionsJsonPath = path.join(problemDir, 'solutions.json');
@@ -76,12 +84,50 @@ const computeOutputWithSolution = async (problemDir: string, input: string): Pro
     const mainFileName = `main${extension}`;
     fs.copyFileSync(solutionFilePath, path.join(boxDir, mainFileName));
 
+    // Check for grader
+    let graderDir: string | null = null;
+    // Map language to grader directory name logic. Create a copy to avoid mutating the constant.
+    const candidates = [...(LANGUAGE_GRADER_DIR_MAP[language] || [language])];
+    // Always check the exact language string first/last as fallback if not already present
+    if (!candidates.includes(language)) {
+        candidates.push(language);
+    }
+    
+    // Check which candidate directory exists
+    for (const candidate of candidates) {
+      // Handle spaces in language (if any) or simplified names
+      const candidatePath = path.join(problemDir, 'grader', candidate);
+      if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isDirectory()) {
+        graderDir = candidatePath;
+        break;
+      }
+    }
+
+    let compileCommand = languageConfig.compileCommand;
+
+    if (graderDir) {
+      console.log(`Using grader for ${language} from ${graderDir}`);
+      const graderFiles = fs.readdirSync(graderDir);
+      for (const file of graderFiles) {
+        fs.copyFileSync(path.join(graderDir, file), path.join(boxDir, file));
+      }
+
+      // Adjust compile command for C/C++ to include grader files
+      if (compileCommand) {
+         if (language.startsWith('g++')) {
+           compileCommand = compileCommand.replace('main.cpp', '*.cpp');
+         } else if (language.startsWith('gcc')) {
+           compileCommand = compileCommand.replace('main.c', '*.c');
+         }
+      }
+    }
+
     const inputFile = path.join(boxDir, 'input.in');
     fs.writeFileSync(inputFile, input);
 
     const compileMetaFile = `/tmp/sol-compile-${boxID}.meta`;
-    if (languageConfig.compileCommand) {
-      await box.run(languageConfig.compileCommand, {
+    if (compileCommand) {
+      await box.run(compileCommand, {
         processes: 20,
         timeLimit: 20,
         wallTimeLimit: 60,
@@ -95,7 +141,7 @@ const computeOutputWithSolution = async (problemDir: string, input: string): Pro
     }
 
     let runCommand = languageConfig.executeCommand;
-    if (languageConfig.compileCommand) {
+    if (compileCommand) {
       const compiledExe = path.join(boxDir, 'main.exe');
       const compiledBin = path.join(boxDir, 'main');
       if (fs.existsSync(compiledExe)) {
