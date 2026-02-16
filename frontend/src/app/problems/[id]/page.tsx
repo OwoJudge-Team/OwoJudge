@@ -14,6 +14,12 @@ import Toggle from "@/components/Toggle";
 
 const SHOW_SUBMIT = false;
 
+const PROBLEM_STATUS_COLORS: Record<string, string> = {
+  ready: "bg-green-500",
+  waiting: "bg-orange-500",
+  error: "bg-red-500",
+};
+
 export default function ProblemPage() {
   const params = useParams();
   const id = params.id;
@@ -96,25 +102,36 @@ export default function ProblemPage() {
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-5xl">
         {/* Redesigned Header with Card Background */}
-        <div className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
-          <div className="mb-4 flex items-baseline gap-4">
-            <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
+        <div className="mb-8 flex flex-row items-start justify-between rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
+          <div>
+            <div className="mb-4 flex items-baseline gap-4">
+              <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
+            </div>
+
+            <div className="flex items-center gap-6 text-slate-400">
+              <div className="flex items-center gap-2">
+                <FaClock className="text-indigo-400" />
+                <span className="font-medium text-slate-200">{data.timeLimit} s</span>
+                <span className="text-sm">time limit</span>
+              </div>
+              <div className="h-1 w-1 rounded-full bg-slate-600" />
+              <div className="flex items-center gap-2">
+                <FaMemory className="text-purple-400" />
+                <span className="font-medium text-slate-200">{data.memoryLimit} MB</span>
+                <span className="text-sm">memory limit</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-6 text-slate-400">
-            <div className="flex items-center gap-2">
-              <FaClock className="text-indigo-400" />
-              <span className="font-medium text-slate-200">{data.timeLimit} s</span>
-              <span className="text-sm">time limit</span>
+          {isAdminOrTA(user) && (
+            <div className="flex items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1">
+              <div
+                className={`h-2 w-2 rounded-full ${PROBLEM_STATUS_COLORS[data.status] || "bg-gray-500"}`}
+              ></div>
+              <span className="text-sm text-slate-300">{data.status.toUpperCase()}</span>
             </div>
-            <div className="h-1 w-1 rounded-full bg-slate-600" />
-            <div className="flex items-center gap-2">
-              <FaMemory className="text-purple-400" />
-              <span className="font-medium text-slate-200">{data.memoryLimit} MB</span>
-              <span className="text-sm">memory limit</span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Problem Description with Card Background */}

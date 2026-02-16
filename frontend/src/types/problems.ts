@@ -1,3 +1,9 @@
+export enum ProblemStatus {
+  Ready = "ready",
+  Waiting = "waiting",
+  Error = "error",
+}
+
 export interface Problem {
   _id: number;
   title: string;
@@ -22,4 +28,5 @@ export interface Problem {
   dailyQuota: number;
   description?: string;
   released: boolean;
+  status: ProblemStatus;
 }
