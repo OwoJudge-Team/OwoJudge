@@ -43,7 +43,7 @@ const ContestPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
-        <div className="overflow-hidden rounded-lg border-slate-700 bg-slate-800 shadow-lg">
+        <div className="no-scrollbar overflow-x-auto rounded-lg border-slate-700 bg-slate-800 shadow-lg">
           <table className="w-full text-left">
             <thead className="bg-primary-light text-slate-400">
               <tr className="border-b border-slate-700">
@@ -65,17 +65,17 @@ const ContestPage: React.FC = () => {
                     <CoolLink href="/homeworks/create" text="Create New Homework" />
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex max-w-60 items-center justify-start gap-3 rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1">
+                    <div className="flex max-w-60 items-center justify-start gap-3 text-nowrap rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1">
                       <FaClock />
-                      ??? ?, ????, ?:?? ??
+                      ????, ????, ?:?? ??
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div
-                      className={`flex max-w-60 items-center justify-start gap-3 rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1`}
+                      className={`flex max-w-60 items-center justify-start gap-3 text-nowrap rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1`}
                     >
                       <FaClock />
-                      ??? ?, ????, ?:?? ??
+                      ????, ????, ?:?? ??
                     </div>
                   </td>
                 </tr>

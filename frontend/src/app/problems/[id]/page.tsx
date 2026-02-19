@@ -102,24 +102,26 @@ export default function ProblemPage() {
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-5xl">
         {/* Redesigned Header with Card Background */}
-        <div className="mb-8 flex flex-row items-start justify-between rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl md:flex-row">
           <div>
             <div className="mb-4 flex items-baseline gap-4">
               <span className="text-3xl font-light text-slate-400">#{data.serialNumber}</span>
               <h1 className="text-4xl font-bold tracking-tight text-slate-100">{data.title}</h1>
             </div>
 
-            <div className="flex items-center gap-6 text-slate-400">
+            <div className="flex flex-wrap items-center gap-3 text-slate-400 md:gap-6">
               <div className="flex items-center gap-2">
                 <FaClock className="text-indigo-400" />
-                <span className="font-medium text-slate-200">{data.timeLimit} s</span>
-                <span className="text-sm">time limit</span>
+                <span className="text-nowrap font-medium text-slate-200">{data.timeLimit} s</span>
+                <span className="text-nowrap text-sm">time limit</span>
               </div>
               <div className="h-1 w-1 rounded-full bg-slate-600" />
               <div className="flex items-center gap-2">
                 <FaMemory className="text-purple-400" />
-                <span className="font-medium text-slate-200">{data.memoryLimit} MB</span>
-                <span className="text-sm">memory limit</span>
+                <span className="text-nowrap font-medium text-slate-200">
+                  {data.memoryLimit} MB
+                </span>
+                <span className="text-nowrap text-sm">memory limit</span>
               </div>
             </div>
           </div>

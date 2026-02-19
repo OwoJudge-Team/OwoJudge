@@ -189,7 +189,7 @@ const SubmissionPage: React.FC = () => {
         </div>
 
         {/* Submissions Table */}
-        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+        <div className="no-scrollbar overflow-x-auto rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
           <table className="w-full text-left">
             <thead className="bg-slate-800/50 text-slate-400">
               <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider">

@@ -81,7 +81,7 @@ export default function UserDetailPage() {
           <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             {/* User Info */}
             <div>
-              <div className="mb-2 flex items-center gap-3">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
                 <h1 className="text-4xl font-bold text-slate-100">{user.displayName}</h1>
                 {isAdmin(user) && (
                   <span className="flex items-center gap-1 rounded-full bg-rose-900/50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-200 ring-1 ring-rose-500/50">
@@ -95,8 +95,8 @@ export default function UserDetailPage() {
                 )}
               </div>
               <p className="text-xl text-slate-400">@{user.username}</p>
-              <div className="mt-1 flex items-center text-xl text-slate-400">
-                <FaGitAlt />
+              <div className="mt-1 flex items-center text-wrap break-all text-xl text-slate-400">
+                <FaGitAlt className="shrink-0" />
                 <p>{`ssh://git@${domain}:${sshPort}/${user.username}/${user.username}-dsa.git`}</p>
               </div>
             </div>

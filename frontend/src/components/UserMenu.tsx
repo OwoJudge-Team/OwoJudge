@@ -61,7 +61,7 @@ const UserMenuItems: React.FC<UserMenuItemsProps> = ({ username, onMenuItemClick
           className="flex items-center gap-3 px-6 py-4 text-base font-semibold text-slate-100 transition-all duration-150 hover:bg-slate-700/50 hover:text-indigo-400"
         >
           <FaUser className="h-4 w-4" />
-          View Profile
+          Profile
         </Link>
         <Link
           href="/settings"
