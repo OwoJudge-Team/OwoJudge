@@ -5,8 +5,6 @@ import { useParams } from "next/navigation";
 import { apiGet, apiPost } from "@/utils/api";
 import { Submission, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getStatusColor } from "@/utils/submission-status";
 import { useAuth } from "@/contexts/AuthContext";
 import { FaRotateRight } from "react-icons/fa6";
@@ -14,6 +12,7 @@ import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
 import { HiDocumentAdd } from "react-icons/hi";
 import Modal from "@/components/Modal";
+import CodeBlock from "@/components/CodeBlock";
 
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
@@ -266,13 +265,9 @@ export default function SubmissionPage() {
 
       <div className="mb-12">
         <h3 className="mb-3 text-lg font-semibold text-slate-100">Code</h3>
-        <SyntaxHighlighter
-          language={LANGUAGE_MAPPING[language] || "cpp"}
-          style={nord}
-          showLineNumbers={true}
-        >
+        <CodeBlock language={LANGUAGE_MAPPING[language] || "cpp"}>
           {userSolution[0].content}
-        </SyntaxHighlighter>
+        </CodeBlock>
       </div>
 
       <Modal
