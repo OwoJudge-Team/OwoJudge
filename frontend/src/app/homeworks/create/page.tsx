@@ -26,7 +26,6 @@ interface CreateContestFormData {
 const CreateContestPage = () => {
   const [problems, setProblems] = useState<Array<Problem>>([]);
   const [title, setTitle] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
   const [selectedProblems, setSelectedProblems] = useState<number[]>([]);
   const [startTime, setStartTime] = useState<string>("");
   const [deadline, setDeadline] = useState<string>("");
@@ -74,7 +73,7 @@ const CreateContestPage = () => {
     try {
       const formData: CreateContestFormData = {
         title,
-        description,
+        description: " ", // Default empty description
         problems: selectedProblems.map((id) => {
           const problem = problems.find((p) => p.serialNumber === id);
           return {
@@ -89,12 +88,18 @@ const CreateContestPage = () => {
       const res = await apiPost("/api/contests", formData, {
         headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) {
-        throw new Error("Failed to create contest");
+      if (res.ok) {
+        setModalMessage(`Homework created successfully!`);
+      } else {
+        let msg = `Homework creation failed: (${res.status})`;
+        try {
+          const data = await res.text();
+          if (data) msg = data;
+        } catch {}
+        setModalMessage(msg);
       }
-      setModalMessage(`Contest created successfully!`);
     } catch {
-      setModalMessage("An error occurred while creating the contest.");
+      setModalMessage("An error occurred while creating the homework.");
     } finally {
       setLoading(false);
       setIsModalOpen(true);
@@ -127,23 +132,6 @@ const CreateContestPage = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-              required
-            />
-          </div>
-
-          <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
-            <label
-              htmlFor="description"
-              className="mb-2 block text-lg font-semibold text-slate-300"
-            >
-              Description
-            </label>
-            <input
-              id="description"
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
               required
             />
