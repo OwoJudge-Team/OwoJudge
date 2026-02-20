@@ -25,7 +25,7 @@ const HomePage: React.FC = () => {
         </section>
 
         {/* Features Section */}
-        <section className="grid grid-cols-3 gap-6 py-12">
+        <section className="grid gap-6 py-12 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl transition-all duration-150 hover:bg-slate-700/50">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-800/50">
               <FaCode className="h-6 w-6 text-blue-200" />

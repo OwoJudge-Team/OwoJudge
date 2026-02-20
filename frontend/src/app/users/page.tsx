@@ -33,7 +33,7 @@ export default function UsersPage() {
   return (
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
-        <div className="rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+        <div className="no-scrollbar overflow-x-auto rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-700 bg-slate-800/50">
