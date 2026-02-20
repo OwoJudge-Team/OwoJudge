@@ -194,7 +194,7 @@ const SubmissionPage: React.FC = () => {
             <thead className="bg-slate-800/50 text-slate-400">
               <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wider">
                 {isAdmin(user) && (
-                  <th className="w-12 px-6 py-4">
+                  <th className="w-12 px-4 py-4">
                     <div className="flex items-center justify-center">
                       <input
                         type="checkbox"
@@ -207,13 +207,14 @@ const SubmissionPage: React.FC = () => {
                     </div>
                   </th>
                 )}
-                <th className="px-6 py-4">#</th>
-                <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Problem</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Time</th>
-                <th className="px-6 py-4">Memory</th>
+                <th className="px-4 py-4">#</th>
+                <th className="px-4 py-4">Timestamp</th>
+                <th className="px-4 py-4">User</th>
+                <th className="px-4 py-4">Problem</th>
+                <th className="px-4 py-4">Status</th>
+                <th className="px-4 py-4">Score</th>
+                <th className="px-4 py-4">Time</th>
+                <th className="px-4 py-4">Memory</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
@@ -221,7 +222,7 @@ const SubmissionPage: React.FC = () => {
                 <tr>
                   <td
                     colSpan={isAdmin(user) ? 8 : 7}
-                    className="px-6 py-8 text-center text-slate-500"
+                    className="px-4 py-8 text-center text-slate-500"
                   >
                     No submissions found.
                   </td>
@@ -237,7 +238,7 @@ const SubmissionPage: React.FC = () => {
                       }`}
                     >
                       {isAdmin(user) && (
-                        <td className="px-6 py-4 align-middle">
+                        <td className="px-4 py-4 align-middle">
                           <div className="flex items-center justify-center">
                             <input
                               type="checkbox"
@@ -248,29 +249,29 @@ const SubmissionPage: React.FC = () => {
                           </div>
                         </td>
                       )}
-                      <td className="px-6 py-4 align-middle">
+                      <td className="px-4 py-4 align-middle">
                         <CoolLink
                           href={`/submissions/${submission.serialNumber}`}
                           text={String(submission.serialNumber)}
                         />
                       </td>
-                      <td className="px-6 py-4 align-middle text-sm text-slate-300">
+                      <td className="px-4 py-4 align-middle text-sm text-slate-300 text-nowrap">
                         {formatISOTime(submission.createdAt)}
                       </td>
-                      <td className="px-6 py-4 align-middle">
+                      <td className="px-4 py-4 align-middle">
                         <CoolLink
                           href={`/users/${submission.username}`}
                           text={submission.username}
                         />
                       </td>
-                      <td className="px-6 py-4 align-middle">
+                      <td className="px-4 py-4 align-middle">
                         <CoolLink
                           href={`/problems/${submission.problemSerialNumber}`}
                           text={submission.problemTitle}
                         />
                       </td>
 
-                      <td className="px-6 py-4 align-middle">
+                      <td className="px-4 py-4 align-middle">
                         {submission.status === SubmissionStatus.PD ||
                         submission.status === SubmissionStatus.QU ? (
                           <div className="flex w-[5ch] items-center justify-center">
@@ -284,14 +285,25 @@ const SubmissionPage: React.FC = () => {
                           </div>
                         )}
                       </td>
-
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
+                        {submission.status === SubmissionStatus.PD ||
+                        submission.status === SubmissionStatus.QU ? (
+                          <div className="flex w-[5ch] items-center justify-center">
+                            <FaSpinner className="animate-spin text-xl text-slate-300" />
+                          </div>
+                        ) : ( 
+                          <div className="flex items-center justify-around font-bold w-[5ch] rounded-md p-1 text-center text-slate-100 bg-slate-600/50">
+                            {submission.score}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
                         <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                           <FaClock />
                           {submission.time}s
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center justify-around gap-1 rounded-xl bg-slate-600/50 p-1">
                           <FaFloppyDisk />
                           {submission.memory}KB
