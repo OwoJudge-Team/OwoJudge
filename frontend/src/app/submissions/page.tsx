@@ -255,7 +255,7 @@ const SubmissionPage: React.FC = () => {
                           text={String(submission.serialNumber)}
                         />
                       </td>
-                      <td className="px-4 py-4 align-middle text-sm text-slate-300 text-nowrap">
+                      <td className="text-nowrap px-4 py-4 align-middle text-sm text-slate-300">
                         {formatISOTime(submission.createdAt)}
                       </td>
                       <td className="px-4 py-4 align-middle">
@@ -291,8 +291,8 @@ const SubmissionPage: React.FC = () => {
                           <div className="flex w-[5ch] items-center justify-center">
                             <FaSpinner className="animate-spin text-xl text-slate-300" />
                           </div>
-                        ) : ( 
-                          <div className="flex items-center justify-around font-bold w-[5ch] rounded-md p-1 text-center text-slate-100 bg-slate-600/50">
+                        ) : (
+                          <div className="flex w-[5ch] items-center justify-around rounded-md bg-slate-600/50 p-1 text-center font-bold text-slate-100">
                             {submission.score}
                           </div>
                         )}

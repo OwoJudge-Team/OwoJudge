@@ -22,7 +22,7 @@ export default function CoolLink({
         <FaAngleLeft className="h-4 w-4 translate-x-2 opacity-0 transition-all duration-150 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
       )}
       <span
-        className={`transition-transform duration-150 text-pretty ${
+        className={`text-pretty transition-transform duration-150 ${
           isLeft ? "group-hover/link:-translate-x-1" : "group-hover/link:translate-x-1"
         }`}
       >
