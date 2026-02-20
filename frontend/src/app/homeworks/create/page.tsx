@@ -91,11 +91,18 @@ const CreateContestPage = () => {
       if (res.ok) {
         setModalMessage(`Homework created successfully!`);
       } else {
-        let msg = `Homework creation failed: (${res.status})`;
+        let msg = `Homework creation failed (${res.status}). `;
         try {
-          const data = await res.text();
-          if (data) msg = data;
-        } catch {}
+          const data = await res.json();
+          if (data.msg) msg += data.msg;
+          else if (data.length > 0) {
+            for (const err of data) {
+              if (err.msg) msg += `${err.msg} `;
+            }
+          }
+        } catch {
+          console.error("Failed to parse error response");
+        }
         setModalMessage(msg);
       }
     } catch {
