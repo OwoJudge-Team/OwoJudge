@@ -44,37 +44,36 @@ export default function ContestPage() {
 
         contestData.standings = standingData;
         setContest(contestData);
-
-        if (user) {
-          const userStand = standingData.find((s) => s.username === user.username) || null;
-          setUserStanding(userStand);
-
-          const userRank = standingData.findIndex((s) => s.username === user.username) + 1 || 0;
-          setRank(userRank);
-        }
-
         const problemIDs = new Set(contestData.problems.map((p) => p.serialNumber));
         const problemsRes = await apiGet(`/api/problems`);
         const allProblems: Problem[] = await problemsRes.json();
         const contestProblems = allProblems.filter((p) => problemIDs.has(p.serialNumber));
-        if (userStanding) {
-          const tmpProblemScores = new Map<number, number>();
-          for (const ps of userStanding.problemScores) {
-            tmpProblemScores.set(ps.serialNumber, ps.score);
-          }
-          // Replace the fullscore in problems with the score the user got in the contest
-          contestProblems.forEach((p) => {
-            if (tmpProblemScores.has(p.serialNumber)) {
-              p.fullScore = tmpProblemScores.get(p.serialNumber)!;
-            } else {
-              p.fullScore = 0;
+
+        if (user) {
+          const userStand = standingData.find((s) => s.username === user.username) || null;
+          setUserStanding(userStand);
+          if (userStand) {
+            const tmpProblemScores = new Map<number, number>();
+            for (const ps of userStand.problemScores) {
+              tmpProblemScores.set(ps.serialNumber, ps.score);
             }
-          });
-        } else {
-          // If user has no standing, set all problem scores to 0
-          contestProblems.forEach((p) => {
-            p.fullScore = 0;
-          });
+            // Replace the fullscore in problems with the score the user got in the contest
+            contestProblems.forEach((p) => {
+              if (tmpProblemScores.has(p.serialNumber)) {
+                p.fullScore = tmpProblemScores.get(p.serialNumber)!;
+              } else {
+                p.fullScore = 0;
+              }
+            });
+          } else {
+            // If user has no standing, set all problem scores to 0
+            contestProblems.forEach((p) => {
+              p.fullScore = 0;
+            });
+          }
+
+          const userRank = standingData.findIndex((s) => s.username === user.username) + 1 || 0;
+          setRank(userRank);
         }
         setProblems(contestProblems);
         setMessage(
