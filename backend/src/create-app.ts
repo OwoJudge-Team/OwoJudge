@@ -61,7 +61,7 @@ export const createApp = (): Application => {
       saveUninitialized: false,
       resave: false,
       cookie: {
-        maxAge: oneHour * 24 // One Day
+        maxAge: oneHour * 24 * 120 // 120 days
       },
       store: MongoStore.create({
         client: mongoose.connection.getClient() as any
