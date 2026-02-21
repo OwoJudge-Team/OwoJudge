@@ -25,7 +25,7 @@ export default function Paginator({ totalCount, limit, offset, onChange }: Pagin
   };
 
   return (
-    <div className="grid w-full grid-cols-3 py-8">
+    <div className="grid w-full py-8 md:grid-cols-3">
       <div></div>
       <div className="inline-flex items-center -space-x-px justify-self-center shadow-sm">
         <button
@@ -48,7 +48,7 @@ export default function Paginator({ totalCount, limit, offset, onChange }: Pagin
           <FaCircleChevronRight />
         </button>
       </div>
-      <div className="flex items-center gap-2 justify-self-end">
+      <div className="mt-4 flex items-center justify-center gap-2 md:mt-0 md:justify-self-end">
         <label className="text-sm text-slate-300">Per page:</label>
         <select
           value={limit}

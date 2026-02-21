@@ -5,8 +5,6 @@ import { useParams } from "next/navigation";
 import { apiGet, apiPost } from "@/utils/api";
 import { Submission, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getStatusColor } from "@/utils/submission-status";
 import { useAuth } from "@/contexts/AuthContext";
 import { FaRotateRight } from "react-icons/fa6";
@@ -14,6 +12,7 @@ import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
 import { HiDocumentAdd } from "react-icons/hi";
 import Modal from "@/components/Modal";
+import CodeBlock from "@/components/CodeBlock";
 
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
@@ -154,7 +153,7 @@ export default function SubmissionPage() {
           <div className="text-s mb-4 text-slate-400">Score</div>
 
           <div
-            className={`text-5xl font-semibold ${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
+            className={`text-5xl font-semibold bg-${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
           >
             {StatusToCode[status]}
           </div>
@@ -249,7 +248,7 @@ export default function SubmissionPage() {
                         <td className="px-4 py-3 text-sm">{testcase.memory} KB</td>
                         <td className={`px-4 py-3 text-sm font-medium`}>
                           <div
-                            className={`${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                            className={`bg-${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                           >
                             {StatusToCode[testcase.status]}
                           </div>
@@ -266,13 +265,9 @@ export default function SubmissionPage() {
 
       <div className="mb-12">
         <h3 className="mb-3 text-lg font-semibold text-slate-100">Code</h3>
-        <SyntaxHighlighter
-          language={LANGUAGE_MAPPING[language] || "cpp"}
-          style={nord}
-          showLineNumbers={true}
-        >
+        <CodeBlock language={LANGUAGE_MAPPING[language] || "cpp"}>
           {userSolution[0].content}
-        </SyntaxHighlighter>
+        </CodeBlock>
       </div>
 
       <Modal

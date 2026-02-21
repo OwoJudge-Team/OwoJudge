@@ -14,6 +14,8 @@ const formatISOTime = (isoString: string) => {
     .replace(",", "");
 };
 
+const TIME_TO_COLOR = ["emerald-600/90", "yellow-500/70", "rose-600/70", "slate-600/50"];
+
 // Compare start and end time to current time
 // Return values:
 // 3: Current time not within start and end time
@@ -39,4 +41,4 @@ const compareToCurrentTime = (start: string, end: string) => {
   }
 };
 
-export { formatISOTime, compareToCurrentTime };
+export { formatISOTime, compareToCurrentTime, TIME_TO_COLOR };
