@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiFetch, apiDelete } from "@/utils/api";
 import { Contest, Standing } from "@/types/contests";
-import { formatISOTime } from "@/utils/time";
 import { Problem } from "@/types/problems";
 import { useParams, useRouter } from "next/navigation";
 import ProblemTable from "@/components/ProblemTable";
@@ -12,12 +11,17 @@ import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
 import Toggle from "@/components/Toggle";
 import Modal from "@/components/Modal";
+import CumulativeModal from "@/components/CulmulativeModal";
+import { BiBarChartAlt2 } from "react-icons/bi";
+import LiveTimeline from "@/components/Timeline";
 
 export default function ContestPage() {
   const id = useParams().id;
 
   const [contest, setContest] = useState<Contest | null>(null);
   const [userStanding, setUserStanding] = useState<Standing | null>(null);
+  const [totalScoreList, setTotalScoreList] = useState<number[]>([]);
+  const [isCululativeModalOpen, setIsCumulativeModalOpen] = useState(false);
   const [rank, setRank] = useState<number>(0);
   const [problems, setProblems] = useState<Problem[]>([]);
   const router = useRouter();
@@ -43,6 +47,7 @@ export default function ContestPage() {
         const standingData: Standing[] = await standingRes.json();
 
         contestData.standings = standingData;
+        setTotalScoreList(standingData.map((s) => s.totalScore));
         setContest(contestData);
         const problemIDs = new Set(contestData.problems.map((p) => p.serialNumber));
         const problemsRes = await apiGet(`/api/problems`);
@@ -140,19 +145,19 @@ export default function ContestPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div className="text-3xl font-bold text-slate-100">{contest.title}</div>
-        <div className="flex flex-col items-end">
-          <div className="text-sm font-bold text-slate-400">
-            Start: {formatISOTime(contest.startTime)}
-          </div>
-          <div className="text-sm font-bold text-slate-400">
-            End: {formatISOTime(contest.endTime)}
-          </div>
+
+        <div
+          className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1"
+          onClick={() => setIsCumulativeModalOpen(true)}
+        >
+          <BiBarChartAlt2 className="text-lg text-green-400/70" />
+          <p className="text-lg text-slate-300">Stats</p>
         </div>
       </div>
 
-      <div className="mb-8 rounded-lg border border-slate-700 bg-slate-800 shadow-sm">
+      <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800 shadow-sm">
         <div className="grid grid-cols-5 items-center justify-between justify-items-center px-4 py-6">
           <div className="text-s mb-4 text-slate-400">Score</div>
           <div></div>
@@ -172,13 +177,17 @@ export default function ContestPage() {
         </div>
       </div>
 
-      <div className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
+      <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800 px-4 py-6 shadow-sm">
+        <LiveTimeline startTimeISO={contest.startTime} endTimeISO={contest.endTime} />
+      </div>
+
+      <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
         <ProblemTable showCreateProblem={false} problems={problems} />
       </div>
 
       {isAdmin(user) && (
-        <section className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
-          <h2 className="mb-4 text-2xl font-bold text-slate-100">Admin Actions</h2>
+        <section className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
+          <h2 className="mb-4 text-2xl font-bold text-slate-100">Privileged Actions</h2>
           <div className="flex flex-col gap-8">
             <div className="flex flex-col gap-3">
               <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
@@ -225,6 +234,12 @@ export default function ContestPage() {
         confirm={!isDeleting && !finished}
         loading={isDeleting}
         style="danger"
+      />
+
+      <CumulativeModal
+        isOpen={isCululativeModalOpen}
+        onClose={() => setIsCumulativeModalOpen(false)}
+        data={totalScoreList}
       />
     </div>
   );

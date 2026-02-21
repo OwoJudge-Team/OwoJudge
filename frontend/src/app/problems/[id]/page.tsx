@@ -158,7 +158,7 @@ export default function ProblemPage() {
 
         {isAdminOrTA(user) && (
           <section className="mb-8 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
-            <h2 className="mb-4 text-2xl font-bold text-slate-100">Previledged Actions</h2>
+            <h2 className="mb-4 text-2xl font-bold text-slate-100">Privileged Actions</h2>
             <div className="flex flex-col gap-8">
               {isAdminOrTA(user) && (
                 <div className="flex flex-col gap-3">
