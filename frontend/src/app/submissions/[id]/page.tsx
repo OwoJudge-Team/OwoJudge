@@ -153,7 +153,7 @@ export default function SubmissionPage() {
           <div className="text-s mb-4 text-slate-400">Score</div>
 
           <div
-            className={`text-5xl font-semibold ${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
+            className={`text-5xl font-semibold bg-${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
           >
             {StatusToCode[status]}
           </div>
@@ -248,7 +248,7 @@ export default function SubmissionPage() {
                         <td className="px-4 py-3 text-sm">{testcase.memory} KB</td>
                         <td className={`px-4 py-3 text-sm font-medium`}>
                           <div
-                            className={`${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                            className={`bg-${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                           >
                             {StatusToCode[testcase.status]}
                           </div>

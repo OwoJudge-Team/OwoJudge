@@ -5,12 +5,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
 import { FaClock, FaMemory } from "react-icons/fa6";
+import { BiBarChartAlt2 } from "react-icons/bi";
 import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
 import Loading from "@/components/Loading";
 import { isAdmin, isAdminOrTA } from "@/utils/users";
 import Toggle from "@/components/Toggle";
+import PieChart from "@/components/Pie";
 
 const SHOW_SUBMIT = false;
 
@@ -29,6 +31,7 @@ export default function ProblemPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [isPieOpen, setIsPieOpen] = useState(false);
   const { user } = useAuth();
   const [data, setData] = useState<Problem | null>(null);
 
@@ -126,14 +129,24 @@ export default function ProblemPage() {
             </div>
           </div>
 
-          {isAdminOrTA(user) && (
-            <div className="flex items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1">
-              <div
-                className={`h-2 w-2 rounded-full ${PROBLEM_STATUS_COLORS[data.status] || "bg-gray-500"}`}
-              ></div>
-              <span className="text-sm text-slate-300">{data.status.toUpperCase()}</span>
+          <div className="flex flex-wrap gap-2">
+            <div
+              className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1"
+              onClick={() => setIsPieOpen(true)}
+            >
+              <BiBarChartAlt2 className="text-sm text-green-400/70" />
+              <p className="text-sm text-slate-300">Stats</p>
             </div>
-          )}
+
+            {isAdminOrTA(user) && (
+              <div className="flex items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1">
+                <div
+                  className={`h-2 w-2 rounded-full ${PROBLEM_STATUS_COLORS[data.status] || "bg-gray-500"}`}
+                ></div>
+                <span className="text-sm text-slate-300">{data.status.toUpperCase()}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Problem Description with Card Background */}
@@ -218,6 +231,12 @@ export default function ProblemPage() {
         confirm={!isDeleting && !finished}
         loading={isDeleting}
         style="danger"
+      />
+
+      <PieChart
+        submissionDetail={data.submissionDetail}
+        isOpen={isPieOpen}
+        onClose={() => setIsPieOpen(false)}
       />
     </div>
   );

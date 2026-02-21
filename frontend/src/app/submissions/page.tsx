@@ -279,7 +279,7 @@ const SubmissionPage: React.FC = () => {
                           </div>
                         ) : (
                           <div
-                            className={`${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                            className={`bg-${getStatusColor(submission.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                           >
                             {StatusToCode[submission.status]}
                           </div>

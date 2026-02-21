@@ -4,6 +4,17 @@ export enum ProblemStatus {
   Error = "error",
 }
 
+export interface SubmissionDetail {
+  accepted: number;
+  submitted: number;
+  timeLimitExceeded: number;
+  memoryLimitExceeded: number;
+  wrongAnswer: number;
+  runtimeError: number;
+  compilationError: number;
+  processLimitExceeded: number;
+}
+
 export interface Problem {
   _id: number;
   title: string;
@@ -11,16 +22,7 @@ export interface Problem {
   fullScore: number;
   timeLimit: number;
   memoryLimit: number;
-  submissionDetail: {
-    accepted: number;
-    compilationError: number;
-    memoryLimitExceeded: number;
-    processLimitExceeded: number;
-    runtimeError: number;
-    submitted: number;
-    timeLimitExceeded: number;
-    wrongAnswer: number;
-  };
+  submissionDetail: SubmissionDetail;
   userDetail: {
     solved: number;
     attempted: number;

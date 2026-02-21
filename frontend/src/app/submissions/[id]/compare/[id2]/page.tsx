@@ -231,7 +231,7 @@ function SubmissionHeader({ submission, side }: { submission: Submission; side: 
       <div className="p-5">
         <div className="mb-6 flex items-center gap-4">
           <div
-            className={`flex h-16 w-16 items-center justify-center rounded-lg text-2xl font-bold text-slate-100 shadow-sm ${getStatusColor(
+            className={`flex h-16 w-16 items-center justify-center rounded-lg text-2xl font-bold text-slate-100 shadow-sm bg-${getStatusColor(
               submission.status
             )}`}
           >
@@ -388,7 +388,7 @@ function TestcaseRow({ row }: { row: PairedResult }) {
         <td className="px-4 py-3">
           {row.left ? (
             <span
-              className={`${getStatusColor(row.left.status)} rounded px-1.5 py-0.5 text-xs font-bold`}
+              className={`bg-${getStatusColor(row.left.status)} rounded px-1.5 py-0.5 text-xs font-bold`}
             >
               {StatusToCode[row.left.status]}
             </span>
@@ -399,7 +399,7 @@ function TestcaseRow({ row }: { row: PairedResult }) {
         <td className="px-4 py-3">
           {row.right ? (
             <span
-              className={`${getStatusColor(row.right.status)} rounded px-1.5 py-0.5 text-xs font-bold`}
+              className={`bg-${getStatusColor(row.right.status)} rounded px-1.5 py-0.5 text-xs font-bold`}
             >
               {StatusToCode[row.right.status]}
             </span>
