@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiPost } from "@/utils/api";
 import Modal from "@/components/Modal";
 import { isAdminOrTA } from "@/utils/users";
-import ProblemUploadForm, { ProblemUploadFormHandle } from "../components";
+import ProblemUploadForm, { ProblemUploadFormHandle } from "../components/ProblemUploadForm";
 
 const CreateProblemPage: React.FC = () => {
   const uploadRef = useRef<ProblemUploadFormHandle | null>(null);

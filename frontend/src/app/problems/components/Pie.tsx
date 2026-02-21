@@ -1,7 +1,7 @@
 import React from "react";
-import { SubmissionDetail } from "../types/problems";
-import { SubmissionStatus, StatusToCode } from "../types/submissions";
-import { getStatusColor } from "../utils/submission-status";
+import { SubmissionDetail } from "../../../types/problems";
+import { SubmissionStatus, StatusToCode } from "../../../types/submissions";
+import { getStatusColor } from "../../../utils/submission-status";
 
 const CATEGORY_CONFIG: Record<string, SubmissionStatus> = {
   accepted: SubmissionStatus.AC,

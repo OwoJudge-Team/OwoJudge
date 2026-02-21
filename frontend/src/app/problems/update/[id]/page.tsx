@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiPut } from "@/utils/api";
 import Modal from "@/components/Modal";
 import { isAdminOrTA } from "@/utils/users";
-import ProblemUploadForm, { ProblemUploadFormHandle } from "../../components";
+import ProblemUploadForm, { ProblemUploadFormHandle } from "../../components/ProblemUploadForm";
 import { TiArrowBack } from "react-icons/ti";
 import { useParams } from "next/dist/client/components/navigation";
 

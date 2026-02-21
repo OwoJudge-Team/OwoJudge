@@ -12,7 +12,7 @@ import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
 import Loading from "@/components/Loading";
 import { isAdmin, isAdminOrTA } from "@/utils/users";
 import Toggle from "@/components/Toggle";
-import PieChart from "@/components/Pie";
+import PieChart from "@/app/problems/components/Pie";
 
 const SHOW_SUBMIT = false;
 

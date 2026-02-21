@@ -11,9 +11,9 @@ import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
 import Toggle from "@/components/Toggle";
 import Modal from "@/components/Modal";
-import CumulativeModal from "@/components/CulmulativeModal";
+import CumulativeModal from "@/app/homeworks/components/CulmulativeModal";
 import { BiBarChartAlt2 } from "react-icons/bi";
-import LiveTimeline from "@/components/Timeline";
+import LiveTimeline from "@/app/homeworks/components/Timeline";
 
 export default function ContestPage() {
   const id = useParams().id;
