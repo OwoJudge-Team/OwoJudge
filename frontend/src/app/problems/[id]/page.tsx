@@ -131,7 +131,7 @@ export default function ProblemPage() {
 
           <div className="flex flex-wrap gap-2">
             <div
-              className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1"
+              className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 transition-colors hover:bg-slate-700/80"
               onClick={() => setIsPieOpen(true)}
             >
               <BiBarChartAlt2 className="text-sm text-green-400/70" />

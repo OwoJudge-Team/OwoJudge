@@ -35,15 +35,9 @@ export default function PieChart({ submissionDetail, isOpen, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 1. Darkened Background Overlay */}
-      <div
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
 
-      {/* 2. Floating Card */}
       <div className="relative w-full max-w-md transform rounded-2xl border border-slate-200 bg-white p-8 shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900">
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
@@ -62,7 +56,6 @@ export default function PieChart({ submissionDetail, isOpen, onClose }: Props) {
           Submission Statistics
         </h3>
 
-        {/* Legend Grid */}
         <div className="mb-8 grid grid-cols-4 gap-3">
           {activeSlices.map((slice) => (
             <div key={slice.key} className="flex items-center gap-2">
@@ -77,7 +70,6 @@ export default function PieChart({ submissionDetail, isOpen, onClose }: Props) {
           ))}
         </div>
 
-        {/* Pie Chart */}
         <div className="relative mx-auto h-56 w-56">
           <svg viewBox="0 0 42 42" className="h-full w-full -rotate-90 transform">
             {total ? (

@@ -149,7 +149,7 @@ export default function ContestPage() {
         <div className="text-3xl font-bold text-slate-100">{contest.title}</div>
 
         <div
-          className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1"
+          className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 transition-colors hover:bg-slate-700/80"
           onClick={() => setIsCumulativeModalOpen(true)}
         >
           <BiBarChartAlt2 className="text-lg text-green-400/70" />

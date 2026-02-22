@@ -46,7 +46,7 @@ const CumulativeModal = ({ data, isOpen, onClose }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
 
       <div className="animate-in zoom-in-95 relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 shadow-2xl duration-300">
         <div className="flex flex-col justify-between p-8 md:flex-row md:items-center">
