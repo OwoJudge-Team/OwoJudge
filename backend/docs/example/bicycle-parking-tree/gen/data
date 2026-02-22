@@ -29,29 +29,29 @@ gen_sub234 300 300 1000 ==
 gen_sub234 300 300 1000 ====aa
 
 @testset 3_public
-gen_sub234 300 300000 100000 aaaaa
+gen_sub234 300 3000 100 aaaaa
 
 @testset 3_private
-gen_sub234 300 300000 100000 XDXXDXDXDXDXDXD
+gen_sub234 300 3000 10000 XDXXDXDXDXDXDXD
 
 @testset 4_public
-gen_sub234 300000 300000 100000 intin
+gen_sub234 3000 10000 1000 intin
 
 @testset 4_private
-gen_sub234 300000 300000 100000 floatfloatfloatfloatfloatfloatfloat
+gen_sub234 3000 3000 1000 floatfloatfloatfloatfloatfloatfloat
 
 @testset 5_public
-gen_sub5 100 300000 100000 bon8u8ksdss2
+gen_sub5 100 300 1000 bon8u8ksdss2
 
 @testset 5_private
-gen_sub5 100 300000 100000 boddnmussss2
+gen_sub5 100 3000 1000 boddnmussss2
 manual 5_private-10.in
 
 @testset 6_public
-gen_sub6 300000 300000 100000 abonsusdss
+gen_sub6 3000 3000 10000 abonsusdss
 
 @testset 6_private
-gen_sub6 300000 300000 100000 bod2nsdss
+gen_sub6 3000 3000 1000 bod2nsdss
 
 @testset 1
 @include 1_public
