@@ -40,7 +40,7 @@ const NavLinks = ({ onClick, pathname }: { onClick: () => void; pathname: string
 };
 
 const Header: React.FC = () => {
-  const pathname = usePathname();
+  const pathname = `/${usePathname().split("/")[1]}`; // Get the first segment of the path for active link matching
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
 

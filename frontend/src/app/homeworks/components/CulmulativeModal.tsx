@@ -72,7 +72,7 @@ const CumulativeModal = ({ data, isOpen, onClose }: Props) => {
           <button
             onClick={() => setIsCumulative(false)}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-              !isCumulative ? "bg-slate-700 text-indigo-600 shadow-sm" : "text-slate-500"
+              !isCumulative ? "bg-slate-700 text-indigo-500 shadow-sm" : "text-slate-500"
             }`}
           >
             <IoStatsChart /> Frequency
@@ -80,7 +80,7 @@ const CumulativeModal = ({ data, isOpen, onClose }: Props) => {
           <button
             onClick={() => setIsCumulative(true)}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-              isCumulative ? "bg-slate-700 text-indigo-600 shadow-sm" : "text-slate-500"
+              isCumulative ? "bg-slate-700 text-indigo-500 shadow-sm" : "text-slate-500"
             }`}
           >
             <IoAnalytics /> Cumulative

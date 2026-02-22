@@ -28,15 +28,15 @@ export default function ReactIconTimeline({ startTimeISO, endTimeISO }: Timeline
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Start</p>
-          <p className="font-mono text-lg text-slate-300">{formatISOTime(startTimeISO)}</p>
+          <p className="text-md font-mono text-slate-300">{formatISOTime(startTimeISO)}</p>
         </div>
 
         <div className="text-right">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">End</p>
-          <p className="font-mono text-lg text-slate-300">{formatISOTime(endTimeISO)}</p>
+          <p className="text-md font-mono text-slate-300">{formatISOTime(endTimeISO)}</p>
         </div>
       </div>
 
