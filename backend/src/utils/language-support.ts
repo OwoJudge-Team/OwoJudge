@@ -1,22 +1,22 @@
 export default {
   'gcc c17': {
-    compileCommand: 'gcc -std=c17 main.c -o main',
+    compileCommand: 'gcc -std=c17 -O2 main.c -o main',
     executeCommand: './main.exe'
   },
   'gcc c23': {
-    compileCommand: 'gcc -std=c23 main.c -o main',
+    compileCommand: 'gcc -std=c23 -O2 main.c -o main',
     executeCommand: './main.exe'
   },
   'g++ c++17': {
-    compileCommand: 'g++ -std=c++17 main.cpp -o main',
+    compileCommand: 'g++ -std=c++17 -O2 main.cpp -o main',
     executeCommand: './main.exe'
   },
   'g++ c++23': {
-    compileCommand: 'g++ -std=c++23 main.cpp -o main',
+    compileCommand: 'g++ -std=c++23 -O2 main.cpp -o main',
     executeCommand: './main.exe'
   },
   rust: {
-    compileCommand: 'rustc main.rs -o main',
+    compileCommand: 'rustc -C opt-level=2 main.rs -o main',
     executeCommand: './main.exe'
   },
   'nodejs': {

@@ -617,7 +617,10 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
     // If first attempt, update problem's attempted count
     if (isFirstAttempt) {
-      problem.userDetail.attempted += 1;
+      const distinctUsers = await Submission.distinct('username', {
+        problemSerialNumber: submission.problemSerialNumber
+      });
+      problem.userDetail.attempted = distinctUsers.length;
       await problem.save();
     }
 
@@ -680,14 +683,18 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
           if (previousAC === 0) {
             // First time solving this problem
-            problem.userDetail.solved += 1;
+            const distinctSolvedUsers = await Submission.distinct('username', {
+              problemSerialNumber: submission.problemSerialNumber,
+              status: SubmissionStatus.AC
+            });
+            problem.userDetail.solved = distinctSolvedUsers.length;
             await problem.save();
 
             // Update user statistics
-            user.solvedProblem += 1;
             if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
               user.solvedProblems.push(submission.problemSerialNumber);
             }
+            user.solvedProblem = user.solvedProblems.length;
             await user.save();
           } else {
             await problem.save();

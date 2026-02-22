@@ -17,55 +17,40 @@ manual 4-01.in
 manual 5-01.in
 
 @testset 1_public
-gen_sub1 100 300 1000 XDD
 gen_sub1 300 300 1000 www
 
 @testset 1_private
-gen_sub1 300 300 1000 yyy
 gen_sub1 300 300 1000 yyyyy
 
 @testset 2_public
-gen_sub234 100 300 1000 oaoowo
 gen_sub234 300 300 1000 ==
 
 @testset 2_private
-gen_sub234 300 300 1000 ==a
 gen_sub234 300 300 1000 ====aa
 
 @testset 3_public
-gen_sub234 300 1000 1000 OAO
-gen_sub234 300 1000 1000 OwAO
-gen_sub234 300 10000 10000 OAOO
-gen_sub234 300 100000 100000 OAOOO
 gen_sub234 300 300000 100000 aaaaa
 
 @testset 3_private
-gen_sub234 300 300000 100000 XDXXDXDXDbDXDXD
 gen_sub234 300 300000 100000 XDXXDXDXDXDXDXD
 
 @testset 4_public
-gen_sub234 100000 10000 10000 int
 gen_sub234 300000 300000 100000 intin
 
 @testset 4_private
-gen_sub234 300000 300000 100000 floatfloatfloatfloatfloatfloat
 gen_sub234 300000 300000 100000 floatfloatfloatfloatfloatfloatfloat
 
 @testset 5_public
-gen_sub5 5 300000 100000 botn1dus2
 gen_sub5 100 300000 100000 bon8u8ksdss2
 
 @testset 5_private
-gen_sub5 5 300000 100000 bon97dus2
 gen_sub5 100 300000 100000 boddnmussss2
 manual 5_private-10.in
 
 @testset 6_public
-gen_sub6 100 100 1000 bondus
 gen_sub6 300000 300000 100000 abonsusdss
 
 @testset 6_private
-gen_sub6 300000 300000 100000 bodxdnuss
 gen_sub6 300000 300000 100000 bod2nsdss
 
 @testset 1
