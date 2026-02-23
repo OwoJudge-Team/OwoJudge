@@ -109,6 +109,8 @@ services:
       - ADMIN_PASSWD=${ADMIN_PASSWD:-aaaaaaaa}
       - GITEA_BASE_URL=http://gitea:3000
       - SALT=${BACKEND_SALT:-justasalt}
+      - COOKIE_SECRET=${COOKIE_SECRET:-cj6u.4t/6}
+      - SESSION_SECRET=${SESSION_SECRET:-z/ fup6ql4}
     expose:
       - "8787"
     volumes:

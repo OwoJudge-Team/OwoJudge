@@ -55,10 +55,10 @@ export const createApp = (): Application => {
   // Use conditional JSON parsing instead of applying it globally
   app.use(conditionalJsonParser);
   app.use(express.urlencoded({ extended: true }));
-  app.use(cookieParser('cj6u.4t/6'));
+  app.use(cookieParser(process.env.COOKIE_SECRET || 'cj6u.4t/6'));
   app.use(
     session({
-      secret: 'z/ fup6ql4',
+      secret: process.env.SESSION_SECRET || 'z/ fup6ql4',
       saveUninitialized: false,
       resave: false,
       cookie: {
