@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { validationResult, checkSchema, matchedData } from 'express-validator';
 import { giteaService } from '../utils/gitea-service';
 import { Submission, ISubmission, IUserSolution } from '../mongoose/schemas/submission';
-import { User } from '../mongoose/schemas/users';
+import { User, UserRole } from "../mongoose/schemas/users";
 import { Problem, ProblemStatus } from '../mongoose/schemas/problems';
 import { giteaWebhookValidation } from '../validations/gitea-webhook-validation';
 import { submitUserSubmission } from '../judger/judger';
@@ -244,7 +244,7 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                 }
 
                 // Check daily quota
-                if (problem.dailyQuota && problem.dailyQuota > 0) {
+                if (problem.dailyQuota && problem.dailyQuota > 0 && owoUser.role !== UserRole.JudgeAdmin && owoUser.role !== UserRole.TA) {
                     if (!owoUser.quotaUsage) {
                         owoUser.quotaUsage = new Map();
                     }

@@ -143,7 +143,17 @@ const deleteUser = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    response.status(201).send(deletedUser);
+
+    // Delete the corresponding Gitea user
+    try {
+      await giteaService.deleteUser(username);
+      console.log(`Gitea user ${username} deleted successfully`);
+    } catch (giteaError) {
+      console.error(`Failed to delete Gitea user ${username}:`, giteaError);
+      // Continue even if Gitea deletion fails — the local user is already removed
+    }
+
+    response.status(200).send(deletedUser);
   } catch (error) {
     console.error(error);
     response.status(500).send(error);
