@@ -12,6 +12,7 @@ import authRouter from './routes/auth.js';
 import contestsRouter from './routes/contests.js';
 import webhookRouter from './routes/webhook.js';
 import rejudgeRouter from './routes/rejudge.js';
+import announcementRouter from './routes/announcement.js';
 
 // Custom middleware to apply express.json() only to non-multipart requests
 // Also captures raw body for webhook signature verification
@@ -79,5 +80,6 @@ export const createApp = (): Application => {
   app.use(contestsRouter);
   app.use(webhookRouter);
   app.use(rejudgeRouter);
+  app.use(announcementRouter);
   return app;
 };
