@@ -56,12 +56,13 @@ const createContest = async (request: IRequest, response: Response) => {
     response.status(400).send(result.array());
     return;
   }
-  const { title, description, startTime, endTime, problems, released } = request.body;
+  const { title, description, startTime, endTime, submissionEndTime, problems, released } = request.body;
   const newContest = new Contest({
     title,
     description,
     startTime,
     endTime,
+    submissionEndTime,
     problems,
     released: released ?? false
   });
