@@ -21,12 +21,13 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
     
     // We only care about submissions strictly within the contest window
+    const submissionEndTime = contest.submissionEndTime || contest.endTime;
     const submissions = await Submission.find({
         problemSerialNumber: { $in: problemSerialNumbers },
         username: username,
         createdAt: {
             $gte: contest.startTime,
-            $lte: contest.endTime
+            $lte: submissionEndTime
         }
     }).sort({ createdAt: 1 }); // Process in order
 
@@ -133,13 +134,14 @@ export const recalculateContestStandings = async (contestId: string) => {
     if (!contest) throw new Error('Contest not found');
 
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
+    const submissionEndTime = contest.submissionEndTime || contest.endTime;
     
     // Find all users who have submitted to this contest
     const users = await Submission.distinct('username', {
         problemSerialNumber: { $in: problemSerialNumbers },
         createdAt: {
             $gte: contest.startTime,
-            $lte: contest.endTime
+            $lte: submissionEndTime
         }
     });
 

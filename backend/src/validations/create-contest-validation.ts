@@ -29,6 +29,15 @@ export const createContestValidation: Schema = {
     toDate: true,
     errorMessage: 'End time must be a valid date'
   },
+  submissionEndTime: {
+    in: ['body'],
+    optional: true,
+    isISO8601: {
+      options: { strict: false }
+    },
+    toDate: true,
+    errorMessage: 'Submission end time must be a valid date'
+  },
   released: {
     in: ['body'],
     optional: true,
