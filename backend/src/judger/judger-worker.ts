@@ -457,8 +457,16 @@ const runAllTests = async (
       }
       if (!result || result.status !== SubmissionStatus.AC) {
         subtaskOk = false;
-        if (finalStatus === SubmissionStatus.AC) {
-          finalStatus = result?.status || SubmissionStatus.SE;
+        const currentStatus = result?.status || SubmissionStatus.SE;
+        const statusPriority: Partial<Record<SubmissionStatus, number>> = {
+          [SubmissionStatus.TLE]: 4,
+          [SubmissionStatus.RE]: 3,
+          [SubmissionStatus.WA]: 2,
+          [SubmissionStatus.PS]: 1,
+          [SubmissionStatus.AC]: 0
+        };
+        if ((statusPriority[currentStatus] ?? 5) > (statusPriority[finalStatus] ?? 5)) {
+          finalStatus = currentStatus;
         }
       }
     }
@@ -480,7 +488,7 @@ const runAllTests = async (
     } else {
       finalStatus = SubmissionStatus.SE;
     }
-  } else if (totalScore > 0 && totalScore < (problemMeta?.fullScore || 100)) {
+  } else if (finalStatus === SubmissionStatus.PS && totalScore > 0 && totalScore < (problemMeta?.fullScore || 100)) {
     finalStatus = SubmissionStatus.PS;
   }
 
