@@ -56,6 +56,7 @@ function parseCliArgs() {
 function prompt(question) {
   return new Promise((resolve) => {
     process.stdout.write(question);
+    process.stdin.resume();
     process.stdin.setEncoding('utf8');
     process.stdin.once('data', (data) => resolve((data || '').trim()));
   });
