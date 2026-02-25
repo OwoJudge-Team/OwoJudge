@@ -124,6 +124,9 @@ You can generate mock users, problems, and submissions using the following comma
   ```bash
   # Create an admin user
   docker compose exec backend node scripts/create-test-user.js admin adminpass "Admin User" true
+
+  # Create a student user with studentId
+  docker compose exec backend node scripts/create-test-user.js b12902033 password123 "Matt Li" false b12902033
   ```
 
 - **Create accounts from CSV and send email**:

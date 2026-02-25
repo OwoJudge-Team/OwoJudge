@@ -1,9 +1,15 @@
 const fetch = require('node-fetch');
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWD || 'adminpassword';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
+const ENABLE_DB_FALLBACK = process.env.ENABLE_DB_FALLBACK !== 'false';
 
 // Student ID configuration
 const STUDENT_ID_START = 902001;
@@ -13,6 +19,42 @@ const STUDENT_ID_PREFIX = 'b14';
 const args = process.argv.slice(2);
 const count = parseInt(args[0]) || 150; // Default to 150 users (b14902001 to b14902150)
 const password = args[1] || 'password123';
+
+let salt;
+let fallbackUsersCollection = null;
+let fallbackMongoConnected = false;
+
+function readSalt() {
+  if (salt) {
+    return salt;
+  }
+
+  if (process.env.SALT) {
+    salt = process.env.SALT;
+    try {
+      const saltPath = path.join(process.cwd(), 'salt.json');
+      fs.writeFileSync(saltPath, JSON.stringify({ salt }, null, 4));
+    } catch (_error) {
+      // Ignore salt.json write failure
+    }
+    return salt;
+  }
+
+  const saltPath = path.join(process.cwd(), 'salt.json');
+  try {
+    const parsed = JSON.parse(fs.readFileSync(saltPath, 'utf-8'));
+    salt = parsed.salt;
+  } catch (error) {
+    salt = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(saltPath, JSON.stringify({ salt }, null, 4));
+  }
+
+  return salt;
+}
+
+function hashString(str) {
+  return crypto.scryptSync(str, readSalt(), 32).toString('hex');
+}
 
 function generateStudentId(index) {
   const studentNumber = STUDENT_ID_START + index;
@@ -63,6 +105,36 @@ async function createUser(userData, cookie) {
   }
 }
 
+async function createUserByMongoFallback(userData) {
+  if (!fallbackMongoConnected) {
+    await mongoose.connect(MONGODB_URI);
+    fallbackUsersCollection = mongoose.connection.db.collection('users');
+    fallbackMongoConnected = true;
+  }
+
+  const existingUser = await fallbackUsersCollection.findOne({ username: userData.username }, { projection: { _id: 1 } });
+  if (existingUser) {
+    return { username: userData.username, existed: true };
+  }
+
+  const doc = {
+    username: userData.username,
+    displayName: userData.displayName,
+    ...(userData.studentId ? { studentId: userData.studentId } : {}),
+    password: hashString(userData.password),
+    role: userData.role || 'student',
+    solvedProblem: 0,
+    solvedProblems: [],
+    rating: 0,
+    quotaUsage: {},
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  await fallbackUsersCollection.insertOne(doc);
+  return { username: userData.username, existed: false };
+}
+
 async function createMockUsers() {
   try {
     console.log(`Creating ${count} mock users via API...`);
@@ -80,6 +152,7 @@ async function createMockUsers() {
         const userData = {
           username: studentId,
           displayName: studentId,
+          studentId,
           password,
           role: 'student'
         };
@@ -94,6 +167,40 @@ async function createMockUsers() {
         console.log(`INFO: Created user ${i + 1}/${count}: ${studentId}`);
       } catch (error) {
         const studentId = generateStudentId(i);
+
+        const shouldFallback = ENABLE_DB_FALLBACK
+          && typeof error.message === 'string'
+          && error.message.includes('Failed to create Gitea user');
+
+        if (shouldFallback) {
+          try {
+            const fallbackResult = await createUserByMongoFallback({
+              username: studentId,
+              displayName: studentId,
+              studentId,
+              password,
+              role: 'student'
+            });
+
+            createdUsers.push({
+              username: studentId,
+              displayName: studentId
+            });
+
+            if (fallbackResult.existed) {
+              console.log(`INFO: User ${studentId} already exists (fallback DB check).`);
+            } else {
+              console.log(`INFO: Created user ${i + 1}/${count}: ${studentId} (fallback via MongoDB, Gitea skipped)`);
+            }
+            continue;
+          } catch (fallbackError) {
+            const fallbackReason = fallbackError && fallbackError.message ? fallbackError.message : String(fallbackError);
+            failedUsers.push({ username: studentId, reason: `${error.message}; fallback failed: ${fallbackReason}` });
+            console.log(`✗ Failed to create user ${i + 1}/${count}: ${studentId} - ${error.message}; fallback failed: ${fallbackReason}`);
+            continue;
+          }
+        }
+
         failedUsers.push({ username: studentId, reason: error.message });
         console.log(`✗ Failed to create user ${i + 1}/${count}: ${studentId} - ${error.message}`);
       }
@@ -130,6 +237,12 @@ async function createMockUsers() {
   } catch (error) {
     console.error('Error creating mock users:', error);
     process.exit(1);
+  } finally {
+    if (fallbackMongoConnected) {
+      await mongoose.disconnect();
+      fallbackUsersCollection = null;
+      fallbackMongoConnected = false;
+    }
   }
 }
 
