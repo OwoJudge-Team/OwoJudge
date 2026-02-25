@@ -125,3 +125,23 @@ You can generate mock users, problems, and submissions using the following comma
   # Create an admin user
   docker compose exec backend node scripts/create-test-user.js admin adminpass "Admin User" true
   ```
+
+- **Export backup for old judge (with format conversion)**:
+  ```bash
+  # Export current users/problems/submissions and convert to old judge schema
+  docker compose exec backend node scripts/export-old-judge-backup.js
+
+  # Custom output directory / MongoDB URI
+  docker compose exec backend node scripts/export-old-judge-backup.js \
+    --output-dir /app/exports \
+    --mongo-uri mongodb://mongodb:27017/judge
+  ```
+
+  This script generates:
+  - `owojudge-raw-*.json` (raw OwoJudge data)
+  - `old-judge-converted-*.json` (converted old-judge data)
+
+  Conversion behavior:
+  - `username` from OwoJudge is mapped to old judge `email`.
+  - OwoJudge `contests` are converted to old judge `homeworks`.
+  - Submission detail is exported in `results`, and each submission references it through `_result`.

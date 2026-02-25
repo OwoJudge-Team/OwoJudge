@@ -5,7 +5,7 @@ const fetch = require('node-fetch');
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWD || 'adminpassword';
 
 // Get command line arguments
 const args = process.argv.slice(2);
