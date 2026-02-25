@@ -305,37 +305,46 @@ async function main() {
 
     if (options.includeRawDump) {
       const rawPath = path.join(options.outputDir, `owojudge-raw-${stamp}.json`);
-      fs.writeFileSync(
-        rawPath,
-        JSON.stringify({
-          generatedAt: now.toISOString(),
-          source: 'OwoJudge',
-          users,
-          problems,
-          submissions,
-          contests
-        }, null, 2)
-      );
-      console.log(`Raw dump written to ${rawPath}`);
+      try {
+        fs.writeFileSync(
+          rawPath,
+          JSON.stringify({
+            generatedAt: now.toISOString(),
+            source: 'OwoJudge',
+            users,
+            problems,
+            submissions,
+            contests
+          }, null, 2)
+        );
+        console.log(`Raw dump written to ${rawPath}`);
+      } catch (error) {
+        console.error(`Failed to write raw dump to ${rawPath}:`, error);
+        throw error;
+      }
     }
 
     const converted = convertData({ users, problems, submissions, contests });
     const convertedPath = path.join(options.outputDir, `old-judge-converted-${stamp}.json`);
 
-    fs.writeFileSync(
-      convertedPath,
-      JSON.stringify({
-        generatedAt: now.toISOString(),
-        source: 'OwoJudge',
-        target: 'old-judge',
-        notes: {
-          usernameMappedToEmail: true,
-          submissionResultDetailIncluded: true
-        },
-        ...converted
-      }, null, 2)
-    );
-
+    try {
+      fs.writeFileSync(
+        convertedPath,
+        JSON.stringify({
+          generatedAt: now.toISOString(),
+          source: 'OwoJudge',
+          target: 'old-judge',
+          notes: {
+            usernameMappedToEmail: true,
+            submissionResultDetailIncluded: true
+          },
+          ...converted
+        }, null, 2)
+      );
+    } catch (error) {
+      console.error(`Failed to write converted export to ${convertedPath}:`, error);
+      throw error;
+    }
     console.log('----------------------------------------');
     console.log(`Users exported: ${converted.users.length}`);
     console.log(`Problems exported: ${converted.problems.length}`);
