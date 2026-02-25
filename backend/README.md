@@ -147,6 +147,7 @@ You can generate mock users, problems, and submissions using the following comma
     --csv /app/scripts/students.csv \
     --from mailer@example.edu \
     --signature "OwoJudge Team" \
+    --failed-email-report /app/scripts/failed-email-report.json \
     --default-role student
 
   # Dry run (validate CSV only)
@@ -188,3 +189,5 @@ You can generate mock users, problems, and submissions using the following comma
   - password = random 16-character string
   - `--signature` controls the name shown at the end of the email body
   - sends email to each created account asking user to change password immediately
+  - if account creation succeeds but email sending fails, the account remains created and is included in a failed-email report (with temporary password) for manual resend
+  - use `--failed-email-report` to control output path; otherwise an auto-named report is written in the current directory
