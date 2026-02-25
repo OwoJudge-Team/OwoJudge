@@ -254,6 +254,22 @@ async function main() {
 
   if (options.dryRun) {
     console.log('Dry run mode: no users will be created and no emails will be sent.');
+    console.log('');
+    console.log('==========================================');
+    console.log('Dry Run Preview: Accounts that would be created');
+    console.log('==========================================');
+    accounts.forEach((account) => {
+      console.log(
+        `- line ${account.line}: email="${account.email}", name="${account.name}", role="${account.role}"`
+      );
+    });
+    console.log('==========================================');
+    console.log(`Total accounts: ${accounts.length}`);
+    console.log(
+      `Roles: student=${accounts.filter((a) => a.role === 'student').length}, ` +
+      `ta=${accounts.filter((a) => a.role === 'ta').length}, ` +
+      `judgeAdmin=${accounts.filter((a) => a.role === 'judgeAdmin').length}`
+    );
     return;
   }
 
