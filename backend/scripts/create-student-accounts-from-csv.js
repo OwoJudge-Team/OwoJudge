@@ -252,6 +252,9 @@ function buildMailer(dryRun) {
   }
 
   const port = Number(process.env.SMTP_PORT || 587);
+  if (!Number.isFinite(port) || !Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('SMTP_PORT must be a valid TCP port number (1-65535)');
+  }
   const secure = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
 
   const auth = process.env.SMTP_USER
