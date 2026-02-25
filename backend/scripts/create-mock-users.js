@@ -21,6 +21,8 @@ const count = parseInt(args[0]) || 150; // Default to 150 users (b14902001 to b1
 const password = args[1] || 'password123';
 
 let salt;
+let fallbackUsersCollection = null;
+let fallbackMongoConnected = false;
 
 function readSalt() {
   if (salt) {
@@ -104,34 +106,33 @@ async function createUser(userData, cookie) {
 }
 
 async function createUserByMongoFallback(userData) {
-  await mongoose.connect(MONGODB_URI);
-
-  try {
-    const users = mongoose.connection.db.collection('users');
-    const existingUser = await users.findOne({ username: userData.username }, { projection: { _id: 1 } });
-    if (existingUser) {
-      return { username: userData.username, existed: true };
-    }
-
-    const doc = {
-      username: userData.username,
-      displayName: userData.displayName,
-      ...(userData.studentId ? { studentId: userData.studentId } : {}),
-      password: hashString(userData.password),
-      role: userData.role || 'student',
-      solvedProblem: 0,
-      solvedProblems: [],
-      rating: 0,
-      quotaUsage: {},
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    await users.insertOne(doc);
-    return { username: userData.username, existed: false };
-  } finally {
-    await mongoose.disconnect();
+  if (!fallbackMongoConnected) {
+    await mongoose.connect(MONGODB_URI);
+    fallbackUsersCollection = mongoose.connection.db.collection('users');
+    fallbackMongoConnected = true;
   }
+
+  const existingUser = await fallbackUsersCollection.findOne({ username: userData.username }, { projection: { _id: 1 } });
+  if (existingUser) {
+    return { username: userData.username, existed: true };
+  }
+
+  const doc = {
+    username: userData.username,
+    displayName: userData.displayName,
+    ...(userData.studentId ? { studentId: userData.studentId } : {}),
+    password: hashString(userData.password),
+    role: userData.role || 'student',
+    solvedProblem: 0,
+    solvedProblems: [],
+    rating: 0,
+    quotaUsage: {},
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  await fallbackUsersCollection.insertOne(doc);
+  return { username: userData.username, existed: false };
 }
 
 async function createMockUsers() {
@@ -236,6 +237,12 @@ async function createMockUsers() {
   } catch (error) {
     console.error('Error creating mock users:', error);
     process.exit(1);
+  } finally {
+    if (fallbackMongoConnected) {
+      await mongoose.disconnect();
+      fallbackUsersCollection = null;
+      fallbackMongoConnected = false;
+    }
   }
 }
 
