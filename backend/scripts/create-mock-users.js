@@ -27,6 +27,17 @@ function readSalt() {
     return salt;
   }
 
+  if (process.env.SALT) {
+    salt = process.env.SALT;
+    try {
+      const saltPath = path.join(process.cwd(), 'salt.json');
+      fs.writeFileSync(saltPath, JSON.stringify({ salt }, null, 4));
+    } catch (_error) {
+      // Ignore salt.json write failure
+    }
+    return salt;
+  }
+
   const saltPath = path.join(process.cwd(), 'salt.json');
   try {
     const parsed = JSON.parse(fs.readFileSync(saltPath, 'utf-8'));
