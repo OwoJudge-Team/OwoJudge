@@ -145,3 +145,25 @@ You can generate mock users, problems, and submissions using the following comma
   - `username` from OwoJudge is mapped to old judge `email`.
   - OwoJudge `contests` are converted to old judge `homeworks`.
   - Submission detail is exported in `results`, and each submission references it through `_result`.
+
+- **Restore database from backup file (replace current data)**:
+  ```bash
+  # Validate backup only (no DB change)
+  docker compose exec backend node scripts/restore-backup.js \
+    --file /app/exports/owojudge-raw-2026-02-25T12-00-00-000Z.json \
+    --dry-run
+
+  # Restore from a backup JSON (interactive confirm)
+  docker compose exec backend node scripts/restore-backup.js \
+    --file /app/exports/owojudge-raw-2026-02-25T12-00-00-000Z.json
+
+  # Non-interactive restore
+  docker compose exec backend node scripts/restore-backup.js \
+    --file /app/exports/owojudge-raw-2026-02-25T12-00-00-000Z.json \
+    --yes
+  ```
+
+  Notes:
+  - This script **replaces** existing `users`, `problems`, `submissions`, `contests` data.
+  - It also resets the `problemSerialNumber` counter according to restored problems.
+  - Use `--dry-run` to validate and preview counts without writing to the database.
