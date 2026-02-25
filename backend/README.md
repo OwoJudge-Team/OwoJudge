@@ -167,7 +167,7 @@ You can generate mock users, problems, and submissions using the following comma
   - Required columns:
     - `email` (also accepted: `mail`, `username`)
     - `name` (also accepted: `displayName`, `display_name`, `student_name`)
-  - One student per row.
+  - One account per row.
   - Empty rows are ignored.
 
   Example CSV:
