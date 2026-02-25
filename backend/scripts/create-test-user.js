@@ -5,7 +5,7 @@ const fetch = require('node-fetch');
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWD || 'adminpassword';
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -13,6 +13,7 @@ const username = args[0] || 'b14000000';
 const password = args[1] || 'password123';
 const displayName = args[2] || 'Test User';
 const isAdmin = args[3] === 'true';
+const studentId = args[4] || undefined;
 
 async function login() {
   try {
@@ -68,7 +69,8 @@ async function createTestUser() {
       username,
       displayName,
       password,
-      isAdmin
+      role: isAdmin ? 'judgeAdmin' : 'student',
+      ...(studentId ? { studentId } : {})
     };
 
     const result = await createUser(userData, cookie);
@@ -78,7 +80,8 @@ async function createTestUser() {
     console.log(`Username:     ${username}`);
     console.log(`Password:     ${password}`);
     console.log(`Display Name: ${displayName}`);
-    console.log(`Admin:        ${isAdmin}`);
+    console.log(`Role:         ${isAdmin ? 'judgeAdmin' : 'student'}`);
+    console.log(`Student ID:   ${studentId || '(none)'}`);
     console.log('-----------------------------------');
     console.log('\nYou can now login with these credentials!');
   } catch (error) {

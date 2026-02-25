@@ -1,4 +1,6 @@
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
@@ -82,6 +84,56 @@ async function login(username, password) {
   }
 }
 
+function getAdminPasswordCandidates() {
+  const candidates = [];
+
+  if (process.env.ADMIN_PASSWD) {
+    candidates.push(process.env.ADMIN_PASSWD);
+  }
+
+  if (process.env.ADMIN_PASSWORD) {
+    candidates.push(process.env.ADMIN_PASSWORD);
+  }
+
+  const credentialFiles = [
+    path.join(process.cwd(), 'admin-credentials.json'),
+    '/app/admin-credentials.json'
+  ];
+
+  for (const filePath of credentialFiles) {
+    try {
+      if (!fs.existsSync(filePath)) continue;
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      if (parsed && parsed.password) {
+        candidates.push(String(parsed.password));
+      }
+    } catch (error) {
+      // Ignore malformed or inaccessible credential files
+    }
+  }
+
+  // Historical defaults
+  candidates.push('adminpassword', 'admin1234');
+
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+async function loginAdminWithFallback(username) {
+  const passwordCandidates = getAdminPasswordCandidates();
+  let lastError;
+
+  for (const candidate of passwordCandidates) {
+    try {
+      const cookie = await login(username, candidate);
+      return cookie;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error(`Login failed for ${username}: no usable admin password candidate`);
+}
+
 async function getUsers(cookie) {
   try {
     const response = await fetch(`${API_URL}/users`, {
@@ -140,10 +192,9 @@ async function createMockSubmissions() {
   try {
     console.log(`Creating ${count} mock submissions via API...`);
 
-    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || process.env.ROOT_USERNAME || 'admin';
     console.log(`Logging in as ${ADMIN_USERNAME} to fetch users and problems...`);
-    const adminCookie = await login(ADMIN_USERNAME, ADMIN_PASSWORD);
+    const adminCookie = await loginAdminWithFallback(ADMIN_USERNAME);
 
     const users = await getUsers(adminCookie);
     const problems = await getProblems(adminCookie);
@@ -160,16 +211,41 @@ async function createMockSubmissions() {
 
     console.log(`Found ${users.length} users and ${problems.length} problems`);
 
+    const submitters = users.filter((user) => user.username !== ADMIN_USERNAME);
+    const userCookies = new Map();
+
+    for (const user of submitters) {
+      try {
+        const cookie = await login(user.username, DEFAULT_PASSWORD);
+        userCookies.set(user.username, cookie);
+      } catch (_error) {
+        // Ignore; this user will not be used for non-admin submission creation.
+      }
+    }
+
+    const availableSubmitters = submitters.filter((user) => userCookies.has(user.username));
+    if (availableSubmitters.length > 0) {
+      console.log(`Usable submitter accounts: ${availableSubmitters.length}`);
+    } else {
+      console.log('No user account matched DEFAULT_PASSWORD. Falling back to admin submissions.');
+    }
+
     const createdSubmissions = [];
     const failedSubmissions = [];
+    let adminFallbackCount = 0;
 
     for (let i = 0; i < count; i++) {
       try {
-        const user = getRandomElement(users);
+        const user = availableSubmitters.length > 0
+          ? getRandomElement(availableSubmitters)
+          : { username: ADMIN_USERNAME };
         const problem = getRandomElement(problems);
 
-        // Login as the user to create their submission
-        const userCookie = await login(user.username, DEFAULT_PASSWORD);
+        // Use pre-authenticated user cookie; fallback to admin if needed
+        const userCookie = userCookies.get(user.username) || adminCookie;
+        if (userCookie === adminCookie) {
+          adminFallbackCount += 1;
+        }
 
         const submissionData = {
           problemSerialNumber: problem.serialNumber,
@@ -202,6 +278,7 @@ async function createMockSubmissions() {
     console.log(`Total Requested: ${count}`);
     console.log(`Successfully Created: ${createdSubmissions.length}`);
     console.log(`Failed: ${failedSubmissions.length}`);
+    console.log(`Admin Fallback Used: ${adminFallbackCount}`);
     console.log('==========================================\n');
 
     if (createdSubmissions.length > 0) {

@@ -62,6 +62,16 @@ import fs from 'fs';
 let salt;
 
 const readSalt = () => {
+  if (process.env.SALT) {
+    salt = process.env.SALT;
+    try {
+      fs.writeFileSync('./salt.json', JSON.stringify({ salt }, null, 4));
+    } catch (_error) {
+      // Ignore salt.json write failure
+    }
+    return;
+  }
+
   try {
     const SALT = JSON.parse(fs.readFileSync('./salt.json', 'utf-8')).salt;
     salt = SALT;
