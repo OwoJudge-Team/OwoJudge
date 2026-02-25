@@ -48,7 +48,6 @@ function getAdminPasswordCandidates() {
     }
   }
 
-  out.push('adminpassword', 'admin1234');
   return [...new Set(out.filter(Boolean))];
 }
 
