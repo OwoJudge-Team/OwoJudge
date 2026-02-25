@@ -124,7 +124,50 @@ You can generate mock users, problems, and submissions using the following comma
   ```bash
   # Create an admin user
   docker compose exec backend node scripts/create-test-user.js admin adminpass "Admin User" true
+
+  # Create a student user with studentId
+  docker compose exec backend node scripts/create-test-user.js b12902033 password123 "Matt Li" false b12902033
   ```
+
+- **Create accounts from CSV and send email**:
+  ```bash
+  # CSV must have header columns: email,name
+  # Optional columns: role,studentId
+  # role values: student|ta|judgeAdmin
+  # Example: students.csv
+  # email,name,role,studentId
+  # alice@example.edu,Alice Chen,student,b12902001
+  # bob@example.edu,Bob Lin,ta,
+  # admin2@example.edu,Admin Two,judgeAdmin,
+
+  docker compose exec \
+    -e SMTP_HOST=smtp.example.edu \
+    -e SMTP_PORT=587 \
+    -e SMTP_SECURE=false \
+    -e SMTP_USER=mailer@example.edu \
+    -e SMTP_PASS='your-smtp-password' \
+    backend \
+    node scripts/create-student-accounts-from-csv.js \
+    --csv /app/scripts/students.csv \
+    --from mailer@example.edu \
+    --signature "CSIE Course Staff" \
+    --default-role student
+
+  # Dry run (validate CSV only)
+  docker compose exec backend node scripts/create-student-accounts-from-csv.js \
+    --csv /app/scripts/students.csv \
+    --from mailer@example.edu \
+    --dry-run
+  ```
+
+  Behavior:
+  - `username` = email
+  - `displayName` = name
+  - `role` = CSV `role` column, or `--default-role` when column is missing
+  - `studentId` = CSV `studentId` column when provided
+  - password = random 16-character string
+  - `--signature` controls the name shown at the end of the email body
+  - sends email to each created account asking user to change password immediately
 
 - **Export backup for old judge (with format conversion)**:
   ```bash

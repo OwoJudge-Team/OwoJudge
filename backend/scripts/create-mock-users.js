@@ -116,6 +116,7 @@ async function createUserByMongoFallback(userData) {
     const doc = {
       username: userData.username,
       displayName: userData.displayName,
+      ...(userData.studentId ? { studentId: userData.studentId } : {}),
       password: hashString(userData.password),
       role: userData.role || 'student',
       solvedProblem: 0,
@@ -150,6 +151,7 @@ async function createMockUsers() {
         const userData = {
           username: studentId,
           displayName: studentId,
+          studentId,
           password,
           role: 'student'
         };
@@ -174,6 +176,7 @@ async function createMockUsers() {
             const fallbackResult = await createUserByMongoFallback({
               username: studentId,
               displayName: studentId,
+              studentId,
               password,
               role: 'student'
             });

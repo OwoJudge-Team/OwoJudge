@@ -1,11 +1,11 @@
 // This script is intended to be run inside the docker container
-// Usage: node scripts/create-user.js <username> <displayName> <password> <role>
+// Usage: node scripts/create-user.js <username> <displayName> <password> <role> [studentId]
 
 const ADMIN_USERNAME = process.env.ROOT_USERNAME || process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWD || process.env.ADMIN_PASSWORD || 'admin1234';
 const API_URL = process.env.API_URL || 'http://localhost:8787';
 
-const create_user = async (username, displayName, password, role) => {
+const create_user = async (username, displayName, password, role, studentId) => {
   if (role !== 'student' && role !== 'ta' && role !== 'judgeAdmin') {
     console.log("Error: The role should be 'student', 'ta', or 'judgeAdmin'");
     process.exit(1);
@@ -17,6 +17,10 @@ const create_user = async (username, displayName, password, role) => {
     role: role,
     password: password
   };
+
+  if (studentId) {
+    newUser.studentId = studentId;
+  }
 
   if (!ADMIN_USERNAME) {
     console.log("Error: Cannot find admin username");
@@ -69,10 +73,10 @@ const create_user = async (username, displayName, password, role) => {
 
 const args = process.argv.slice(2);
 if (args.length < 4) {
-  console.log("Usage: node create-user.js <username> <displayName> <password> <role>");
+  console.log("Usage: node create-user.js <username> <displayName> <password> <role> [studentId]");
   process.exit(1);
 }
 
-const [username, displayName, password, role] = args;
+const [username, displayName, password, role, studentId] = args;
 
-create_user(username, displayName, password, role);
+create_user(username, displayName, password, role, studentId);
