@@ -115,6 +115,80 @@ function normalizeBackupPayload(payload) {
   return { users, problems, submissions, contests };
 }
 
+function getInsertedCountFromBulkError(error) {
+  if (typeof error?.result?.nInserted === 'number') {
+    return error.result.nInserted;
+  }
+  if (typeof error?.insertedCount === 'number') {
+    return error.insertedCount;
+  }
+  if (Array.isArray(error?.insertedDocs)) {
+    return error.insertedDocs.length;
+  }
+  return 0;
+}
+
+function getWriteErrors(error) {
+  if (Array.isArray(error?.writeErrors)) {
+    return error.writeErrors;
+  }
+  if (Array.isArray(error?.result?.result?.writeErrors)) {
+    return error.result.result.writeErrors;
+  }
+  return [];
+}
+
+async function insertManyWithReport(collection, docs, label) {
+  if (!docs || docs.length === 0) {
+    return {
+      label,
+      attempted: 0,
+      inserted: 0,
+      failed: 0,
+      partialFailure: false
+    };
+  }
+
+  try {
+    const result = await collection.insertMany(docs, { ordered: false });
+    const inserted = Object.keys(result.insertedIds || {}).length;
+
+    return {
+      label,
+      attempted: docs.length,
+      inserted,
+      failed: docs.length - inserted,
+      partialFailure: false
+    };
+  } catch (error) {
+    const writeErrors = getWriteErrors(error);
+    const isBulkWrite = writeErrors.length > 0 || error?.name === 'MongoBulkWriteError' || error?.name === 'BulkWriteError';
+
+    if (!isBulkWrite) {
+      throw error;
+    }
+
+    const inserted = getInsertedCountFromBulkError(error);
+    const failed = Math.max(0, docs.length - inserted);
+
+    console.warn(`[Restore] Partial insert for ${label}: inserted=${inserted}, failed=${failed}, attempted=${docs.length}`);
+    writeErrors.slice(0, 5).forEach((we, idx) => {
+      console.warn(`[Restore] ${label} writeError[${idx}] code=${we?.code} message=${we?.errmsg || we?.message || 'Unknown error'}`);
+    });
+    if (writeErrors.length > 5) {
+      console.warn(`[Restore] ${label} additional writeErrors omitted: ${writeErrors.length - 5}`);
+    }
+
+    return {
+      label,
+      attempted: docs.length,
+      inserted,
+      failed,
+      partialFailure: true
+    };
+  }
+}
+
 async function restoreCollections(db, backup) {
   const usersCollection = db.collection('users');
   const problemsCollection = db.collection('problems');
@@ -130,21 +204,11 @@ async function restoreCollections(db, backup) {
     countersCollection.deleteMany({ _id: 'problemSerialNumber' })
   ]);
 
-  if (backup.users.length > 0) {
-    await usersCollection.insertMany(backup.users, { ordered: false });
-  }
-
-  if (backup.problems.length > 0) {
-    await problemsCollection.insertMany(backup.problems, { ordered: false });
-  }
-
-  if (backup.submissions.length > 0) {
-    await submissionsCollection.insertMany(backup.submissions, { ordered: false });
-  }
-
-  if (backup.contests.length > 0) {
-    await contestsCollection.insertMany(backup.contests, { ordered: false });
-  }
+  const insertReports = [];
+  insertReports.push(await insertManyWithReport(usersCollection, backup.users, 'users'));
+  insertReports.push(await insertManyWithReport(problemsCollection, backup.problems, 'problems'));
+  insertReports.push(await insertManyWithReport(submissionsCollection, backup.submissions, 'submissions'));
+  insertReports.push(await insertManyWithReport(contestsCollection, backup.contests, 'contests'));
 
   const maxProblemSerial = backup.problems.reduce((maxSerial, problem) => {
     const serial = Number(problem?.serialNumber);
@@ -158,6 +222,11 @@ async function restoreCollections(db, backup) {
       { upsert: true }
     );
   }
+
+  return {
+    insertReports,
+    hasPartialFailures: insertReports.some((r) => r.partialFailure)
+  };
 }
 
 async function main() {
@@ -195,13 +264,21 @@ async function main() {
   await mongoose.connect(options.mongoUri);
 
   try {
-    await restoreCollections(mongoose.connection.db, backup);
+    const restoreReport = await restoreCollections(mongoose.connection.db, backup);
     console.log('----------------------------------------');
     console.log('Restore completed successfully.');
     console.log(`Users restored: ${backup.users.length}`);
     console.log(`Problems restored: ${backup.problems.length}`);
     console.log(`Submissions restored: ${backup.submissions.length}`);
     console.log(`Contests restored: ${backup.contests.length}`);
+
+    if (restoreReport.hasPartialFailures) {
+      console.log('----------------------------------------');
+      console.log('Restore completed with partial insert failures:');
+      restoreReport.insertReports.forEach((r) => {
+        console.log(`- ${r.label}: attempted=${r.attempted}, inserted=${r.inserted}, failed=${r.failed}`);
+      });
+    }
   } finally {
     await mongoose.disconnect();
   }

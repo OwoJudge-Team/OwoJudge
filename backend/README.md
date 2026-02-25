@@ -167,3 +167,4 @@ You can generate mock users, problems, and submissions using the following comma
   - This script **replaces** existing `users`, `problems`, `submissions`, `contests` data.
   - It also resets the `problemSerialNumber` counter according to restored problems.
   - Use `--dry-run` to validate and preview counts without writing to the database.
+  - Inserts use unordered mode (`ordered: false`); if some documents fail, the script reports partial failures with per-collection attempted/inserted/failed counts.
