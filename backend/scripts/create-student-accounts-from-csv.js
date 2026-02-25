@@ -3,10 +3,14 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
+const {
+  getApiUrl,
+  loginAdminWithFallback,
+  createUserViaApi
+} = require('./account-api-utils');
 
-const API_URL = process.env.API_URL || 'http://localhost:8787/api';
+const VALID_ROLES = new Set(['student', 'ta', 'judgeAdmin']);
 
 function printHelp() {
   console.log('Create student accounts from CSV and send password email to each student.');
@@ -20,6 +24,8 @@ function printHelp() {
   console.log('');
   console.log('Optional args:');
   console.log('  --subject <text>      Mail subject');
+  console.log('  --signature <text>    Sign-off name shown at end of mail (default: OwoJudge Team)');
+  console.log('  --default-role <role> Default role when CSV role is missing (student|ta|judgeAdmin)');
   console.log('  --dry-run             Validate and preview only (no user creation, no email)');
   console.log('  --help                Show this help');
   console.log('');
@@ -40,6 +46,8 @@ function parseArgs() {
     csvPath: '',
     fromEmail: '',
     subject: 'Your OwoJudge account has been created',
+    signature: 'OwoJudge Team',
+    defaultRole: 'student',
     dryRun: false
   };
 
@@ -54,6 +62,12 @@ function parseArgs() {
       i += 1;
     } else if (arg === '--subject' && args[i + 1]) {
       options.subject = args[i + 1];
+      i += 1;
+    } else if (arg === '--signature' && args[i + 1]) {
+      options.signature = args[i + 1];
+      i += 1;
+    } else if (arg === '--default-role' && args[i + 1]) {
+      options.defaultRole = args[i + 1];
       i += 1;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
@@ -70,7 +84,29 @@ function parseArgs() {
     throw new Error('Missing required argument: --from <sender@email>');
   }
 
+  options.defaultRole = normalizeRole(options.defaultRole);
+  if (!VALID_ROLES.has(options.defaultRole)) {
+    throw new Error(`Invalid --default-role: ${options.defaultRole}`);
+  }
+
   return options;
+}
+
+function normalizeRole(rawRole) {
+  if (!rawRole) return 'student';
+  const value = String(rawRole).trim().toLowerCase();
+
+  if (value === 'admin' || value === 'judgeadmin' || value === 'judge_admin') {
+    return 'judgeAdmin';
+  }
+  if (value === 'ta') {
+    return 'ta';
+  }
+  if (value === 'student') {
+    return 'student';
+  }
+
+  return String(rawRole).trim();
 }
 
 function parseCsvLine(line) {
@@ -104,7 +140,7 @@ function parseCsvLine(line) {
   return fields.map((f) => f.trim());
 }
 
-function parseCsvFile(filePath) {
+function parseCsvFile(filePath, defaultRole) {
   const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
   const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length < 2) {
@@ -114,6 +150,7 @@ function parseCsvFile(filePath) {
   const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
   const emailIdx = header.findIndex((h) => ['email', 'mail', 'username'].includes(h));
   const nameIdx = header.findIndex((h) => ['name', 'displayname', 'display_name', 'student_name'].includes(h));
+  const roleIdx = header.findIndex((h) => ['role', 'accounttype', 'account_type'].includes(h));
 
   if (emailIdx < 0 || nameIdx < 0) {
     throw new Error('CSV header must contain email and name columns');
@@ -125,12 +162,14 @@ function parseCsvFile(filePath) {
     const cols = parseCsvLine(lines[i]);
     const email = (cols[emailIdx] || '').trim();
     const name = (cols[nameIdx] || '').trim();
+    const roleRaw = roleIdx >= 0 ? (cols[roleIdx] || '').trim() : '';
+    const role = normalizeRole(roleRaw || defaultRole);
 
     if (!email || !name) {
       continue;
     }
 
-    rows.push({ email, name, line: i + 1 });
+    rows.push({ email, name, role, line: i + 1 });
   }
 
   return rows;
@@ -144,86 +183,6 @@ function randomPassword(length = 16) {
     out += chars[bytes[i] % chars.length];
   }
   return out;
-}
-
-async function login(username, password) {
-  const response = await fetch(`${API_URL}/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Login failed for ${username}: ${response.status}`);
-  }
-
-  const rawSetCookie = response.headers.get('set-cookie');
-  if (!rawSetCookie) {
-    throw new Error(`Login failed for ${username}: missing Set-Cookie header`);
-  }
-
-  // Keep only the cookie pair, e.g. "connect.sid=..."
-  return rawSetCookie.split(';')[0];
-}
-
-function getAdminPasswordCandidates() {
-  const out = [];
-
-  if (process.env.ADMIN_PASSWD) out.push(process.env.ADMIN_PASSWD);
-  if (process.env.ADMIN_PASSWORD) out.push(process.env.ADMIN_PASSWORD);
-
-  const credentialFiles = [
-    path.join(process.cwd(), 'admin-credentials.json'),
-    '/app/admin-credentials.json'
-  ];
-
-  for (const filePath of credentialFiles) {
-    try {
-      if (!fs.existsSync(filePath)) continue;
-      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      if (parsed && parsed.password) out.push(String(parsed.password));
-    } catch (_error) {
-      // ignore broken credential file
-    }
-  }
-
-  out.push('adminpassword', 'admin1234');
-  return [...new Set(out.filter(Boolean))];
-}
-
-async function loginAdminWithFallback() {
-  const adminUsername = process.env.ROOT_USERNAME || process.env.ADMIN_USERNAME || 'admin';
-  const candidates = getAdminPasswordCandidates();
-
-  let lastError;
-  for (const password of candidates) {
-    try {
-      const cookie = await login(adminUsername, password);
-      return { adminUsername, cookie };
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error(`Unable to login as ${adminUsername}`);
-}
-
-async function createUser(userData, adminCookie) {
-  const response = await fetch(`${API_URL}/users`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Cookie: adminCookie
-    },
-    body: JSON.stringify(userData)
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API Error: ${response.status} - ${text}`);
-  }
-
-  return response.json();
 }
 
 function buildMailer(dryRun) {
@@ -249,7 +208,7 @@ function buildMailer(dryRun) {
   return nodemailer.createTransport({ host, port, secure, auth });
 }
 
-async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, password, subject }) {
+async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, password, subject, signature }) {
   const text = [
     `Hello ${name},`,
     '',
@@ -259,7 +218,8 @@ async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, password
     '',
     'Please sign in and change your password immediately.',
     '',
-    'Best regards,'
+    'Best regards,',
+    signature
   ].join('\n');
 
   await transporter.sendMail({
@@ -272,13 +232,18 @@ async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, password
 
 async function main() {
   const options = parseArgs();
-  const students = parseCsvFile(options.csvPath);
+  const accounts = parseCsvFile(options.csvPath, options.defaultRole);
 
-  if (students.length === 0) {
+  if (accounts.length === 0) {
     throw new Error('No valid student rows found in CSV');
   }
 
-  console.log(`CSV loaded: ${students.length} students`);
+  console.log(`CSV loaded: ${accounts.length} accounts`);
+
+  const invalidRows = accounts.filter((item) => !VALID_ROLES.has(item.role));
+  if (invalidRows.length > 0) {
+    throw new Error(`Invalid role(s) in CSV at line(s): ${invalidRows.map((r) => r.line).join(', ')}`);
+  }
 
   if (options.dryRun) {
     console.log('Dry run mode: no users will be created and no emails will be sent.');
@@ -289,48 +254,55 @@ async function main() {
   await transporter.verify();
   console.log('SMTP connection verified.');
 
-  const { adminUsername, cookie } = await loginAdminWithFallback();
+  const apiUrl = getApiUrl();
+  const { adminUsername, cookie } = await loginAdminWithFallback(apiUrl);
   console.log(`Logged in as ${adminUsername}.`);
 
   const created = [];
   const failed = [];
+  const createdByRole = { student: 0, ta: 0, judgeAdmin: 0 };
 
-  for (const student of students) {
+  for (const account of accounts) {
     const password = randomPassword(16);
     const userData = {
-      username: student.email,
-      displayName: student.name,
+      username: account.email,
+      displayName: account.name,
       password,
-      role: 'student'
+      role: account.role
     };
 
     try {
-      await createUser(userData, cookie);
+      await createUserViaApi(userData, cookie, apiUrl);
 
       await sendWelcomeMail({
         transporter,
         fromEmail: options.fromEmail,
-        toEmail: student.email,
-        name: student.name,
+        toEmail: account.email,
+        name: account.name,
         password,
-        subject: options.subject
+        subject: options.subject,
+        signature: options.signature
       });
 
-      created.push(student.email);
-      console.log(`INFO: Created and mailed ${student.email}`);
+      created.push(account.email);
+      createdByRole[account.role] += 1;
+      console.log(`INFO: Created (${account.role}) and mailed ${account.email}`);
     } catch (error) {
       const reason = error && error.message ? error.message : String(error);
-      failed.push({ email: student.email, reason });
-      console.log(`✗ Failed for ${student.email}: ${reason}`);
+      failed.push({ email: account.email, reason });
+      console.log(`✗ Failed for ${account.email}: ${reason}`);
     }
   }
 
   console.log('');
   console.log('==========================================');
-  console.log('Student Account Creation Summary');
+  console.log('Account Creation Summary');
   console.log('==========================================');
-  console.log(`Total CSV Rows: ${students.length}`);
+  console.log(`Total CSV Rows: ${accounts.length}`);
   console.log(`Created + Emailed: ${created.length}`);
+  console.log(`  - student: ${createdByRole.student}`);
+  console.log(`  - ta: ${createdByRole.ta}`);
+  console.log(`  - judgeAdmin: ${createdByRole.judgeAdmin}`);
   console.log(`Failed: ${failed.length}`);
   console.log('==========================================');
 
