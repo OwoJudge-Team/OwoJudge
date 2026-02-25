@@ -242,7 +242,7 @@ async function main() {
   const accounts = parseCsvFile(options.csvPath, options.defaultRole);
 
   if (accounts.length === 0) {
-    throw new Error('No valid student rows found in CSV');
+    throw new Error('No valid account rows found in CSV');
   }
 
   console.log(`CSV loaded: ${accounts.length} accounts`);
