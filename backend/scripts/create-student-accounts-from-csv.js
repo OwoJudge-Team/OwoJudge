@@ -13,7 +13,7 @@ const {
 const VALID_ROLES = new Set(['student', 'ta', 'judgeAdmin']);
 
 function printHelp() {
-  console.log('Create student accounts from CSV and send password email to each student.');
+  console.log('Create user accounts (student/ta/judgeAdmin) from CSV and send a password email to each user.');
   console.log('');
   console.log('Usage:');
   console.log('  node scripts/create-student-accounts-from-csv.js --csv <file> --from <sender@email> [options]');
