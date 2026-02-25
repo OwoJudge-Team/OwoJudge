@@ -71,12 +71,18 @@ function toDateOrNow(value, fallbackNow = new Date()) {
   return Number.isNaN(parsed.getTime()) ? fallbackNow : parsed;
 }
 
+const DEFAULT_HOMEWORK_DURATION_DAYS = Number.isFinite(Number(process.env.HOMEWORK_DURATION_DAYS))
+  ? Number(process.env.HOMEWORK_DURATION_DAYS)
+  : 7;
+
+const DEFAULT_HOMEWORK_DURATION_MS = DEFAULT_HOMEWORK_DURATION_DAYS * 24 * 60 * 60 * 1000;
+
 function convertHomeworksToContests(homeworks, generatedAt) {
   const referenceNow = toDateOrNow(generatedAt, new Date());
 
   return homeworks.map((homework) => {
     const end = toDateOrNow(homework.due, referenceNow);
-    const start = new Date(end.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const start = new Date(end.getTime() - DEFAULT_HOMEWORK_DURATION_MS);
 
     return {
       title: homework.name || 'Recovered Homework',
