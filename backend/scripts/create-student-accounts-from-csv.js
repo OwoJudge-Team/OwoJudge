@@ -177,10 +177,17 @@ function parseCsvFile(filePath, defaultRole) {
 
 function randomPassword(length = 16) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
-  const bytes = crypto.randomBytes(length);
+  const max = 256 - (256 % chars.length);
   let out = '';
-  for (let i = 0; i < length; i += 1) {
-    out += chars[bytes[i] % chars.length];
+
+  while (out.length < length) {
+    const bytes = crypto.randomBytes(length);
+    for (let i = 0; i < bytes.length && out.length < length; i += 1) {
+      const byte = bytes[i];
+      if (byte < max) {
+        out += chars[byte % chars.length];
+      }
+    }
   }
   return out;
 }
