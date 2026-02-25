@@ -125,3 +125,60 @@ You can generate mock users, problems, and submissions using the following comma
   # Create an admin user
   docker compose exec backend node scripts/create-test-user.js admin adminpass "Admin User" true
   ```
+
+- **Create student accounts from CSV and send email**:
+  ```bash
+  # CSV must have header columns: email,name
+  # Example: students.csv
+  # email,name
+  # alice@example.edu,Alice Chen
+  # bob@example.edu,Bob Lin
+
+  docker compose exec \
+    -e SMTP_HOST=smtp.example.edu \
+    -e SMTP_PORT=587 \
+    -e SMTP_SECURE=false \
+    -e SMTP_USER=mailer@example.edu \
+    -e SMTP_PASS='your-smtp-password' \
+    backend \
+    node scripts/create-student-accounts-from-csv.js \
+    --csv /app/scripts/students.csv \
+    --from mailer@example.edu
+
+  # Dry run (validate CSV only)
+  docker compose exec backend node scripts/create-student-accounts-from-csv.js \
+    --csv /app/scripts/students.csv \
+    --from mailer@example.edu \
+    --dry-run
+  ```
+
+  CSV file placement:
+  - Put the CSV file in [scripts](scripts), for example [scripts/students.csv](scripts/students.csv).
+  - This path is recommended because Docker mounts [scripts](scripts) to `/app/scripts` inside the backend container.
+  - If your CSV is elsewhere, make sure that location is mounted into the container and use the in-container path in `--csv`.
+
+  CSV structure requirements:
+  - File must be UTF-8 encoded text.
+  - First row must be a header row.
+  - Required columns:
+    - `email` (also accepted: `mail`, `username`)
+    - `name` (also accepted: `displayName`, `display_name`, `student_name`)
+  - One student per row.
+  - Empty rows are ignored.
+
+  Example CSV:
+  ```csv
+  email,name
+  alice@example.edu,Alice Chen
+  bob@example.edu,Bob Lin
+  ```
+
+  Common path examples:
+  - Local file in repo: [scripts/students.csv](scripts/students.csv) → `--csv /app/scripts/students.csv`
+  - Alternative file name: [scripts/students-2026-spring.csv](scripts/students-2026-spring.csv) → `--csv /app/scripts/students-2026-spring.csv`
+
+  Behavior:
+  - `username` = student email
+  - `displayName` = student name
+  - password = random 16-character string
+  - sends email to each created account asking student to change password immediately
