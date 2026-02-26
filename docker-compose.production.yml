@@ -53,11 +53,11 @@ services:
     networks:
       - judge-network
     volumes:
-      - /var/lib/owojudge/gitea:/data
+      - /var/lib/owojudge/gitea:/data:z
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - ./backend/secrets:/secrets
-      - ./backend/scripts/entrypoint.sh:/scripts/entrypoint.sh:ro
+      - ./backend/secrets:/secrets:z
+      - ./backend/scripts/entrypoint.sh:/scripts/entrypoint.sh:ro,z
     ports:
       - "0.0.0.0:${GITEA_SSH_PORT:-22}:22"
     depends_on:
@@ -75,7 +75,7 @@ services:
     networks:
       - judge-network
     volumes:
-      - /var/lib/owojudge/postgres:/var/lib/postgresql/data
+      - /var/lib/owojudge/postgres:/var/lib/postgresql/data:z
 
   mongodb:
     image: mongo:7.0
@@ -86,7 +86,7 @@ services:
     networks:
       - judge-network
     volumes:
-      - /var/lib/owojudge/mongodb:/data/db
+      - /var/lib/owojudge/mongodb:/data/db:z
 
   backend:
     build:
@@ -114,8 +114,8 @@ services:
     expose:
       - "8787"
     volumes:
-      - /var/lib/owojudge/uploads:/app/uploads
-      - /var/lib/owojudge/problems:/app/problems
+      - /var/lib/owojudge/uploads:/app/uploads:z
+      - /var/lib/owojudge/problems:/app/problems:z
       - ./backend/scripts:/app/scripts:rw
       - ./backend/secrets:/secrets:ro
       - /sys/fs/cgroup/:/sys/fs/cgroup/:rw

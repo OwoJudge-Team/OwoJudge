@@ -21,6 +21,7 @@ function printHelp() {
   console.log('Required args:');
   console.log('  --csv <file>          CSV file path, with columns: email,name (header required)');
   console.log('  --from <email>        Sender email address');
+  console.log('                        Optional CSV column: username (defaults to email local-part)');
   console.log('');
   console.log('Optional args:');
   console.log('  --subject <text>      Mail subject');
@@ -181,6 +182,7 @@ function parseCsvFile(filePath, defaultRole) {
 
   const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
   const emailIdx = header.findIndex((h) => ['email', 'mail', 'username'].includes(h));
+  const usernameIdx = header.findIndex((h) => ['username', 'user', 'account', 'account_name'].includes(h));
   const nameIdx = header.findIndex((h) => ['name', 'displayname', 'display_name', 'student_name'].includes(h));
   const roleIdx = header.findIndex((h) => ['role', 'accounttype', 'account_type'].includes(h));
 
@@ -194,9 +196,11 @@ function parseCsvFile(filePath, defaultRole) {
   for (let i = 1; i < lines.length; i += 1) {
     const cols = parseCsvLine(lines[i]);
     const email = (cols[emailIdx] || '').trim();
+    const usernameRaw = usernameIdx >= 0 ? (cols[usernameIdx] || '').trim() : '';
     const name = (cols[nameIdx] || '').trim();
     const roleRaw = roleIdx >= 0 ? (cols[roleIdx] || '').trim() : '';
     const role = normalizeRole(roleRaw || defaultRole);
+    const username = normalizeUsername(usernameRaw || email);
 
     if (!email || !name) {
       continue;
@@ -207,7 +211,7 @@ function parseCsvFile(filePath, defaultRole) {
       continue;
     }
 
-    rows.push({ email, name, role, line: i + 1 });
+    rows.push({ email, username, name, role, line: i + 1 });
   }
 
   if (invalidEmails.length > 0) {
@@ -222,6 +226,18 @@ function parseCsvFile(filePath, defaultRole) {
   }
 
   return rows;
+}
+
+function normalizeUsername(value) {
+  const source = String(value || '').trim().toLowerCase();
+  const base = source.includes('@') ? source.split('@')[0] : source;
+  const normalized = base
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+/, '')
+    .replace(/[._-]+$/, '')
+    .slice(0, 39);
+
+  return normalized || `user-${Date.now()}`;
 }
 
 function randomPassword(length = 16) {
@@ -267,12 +283,12 @@ function buildMailer(dryRun) {
   return nodemailer.createTransport({ host, port, secure, auth });
 }
 
-async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, password, subject, signature }) {
+async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, username, password, subject, signature }) {
   const text = [
     `Hello ${name},`,
     '',
     'Your OwoJudge account has been created.',
-    `Username: ${toEmail}`,
+    `Username: ${username}`,
     `Temporary password: ${password}`,
     '',
     'Please sign in and change your password immediately.',
@@ -312,7 +328,7 @@ async function main() {
     console.log('==========================================');
     accounts.forEach((account) => {
       console.log(
-        `- line ${account.line}: email="${account.email}", name="${account.name}", role="${account.role}"`
+        `- line ${account.line}: email="${account.email}", username="${account.username}", name="${account.name}", role="${account.role}"`
       );
     });
     console.log('==========================================');
@@ -341,7 +357,7 @@ async function main() {
   for (const account of accounts) {
     const password = randomPassword(16);
     const userData = {
-      username: account.email,
+      username: account.username,
       displayName: account.name,
       password,
       role: account.role
@@ -356,6 +372,7 @@ async function main() {
           fromEmail: options.fromEmail,
           toEmail: account.email,
           name: account.name,
+          username: account.username,
           password,
           subject: options.subject,
           signature: options.signature
