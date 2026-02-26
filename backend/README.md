@@ -132,13 +132,12 @@ You can generate mock users, problems, and submissions using the following comma
 - **Create accounts from CSV and send email**:
   ```bash
   # CSV must have header columns: email,name
-  # Optional columns: role,studentId
-  # role values: student|ta|judgeAdmin
+  # Optional column: role (student|ta|judgeAdmin)
   # Example: students.csv
-  # email,name,role,studentId
-  # alice@example.edu,Alice Chen,student,b12902001
-  # bob@example.edu,Bob Lin,ta,
-  # admin2@example.edu,Admin Two,judgeAdmin,
+  # email,name,role
+  # alice@example.edu,Alice Chen,student
+  # bob@example.edu,Bob Lin,ta
+  # admin2@example.edu,Admin Two,judgeAdmin
 
   docker compose exec \
     -e SMTP_HOST=smtp.example.edu \
@@ -150,7 +149,8 @@ You can generate mock users, problems, and submissions using the following comma
     node scripts/create-student-accounts-from-csv.js \
     --csv /app/scripts/students.csv \
     --from mailer@example.edu \
-    --signature "CSIE Course Staff" \
+    --signature "OwoJudge Team" \
+    --failed-email-report /app/scripts/failed-email-report.json \
     --default-role student
 
   # Dry run (validate CSV only)
@@ -160,54 +160,37 @@ You can generate mock users, problems, and submissions using the following comma
     --dry-run
   ```
 
+  CSV file placement:
+  - Put the CSV file in [scripts](scripts), for example [scripts/students.csv](scripts/students.csv).
+  - This path is recommended because Docker mounts [scripts](scripts) to `/app/scripts` inside the backend container.
+  - If your CSV is elsewhere, make sure that location is mounted into the container and use the in-container path in `--csv`.
+
+  CSV structure requirements:
+  - File must be UTF-8 encoded text.
+  - First row must be a header row.
+  - Required columns:
+    - `email` (also accepted: `mail`, `username`)
+    - `name` (also accepted: `displayName`, `display_name`, `student_name`)
+  - One account per row.
+  - Empty rows are ignored.
+
+  Example CSV:
+  ```csv
+  email,name
+  alice@example.edu,Alice Chen
+  bob@example.edu,Bob Lin
+  ```
+
+  Common path examples:
+  - Local file in repo: [scripts/students.csv](scripts/students.csv) → `--csv /app/scripts/students.csv`
+  - Alternative file name: [scripts/students-2026-spring.csv](scripts/students-2026-spring.csv) → `--csv /app/scripts/students-2026-spring.csv`
+
   Behavior:
   - `username` = email
   - `displayName` = name
   - `role` = CSV `role` column, or `--default-role` when column is missing
-  - `studentId` = CSV `studentId` column when provided
   - password = random 16-character string
   - `--signature` controls the name shown at the end of the email body
   - sends email to each created account asking user to change password immediately
-
-- **Export backup for old judge (with format conversion)**:
-  ```bash
-  # Export current users/problems/submissions and convert to old judge schema
-  docker compose exec backend node scripts/export-old-judge-backup.js
-
-  # Custom output directory / MongoDB URI
-  docker compose exec backend node scripts/export-old-judge-backup.js \
-    --output-dir /app/exports \
-    --mongo-uri mongodb://mongodb:27017/judge
-  ```
-
-  This script generates:
-  - `owojudge-raw-*.json` (raw OwoJudge data)
-  - `old-judge-converted-*.json` (converted old-judge data)
-
-  Conversion behavior:
-  - `username` from OwoJudge is mapped to old judge `email`.
-  - OwoJudge `contests` are converted to old judge `homeworks`.
-  - Submission detail is exported in `results`, and each submission references it through `_result`.
-
-- **Restore database from backup file (replace current data)**:
-  ```bash
-  # Validate backup only (no DB change)
-  docker compose exec backend node scripts/restore-backup.js \
-    --file /app/exports/owojudge-raw-2026-02-25T12-00-00-000Z.json \
-    --dry-run
-
-  # Restore from a backup JSON (interactive confirm)
-  docker compose exec backend node scripts/restore-backup.js \
-    --file /app/exports/owojudge-raw-2026-02-25T12-00-00-000Z.json
-
-  # Non-interactive restore
-  docker compose exec backend node scripts/restore-backup.js \
-    --file /app/exports/owojudge-raw-2026-02-25T12-00-00-000Z.json \
-    --yes
-  ```
-
-  Notes:
-  - This script **replaces** existing `users`, `problems`, `submissions`, `contests` data.
-  - It also resets the `problemSerialNumber` counter according to restored problems.
-  - Use `--dry-run` to validate and preview counts without writing to the database.
-  - Inserts use unordered mode (`ordered: false`); if some documents fail, the script reports partial failures with per-collection attempted/inserted/failed counts.
+  - if account creation succeeds but email sending fails, the account remains created and is included in a failed-email report (with temporary password) for manual resend
+  - use `--failed-email-report` to control output path; otherwise an auto-named report is written in the current directory

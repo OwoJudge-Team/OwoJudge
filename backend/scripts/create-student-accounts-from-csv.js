@@ -13,20 +13,21 @@ const {
 const VALID_ROLES = new Set(['student', 'ta', 'judgeAdmin']);
 
 function printHelp() {
-  console.log('Create student accounts from CSV and send password email to each student.');
+  console.log('Create user accounts (student/ta/judgeAdmin) from CSV and send a password email to each user.');
   console.log('');
   console.log('Usage:');
   console.log('  node scripts/create-student-accounts-from-csv.js --csv <file> --from <sender@email> [options]');
   console.log('');
   console.log('Required args:');
   console.log('  --csv <file>          CSV file path, with columns: email,name (header required)');
-  console.log('                        optional column: studentId');
   console.log('  --from <email>        Sender email address');
+  console.log('                        Optional CSV column: username (defaults to email local-part)');
   console.log('');
   console.log('Optional args:');
   console.log('  --subject <text>      Mail subject');
   console.log('  --signature <text>    Sign-off name shown at end of mail (default: OwoJudge Team)');
   console.log('  --default-role <role> Default role when CSV role is missing (student|ta|judgeAdmin)');
+  console.log('  --failed-email-report <path>  Write JSON report for accounts created but email sending failed');
   console.log('  --dry-run             Validate and preview only (no user creation, no email)');
   console.log('  --help                Show this help');
   console.log('');
@@ -49,6 +50,7 @@ function parseArgs() {
     subject: 'Your OwoJudge account has been created',
     signature: 'OwoJudge Team',
     defaultRole: 'student',
+    failedEmailReportPath: '',
     dryRun: false
   };
 
@@ -69,6 +71,9 @@ function parseArgs() {
       i += 1;
     } else if (arg === '--default-role' && args[i + 1]) {
       options.defaultRole = args[i + 1];
+      i += 1;
+    } else if (arg === '--failed-email-report' && args[i + 1]) {
+      options.failedEmailReportPath = path.resolve(args[i + 1]);
       i += 1;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
@@ -93,6 +98,24 @@ function parseArgs() {
   return options;
 }
 
+function writeFailedEmailReport(entries, customPath = '') {
+  if (!entries || entries.length === 0) {
+    return null;
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const outputPath = customPath || path.join(process.cwd(), `failed-email-attempts-${timestamp}.json`);
+
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    note: 'Contains temporary passwords. Keep this file secure and delete it after handling resends.',
+    entries
+  };
+
+  fs.writeFileSync(outputPath, JSON.stringify(payload, null, 2), { mode: 0o600 });
+  return outputPath;
+}
+
 function normalizeRole(rawRole) {
   if (!rawRole) return 'student';
   const value = String(rawRole).trim().toLowerCase();
@@ -115,7 +138,8 @@ function parseCsvLine(line) {
   let cur = '';
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i += 1) {
+  let i = 0;
+  while (i < line.length) {
     const ch = line[i];
 
     if (ch === '"') {
@@ -125,20 +149,28 @@ function parseCsvLine(line) {
       } else {
         inQuotes = !inQuotes;
       }
+      i += 1;
       continue;
     }
 
     if (ch === ',' && !inQuotes) {
       fields.push(cur);
       cur = '';
+      i += 1;
       continue;
     }
 
     cur += ch;
+    i += 1;
   }
 
   fields.push(cur);
   return fields.map((f) => f.trim());
+}
+
+function isValidEmail(email) {
+  // Practical validation: local@domain.tld without spaces
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function parseCsvFile(filePath, defaultRole) {
@@ -150,40 +182,77 @@ function parseCsvFile(filePath, defaultRole) {
 
   const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
   const emailIdx = header.findIndex((h) => ['email', 'mail', 'username'].includes(h));
+  const usernameIdx = header.findIndex((h) => ['username', 'user', 'account', 'account_name'].includes(h));
   const nameIdx = header.findIndex((h) => ['name', 'displayname', 'display_name', 'student_name'].includes(h));
   const roleIdx = header.findIndex((h) => ['role', 'accounttype', 'account_type'].includes(h));
-  const studentIdIdx = header.findIndex((h) => ['studentid', 'student_id', 'id'].includes(h));
 
   if (emailIdx < 0 || nameIdx < 0) {
     throw new Error('CSV header must contain email and name columns');
   }
 
   const rows = [];
+  const invalidEmails = [];
 
   for (let i = 1; i < lines.length; i += 1) {
     const cols = parseCsvLine(lines[i]);
     const email = (cols[emailIdx] || '').trim();
+    const usernameRaw = usernameIdx >= 0 ? (cols[usernameIdx] || '').trim() : '';
     const name = (cols[nameIdx] || '').trim();
     const roleRaw = roleIdx >= 0 ? (cols[roleIdx] || '').trim() : '';
-    const studentId = studentIdIdx >= 0 ? (cols[studentIdIdx] || '').trim() : '';
     const role = normalizeRole(roleRaw || defaultRole);
+    const username = normalizeUsername(usernameRaw || email);
 
     if (!email || !name) {
       continue;
     }
 
-    rows.push({ email, name, role, studentId, line: i + 1 });
+    if (!isValidEmail(email)) {
+      invalidEmails.push({ line: i + 1, email });
+      continue;
+    }
+
+    rows.push({ email, username, name, role, line: i + 1 });
+  }
+
+  if (invalidEmails.length > 0) {
+    const details = invalidEmails
+      .slice(0, 10)
+      .map((item) => `line ${item.line}: ${item.email}`)
+      .join('; ');
+    const more = invalidEmails.length > 10
+      ? `; ...and ${invalidEmails.length - 10} more`
+      : '';
+    throw new Error(`Invalid email format in CSV (${invalidEmails.length} row(s)): ${details}${more}`);
   }
 
   return rows;
 }
 
+function normalizeUsername(value) {
+  const source = String(value || '').trim().toLowerCase();
+  const base = source.includes('@') ? source.split('@')[0] : source;
+  const normalized = base
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+/, '')
+    .replace(/[._-]+$/, '')
+    .slice(0, 39);
+
+  return normalized || `user-${Date.now()}`;
+}
+
 function randomPassword(length = 16) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
-  const bytes = crypto.randomBytes(length);
+  const max = 256 - (256 % chars.length);
   let out = '';
-  for (let i = 0; i < length; i += 1) {
-    out += chars[bytes[i] % chars.length];
+
+  while (out.length < length) {
+    const bytes = crypto.randomBytes(length);
+    for (let i = 0; i < bytes.length && out.length < length; i += 1) {
+      const byte = bytes[i];
+      if (byte < max) {
+        out += chars[byte % chars.length];
+      }
+    }
   }
   return out;
 }
@@ -199,6 +268,9 @@ function buildMailer(dryRun) {
   }
 
   const port = Number(process.env.SMTP_PORT || 587);
+  if (!Number.isFinite(port) || !Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('SMTP_PORT must be a valid TCP port number (1-65535)');
+  }
   const secure = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
 
   const auth = process.env.SMTP_USER
@@ -211,12 +283,12 @@ function buildMailer(dryRun) {
   return nodemailer.createTransport({ host, port, secure, auth });
 }
 
-async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, password, subject, signature }) {
+async function sendWelcomeMail({ transporter, fromEmail, toEmail, name, username, password, subject, signature }) {
   const text = [
     `Hello ${name},`,
     '',
     'Your OwoJudge account has been created.',
-    `Username: ${toEmail}`,
+    `Username: ${username}`,
     `Temporary password: ${password}`,
     '',
     'Please sign in and change your password immediately.',
@@ -238,7 +310,7 @@ async function main() {
   const accounts = parseCsvFile(options.csvPath, options.defaultRole);
 
   if (accounts.length === 0) {
-    throw new Error('No valid student rows found in CSV');
+    throw new Error('No valid account rows found in CSV');
   }
 
   console.log(`CSV loaded: ${accounts.length} accounts`);
@@ -250,6 +322,22 @@ async function main() {
 
   if (options.dryRun) {
     console.log('Dry run mode: no users will be created and no emails will be sent.');
+    console.log('');
+    console.log('==========================================');
+    console.log('Dry Run Preview: Accounts that would be created');
+    console.log('==========================================');
+    accounts.forEach((account) => {
+      console.log(
+        `- line ${account.line}: email="${account.email}", username="${account.username}", name="${account.name}", role="${account.role}"`
+      );
+    });
+    console.log('==========================================');
+    console.log(`Total accounts: ${accounts.length}`);
+    console.log(
+      `Roles: student=${accounts.filter((a) => a.role === 'student').length}, ` +
+      `ta=${accounts.filter((a) => a.role === 'ta').length}, ` +
+      `judgeAdmin=${accounts.filter((a) => a.role === 'judgeAdmin').length}`
+    );
     return;
   }
 
@@ -263,34 +351,54 @@ async function main() {
 
   const created = [];
   const failed = [];
+  const emailFailedAfterCreate = [];
   const createdByRole = { student: 0, ta: 0, judgeAdmin: 0 };
 
   for (const account of accounts) {
     const password = randomPassword(16);
     const userData = {
-      username: account.email,
+      username: account.username,
       displayName: account.name,
       password,
-      role: account.role,
-      ...(account.studentId ? { studentId: account.studentId } : {})
+      role: account.role
     };
 
     try {
       await createUserViaApi(userData, cookie, apiUrl);
 
-      await sendWelcomeMail({
-        transporter,
-        fromEmail: options.fromEmail,
-        toEmail: account.email,
-        name: account.name,
-        password,
-        subject: options.subject,
-        signature: options.signature
-      });
+      try {
+        await sendWelcomeMail({
+          transporter,
+          fromEmail: options.fromEmail,
+          toEmail: account.email,
+          name: account.name,
+          username: account.username,
+          password,
+          subject: options.subject,
+          signature: options.signature
+        });
 
-      created.push(account.email);
-      createdByRole[account.role] += 1;
-      console.log(`INFO: Created (${account.role}) and mailed ${account.email}`);
+        created.push(account.email);
+        createdByRole[account.role] += 1;
+        console.log(`INFO: Created (${account.role}) and mailed ${account.email}`);
+      } catch (mailError) {
+        const mailReason = mailError && mailError.message ? mailError.message : String(mailError);
+        emailFailedAfterCreate.push({
+          email: account.email,
+          name: account.name,
+          role: account.role,
+          studentId: account.studentId || '',
+          temporaryPassword: password,
+          reason: mailReason
+        });
+
+        failed.push({
+          email: account.email,
+          reason: `Email failed after account creation: ${mailReason}`
+        });
+
+        console.log(`✗ Created account but failed to send email for ${account.email}: ${mailReason}`);
+      }
     } catch (error) {
       const reason = error && error.message ? error.message : String(error);
       failed.push({ email: account.email, reason });
@@ -307,8 +415,18 @@ async function main() {
   console.log(`  - student: ${createdByRole.student}`);
   console.log(`  - ta: ${createdByRole.ta}`);
   console.log(`  - judgeAdmin: ${createdByRole.judgeAdmin}`);
+  console.log(`Email Failed After Create: ${emailFailedAfterCreate.length}`);
   console.log(`Failed: ${failed.length}`);
   console.log('==========================================');
+
+  if (emailFailedAfterCreate.length > 0) {
+    const reportPath = writeFailedEmailReport(emailFailedAfterCreate, options.failedEmailReportPath);
+    if (reportPath) {
+      console.log('');
+      console.log(`Email failure report written to: ${reportPath}`);
+      console.log('IMPORTANT: Report contains temporary passwords. Handle securely and delete after resend.');
+    }
+  }
 
   if (failed.length > 0) {
     console.log('');
