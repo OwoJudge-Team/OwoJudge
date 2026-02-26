@@ -185,7 +185,7 @@ shutdown() {
     fi
 
     # Kill periodic backup worker
-    if [ ! -z "$BACKUP_PID" ]; then
+    if [ -n "$BACKUP_PID" ]; then
         echo "Stopping periodic backup worker (PID: $BACKUP_PID)..."
         kill -TERM "$BACKUP_PID" 2>/dev/null || true
         wait "$BACKUP_PID" 2>/dev/null || true
