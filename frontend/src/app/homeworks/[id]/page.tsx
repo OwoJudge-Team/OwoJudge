@@ -120,6 +120,61 @@ export default function ContestPage() {
     }
   };
 
+  // add a first header row describing each column
+  const downloadCSV = (
+    standings: Standing[],
+    problems: Problem[],
+    filename = "exported_scores.csv"
+  ) => {
+    // build header row: username, totalScore, then one set of columns per problem
+    const header: (string | number)[] = ["username", "totalScore"];
+    problems.forEach((p) => {
+      header.push(`p${p.serialNumber}_score`, `p${p.serialNumber}_lastSubmissionTime`);
+    });
+
+    const data: (string | number)[][] = standings.map((s) => {
+      const map = new Map<number, Standing["problemScores"][0]>(
+        s.problemScores.map((ps) => [ps.serialNumber, ps])
+      );
+      const row: (string | number)[] = [s.username, s.totalScore];
+      problems.forEach((p) => {
+        const ps = map.get(p.serialNumber);
+        if (ps) {
+          row.push(ps.score, ps.lastSubmissionTime);
+        } else {
+          row.push(0, "");
+        }
+      });
+      return row;
+    });
+
+    data.unshift(header);
+
+    const csvContent = data
+      .map((row) =>
+        row
+          .map((cell) => {
+            const stringValue = String(cell).replace(/"/g, '""');
+            return stringValue.includes(",") ? `"${stringValue}"` : stringValue;
+          })
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -194,6 +249,21 @@ export default function ContestPage() {
         <section className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
           <h2 className="mb-4 text-2xl font-bold text-slate-100">Privileged Actions</h2>
           <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-3">
+              <h3 className="text-xl font-semibold text-slate-200">Download Scores</h3>
+              <p className="text-slate-300">
+                Download the score of every participant in CSV format. The CSV file will contain the
+                username, total score, and for each problem, the score and last submission time.
+              </p>
+              <button
+                className="w-fit rounded-lg bg-indigo-600 p-2 hover:bg-indigo-700"
+                onClick={() =>
+                  downloadCSV(contest.standings, problems, `${contest.title}_scores.csv`)
+                }
+              >
+                Download Scores
+              </button>
+            </div>
             <div className="flex flex-col gap-3">
               <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
               <p className="text-slate-300">
