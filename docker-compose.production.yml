@@ -111,15 +111,24 @@ services:
       - SALT=${BACKEND_SALT:-justasalt}
       - COOKIE_SECRET=${COOKIE_SECRET:-cj6u.4t/6}
       - SESSION_SECRET=${SESSION_SECRET:-z/ fup6ql4}
+      - AUTO_BACKUP_ENABLED=${AUTO_BACKUP_ENABLED:-true}
+      - AUTO_BACKUP_INTERVAL_SECONDS=${AUTO_BACKUP_INTERVAL_SECONDS:-21600}
+      - AUTO_BACKUP_OUTPUT_DIR=${AUTO_BACKUP_OUTPUT_DIR:-/app/scripts/backup-temp/periodic}
+      - AUTO_BACKUP_INCLUDE_RAW=${AUTO_BACKUP_INCLUDE_RAW:-true}
+      - AUTO_BACKUP_RUN_ON_START=${AUTO_BACKUP_RUN_ON_START:-false}
+      - AUTO_BACKUP_GDRIVE_ENABLED=${AUTO_BACKUP_GDRIVE_ENABLED:-false}
+      - AUTO_BACKUP_GDRIVE_REMOTE=${AUTO_BACKUP_GDRIVE_REMOTE:-gdrive}
+      - AUTO_BACKUP_GDRIVE_PATH=${AUTO_BACKUP_GDRIVE_PATH:-owojudge-backups}
+      - RCLONE_CONFIG=${RCLONE_CONFIG:-/secrets/rclone.conf}
     expose:
       - "8787"
     volumes:
       - /var/lib/owojudge/uploads:/app/uploads:z
       - /var/lib/owojudge/problems:/app/problems:z
-      - ./backend/scripts:/app/scripts:rw
-      - ./backend/secrets:/secrets:ro
-      - /sys/fs/cgroup/:/sys/fs/cgroup/:rw
-      - /run:/run:rw
+      - ./backend/scripts:/app/scripts:rwz
+      - ./backend/secrets:/secrets:roz
+      - /sys/fs/cgroup/:/sys/fs/cgroup/:rwz
+      - /run:/run:rwz
     networks:
       - judge-network
 

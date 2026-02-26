@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     # System utilities
     git \
     wget \
+    rclone \
     sudo \
     systemd \
     netcat-openbsd \
