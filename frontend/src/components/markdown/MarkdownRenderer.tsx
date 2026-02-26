@@ -191,7 +191,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
               if (isPdfLink(href)) {
                 return (
                   <PdfEmbed
-                    href={href}
+                    href={href || ""}
                     title={typeof children === "string" ? children : "PDF Viewer"}
                   />
                 );
