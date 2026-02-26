@@ -9,6 +9,7 @@ OwoJudge is a modern, open-source online judge system designed for competitive p
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Running the Application](#running-the-application)
+- [Backup and Restore](#backup-and-restore)
 - [API Documentation](./docs/api.md)
 - [Database Schema](./docs/database.md)
 - [Judging Process](./docs/judger.md)
@@ -194,3 +195,90 @@ You can generate mock users, problems, and submissions using the following comma
   - sends email to each created account asking user to change password immediately
   - if account creation succeeds but email sending fails, the account remains created and is included in a failed-email report (with temporary password) for manual resend
   - use `--failed-email-report` to control output path; otherwise an auto-named report is written in the current directory
+
+## Backup and Restore
+
+### Manual backup export
+
+Run backup export manually inside backend container:
+
+```bash
+docker compose exec backend node scripts/export-old-judge-backup.js
+```
+
+Useful options:
+
+```bash
+# custom output path
+docker compose exec backend node scripts/export-old-judge-backup.js \
+  --output-dir /app/scripts/backup-temp/manual
+
+# converted format only (skip raw dump)
+docker compose exec backend node scripts/export-old-judge-backup.js --no-raw
+```
+
+### Periodic backup (4 times/day)
+
+Production startup script [start.sh](start.sh) supports automatic periodic backup.
+
+Configure in [../docker-compose.production.yml](../docker-compose.production.yml) (or [../.env.example](../.env.example)):
+
+- `AUTO_BACKUP_ENABLED` (default: `true`)
+- `AUTO_BACKUP_INTERVAL_SECONDS` (default: `21600`, i.e. every 6 hours)
+- `AUTO_BACKUP_OUTPUT_DIR` (default: `/app/scripts/backup-temp/periodic`)
+- `AUTO_BACKUP_INCLUDE_RAW` (default: `true`)
+- `AUTO_BACKUP_RUN_ON_START` (default: `false`)
+
+After changing values, recreate backend:
+
+```bash
+docker compose -f docker-compose.production.yml --env-file .env up -d --build backend
+```
+
+### Upload periodic backups to Google Drive
+
+Automatic upload is optional and uses `rclone` from backend container.
+
+Set these env vars:
+
+- `AUTO_BACKUP_GDRIVE_ENABLED=true`
+- `AUTO_BACKUP_GDRIVE_REMOTE=gdrive`
+- `AUTO_BACKUP_GDRIVE_PATH=owojudge-backups`
+- `RCLONE_CONFIG=/secrets/rclone.conf`
+
+Setup steps:
+
+1. Create rclone config locally (`rclone config`) with remote name `gdrive`.
+2. Save config file to [secrets/rclone.conf](secrets/rclone.conf).
+3. Ensure [../docker-compose.production.yml](../docker-compose.production.yml) mounts [secrets](secrets) to `/secrets` (already configured).
+4. Rebuild/restart backend.
+
+Quick rclone usage (recommended):
+
+```bash
+# 1) On host machine: create/authorize Google Drive remote
+rclone config
+
+# 2) Copy generated config into repo-mounted secrets path
+cp ~/.config/rclone/rclone.conf backend/secrets/rclone.conf
+
+# 3) Verify remote from backend container
+docker compose -f docker-compose.production.yml --env-file .env exec backend \
+  rclone listremotes --config /secrets/rclone.conf
+
+# 4) List top-level Drive folders
+docker compose -f docker-compose.production.yml --env-file .env exec backend \
+  rclone lsd gdrive: --config /secrets/rclone.conf
+
+# 5) Manual test upload (before enabling automatic upload)
+docker compose -f docker-compose.production.yml --env-file .env exec backend \
+  rclone copy /app/scripts/backup-temp/periodic gdrive:owojudge-backups/manual-test \
+  --config /secrets/rclone.conf
+```
+
+If your server cannot open a browser for OAuth, run `rclone config` on your local machine, then copy the generated [secrets/rclone.conf](secrets/rclone.conf) to the server.
+
+Notes:
+
+- Upload runs only after a successful backup export cycle.
+- If upload fails, backend keeps running and retries next cycle.
