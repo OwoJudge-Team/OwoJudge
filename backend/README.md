@@ -253,6 +253,30 @@ Setup steps:
 3. Ensure [../docker-compose.production.yml](../docker-compose.production.yml) mounts [secrets](secrets) to `/secrets` (already configured).
 4. Rebuild/restart backend.
 
+What to enter during `rclone config` (Google Drive):
+
+```text
+n                              # New remote
+name> gdrive                   # Must match AUTO_BACKUP_GDRIVE_REMOTE
+Storage> drive                 # Google Drive backend name is "drive"
+client_id>                     # optional, press Enter if not using your own app
+client_secret>                 # optional, press Enter
+scope> 1                       # Full access (recommended for backup folder management)
+root_folder_id>                # optional, press Enter unless you need a specific folder root
+service_account_file>          # optional, press Enter for OAuth flow
+Edit advanced config? n
+Use auto config? y             # if local machine has browser
+Configure this as a Shared Drive? n   # choose y only if you really use Shared Drive
+y                              # confirm and save
+q                              # quit config menu
+```
+
+Important:
+
+- `rclone authorize gdrive` is invalid because `gdrive` is your remote name, not backend type.
+- If you use `rclone authorize`, backend type must be `drive`.
+- Example: `rclone authorize drive`
+
 Quick rclone usage (recommended):
 
 ```bash
