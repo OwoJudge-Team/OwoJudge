@@ -15,7 +15,8 @@ export interface Contest {
   title: string;
   description: string;
   startTime: string; // ISO string
-  endTime: string; // ISO string
+  endTime?: string; // ISO string
+  submissionEndTime: string; // ISO string
   problems: {
     serialNumber: number;
     score: number;

@@ -21,6 +21,7 @@ interface CreateContestFormData {
   problems: ProblemProps[];
   startTime: string;
   endTime: string;
+  submissionEndTime: string;
 }
 
 const CreateContestPage = () => {
@@ -28,7 +29,8 @@ const CreateContestPage = () => {
   const [title, setTitle] = useState<string>("");
   const [selectedProblems, setSelectedProblems] = useState<number[]>([]);
   const [startTime, setStartTime] = useState<string>("");
-  const [deadline, setDeadline] = useState<string>("");
+  const [softDeadline, setSoftDeadline] = useState<string>("");
+  const [hardDeadline, setHardDeadline] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -82,7 +84,8 @@ const CreateContestPage = () => {
           };
         }),
         startTime: startTime,
-        endTime: deadline,
+        endTime: softDeadline,
+        submissionEndTime: hardDeadline,
       };
 
       const res = await apiPost("/api/contests", formData, {
@@ -112,7 +115,8 @@ const CreateContestPage = () => {
       setIsModalOpen(true);
       setSelectedProblems([]);
       setStartTime("");
-      setDeadline("");
+      setSoftDeadline("");
+      setHardDeadline("");
     }
   };
 
@@ -211,7 +215,7 @@ const CreateContestPage = () => {
             </div>
           </div>
 
-          <div className="flex w-full shrink-0 flex-col gap-6 md:flex-row">
+          <div className="flex w-full">
             <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
               <label
                 htmlFor="startTime"
@@ -221,19 +225,34 @@ const CreateContestPage = () => {
               </label>
               <DateTimePicker value={startTime} onChange={(value: string) => setStartTime(value)} />
             </div>
+          </div>
+
+          <div className="flex w-full shrink-0 flex-col gap-6 md:flex-row">
+            <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
+              <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
+                Soft Deadline
+              </label>
+              <DateTimePicker
+                value={softDeadline}
+                onChange={(value: string) => setSoftDeadline(value)}
+              />
+            </div>
 
             <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
               <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
-                Deadline
+                Hard Deadline
               </label>
-              <DateTimePicker value={deadline} onChange={(value: string) => setDeadline(value)} />
+              <DateTimePicker
+                value={hardDeadline}
+                onChange={(value: string) => setHardDeadline(value)}
+              />
             </div>
           </div>
 
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={selectedProblems.length === 0 || !startTime || !deadline}
+              disabled={selectedProblems.length === 0 || !startTime || !hardDeadline}
               className="flex w-full justify-center rounded bg-indigo-600 px-6 py-3 font-semibold text-slate-100 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
