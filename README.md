@@ -13,14 +13,7 @@
 
 ## Create User
 
-To create a new user, run the following command:
-
-```bash
-docker compose exec backend node scripts/create-user.js <username> <displayName> <password> <role> [studentId]
-```
-
-Where `<role>` is one of `student`, `ta`, or `judgeAdmin`.
-If provided, `[studentId]` is stored in the user's `studentId` field.
+Refer to [backend/README.md#helper-scripts](backend/README.md#helper-scripts) for detailed usage.
 
 ## Backup
 

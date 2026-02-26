@@ -7,8 +7,7 @@ OwoJudge is a modern, open-source online judge system designed for competitive p
 - [Features](#features)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Running the Application](#running-the-application)
+- [Helper Scripts](#helper-scripts)
 - [Backup and Restore](#backup-and-restore)
 - [API Documentation](./docs/api.md)
 - [Database Schema](./docs/database.md)
@@ -44,21 +43,6 @@ Before you begin, ensure you have the following installed:
 
 - Docker
 - Docker Compose
-
-## Deploy the Application
-
-We use docker to deploy the application.
-```
-docker-compose build
-docker-compose up -d
-```
-
-You will have to find the first admin user and password with the following command:
-```
-docker-compose logs -f backend
-```
-
-If your admin user is lost, you can connect to the MongoDB instance and delete the admin user from the `users` collection. Then restart the backend container to generate a new admin user. The password is hashed, which is why you need to recreate it.
 
 ## Contributing
 
@@ -119,7 +103,7 @@ You can generate mock users, problems, and submissions using the following comma
   docker compose exec backend node scripts/create-mock-contests.js 10
   ```
 
-### Helper Scripts
+## Helper Scripts
 
 - **Create Single Test User**:
   ```bash
