@@ -23,6 +23,7 @@ export const createContestValidation: Schema = {
   },
   endTime: {
     in: ['body'],
+    optional: true,
     isISO8601: {
       options: { strict: false }
     },
@@ -31,7 +32,6 @@ export const createContestValidation: Schema = {
   },
   submissionEndTime: {
     in: ['body'],
-    optional: true,
     isISO8601: {
       options: { strict: false }
     },

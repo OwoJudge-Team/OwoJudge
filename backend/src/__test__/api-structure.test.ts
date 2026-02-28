@@ -64,7 +64,7 @@ const { mockProblem, mockUser, mockSubmission, mockContest } = vi.hoisted(() => 
         title: 'Test Contest',
         description: 'Description',
         startTime: new Date(),
-        endTime: new Date(),
+        submissionEndTime: new Date(),
         problems: [{ serialNumber: 1, score: 100 }],
         standings: [],
         createdTime: new Date(),
@@ -313,7 +313,7 @@ describe('API Response Structure Tests', () => {
                 expect(contest).toHaveProperty('title');
                 expect(contest).toHaveProperty('description');
                 expect(contest).toHaveProperty('startTime');
-                expect(contest).toHaveProperty('endTime');
+                expect(contest).toHaveProperty('submissionEndTime');
                 expect(contest).toHaveProperty('problems');
             });
         });
@@ -328,7 +328,7 @@ describe('API Response Structure Tests', () => {
                 expect(contest).toHaveProperty('title');
                 expect(contest).toHaveProperty('description');
                 expect(contest).toHaveProperty('startTime');
-                expect(contest).toHaveProperty('endTime');
+                expect(contest).toHaveProperty('submissionEndTime');
                 expect(contest).toHaveProperty('problems');
             });
         });

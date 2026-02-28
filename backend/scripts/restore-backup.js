@@ -88,7 +88,7 @@ function convertHomeworksToContests(homeworks, generatedAt) {
       title: homework.name || 'Recovered Homework',
       description: homework.desc || '',
       startTime: start,
-      endTime: end,
+      submissionEndTime: end,
       submissionEndTime: end,
       released: Boolean(homework.visible),
       problems: (homework.problems || [])

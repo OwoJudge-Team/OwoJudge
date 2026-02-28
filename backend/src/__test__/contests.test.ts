@@ -90,7 +90,7 @@ const createMockContest = (overrides = {}) => ({
     title: 'Contest 1',
     description: 'First contest',
     startTime: new Date('2025-01-01T00:00:00Z'),
-    endTime: new Date('2025-01-01T05:00:00Z'),
+    submissionEndTime: new Date('2025-01-01T05:00:00Z'),
     problems: [{ serialNumber: 1, score: 100 }],
     released: true,
     standings: [],
@@ -171,7 +171,7 @@ describe('Contest Routes', () => {
                     title: 'New Contest',
                     description: 'Description',
                     startTime: new Date(),
-                    endTime: new Date(),
+                    submissionEndTime: new Date(),
                     problems: []
                 }
             };
@@ -191,7 +191,7 @@ describe('Contest Routes', () => {
                     title: 'New Contest',
                     description: 'Description',
                     startTime: new Date(),
-                    endTime: new Date(),
+                    submissionEndTime: new Date(),
                     problems: []
                 }
             };

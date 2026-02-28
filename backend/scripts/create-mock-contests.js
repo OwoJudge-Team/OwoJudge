@@ -105,7 +105,7 @@ function generateRandomContest(index, problems) {
     title: `Mock Contest ${index} - ${startTime.toISOString().split('T')[0]}`,
     description: `This is a generated mock contest #${index}.\n\nStart Time: ${startTime.toLocaleString()}\nDuration: ${durationMs / 3600000} hours.`,
     startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
+    submissionEndTime: endTime.toISOString(),
     problems: contestProblems,
     released: true,
     visibility: 'public' // or 'private' randomly?
