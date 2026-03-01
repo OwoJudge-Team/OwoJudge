@@ -5,7 +5,7 @@ import { apiGet } from "@/utils/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatISOTime, compareToCurrentTime, TIME_TO_COLOR } from "@/utils/time";
 import { FaClock } from "react-icons/fa";
-import CoolLink from "@/components/cool-link";
+import CoolLink from "@/components/CoolLink";
 import { isAdminOrTA } from "@/utils/users";
 import { Contest } from "@/types/contests";
 

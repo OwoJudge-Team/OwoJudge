@@ -2,7 +2,7 @@
 
 import Loading from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
-import CoolLink from "@/components/cool-link";
+import CoolLink from "@/components/CoolLink";
 import GlitchText from "@/components/GlitchText";
 
 const HomePage: React.FC = () => {

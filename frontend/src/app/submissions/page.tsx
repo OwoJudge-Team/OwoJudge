@@ -6,7 +6,7 @@ import { Submission, StatusToCode, SubmissionStatus } from "@/types/submissions"
 import { formatISOTime } from "@/utils/time";
 import { apiGet, apiPost } from "@/utils/api";
 import { FaClock, FaFloppyDisk, FaSpinner, FaRotateRight } from "react-icons/fa6";
-import CoolLink from "@/components/cool-link";
+import CoolLink from "@/components/CoolLink";
 import { getStatusColor } from "@/utils/submission-status";
 import Paginator from "@/components/Paginator";
 import { isAdmin, isAdminOrTA } from "@/utils/users";

@@ -1,5 +1,5 @@
 import { FaChartPie, FaInfinity, FaStar, FaUserGroup } from "react-icons/fa6";
-import CoolLink from "./cool-link";
+import CoolLink from "./CoolLink";
 import { Problem } from "@/types/problems";
 
 const ProblemTable = ({

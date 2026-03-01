@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/utils/api";
-import CoolLink from "@/components/cool-link";
+import CoolLink from "@/components/CoolLink";
 import Loading from "@/components/Loading";
 import { User } from "@/types/user";
 
