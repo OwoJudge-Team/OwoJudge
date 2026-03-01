@@ -19,7 +19,7 @@ export const createUserValidation = {
   displayName: {
     isLength: {
       options: {
-        min: 4,
+        min: 1,
         max: 32
       },
       errorMessage: 'Length of displayName must between 4 to 32 characters'
