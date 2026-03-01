@@ -233,7 +233,7 @@ export default function ContestPage() {
       </div>
 
       <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800 px-4 py-6 shadow-sm">
-        <p className="mb-2 mb-4 px-2 text-xl font-bold text-slate-300">Homework Timeline</p>
+        <p className="px-2 text-xl font-bold text-slate-300">Homework Timeline</p>
         <LiveTimeline
           startTimeISO={contest.startTime}
           midTimeISO={contest.endTime}
