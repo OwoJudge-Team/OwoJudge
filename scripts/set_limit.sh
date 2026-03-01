@@ -19,24 +19,23 @@ MAX_SIZE=1048576
 NULL_SHA="0000000000000000000000000000000000000000"
 
 while read oldrev newrev refname; do
-    if [ "$newrev" = "$NULL_SHA" ]; then continue; fi
+    [ "$newrev" = "$NULL_SHA" ] && continue
 
-    objects=$(git rev-list --objects "$newrev" --not --all)
-
-    echo "$objects" | while read sha path; do
+    # Use process substitution to avoid subshell
+    while read sha path; do
         [ -z "$path" ] && continue
         if [ "$(git cat-file -t "$sha")" = "blob" ]; then
             size=$(git cat-file -s "$sha")
             if [ "$size" -gt "$MAX_SIZE" ]; then
                 echo "----------------------------------------------------"
                 echo "File '$path' is too big!"
-                echo "Size: $(expr $size / 1024) KB, limit 1024 KB。"
+                echo "Size: $(expr $size / 1024) KB, limit 1024 KB."
                 echo "----------------------------------------------------"
-                exit 1
+                exit 1  # now this exit kills the main hook process
             fi
         fi
-    done
-    [ $? -ne 0 ] && exit 1
+    done < <(git rev-list --objects "$newrev" --not --all)
+
 done
 HOOKEOF
 
