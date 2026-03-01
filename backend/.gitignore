@@ -139,3 +139,6 @@ salt.json
 
 # gitea token
 secrets/
+
+# Security Scan
+.scannerwork/

@@ -8,7 +8,7 @@ export const updateContestStanding = async (submission: ISubmission) => {
     const contests = await Contest.find({
         "problems.serialNumber": submission.problemSerialNumber,
         startTime: { $lte: now },
-        endTime: { $gte: now }
+        submissionEndTime: { $gte: now }
     });
 
     for (const contest of contests) {
@@ -21,7 +21,7 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
     
     // We only care about submissions strictly within the contest window
-    const submissionEndTime = contest.submissionEndTime || contest.endTime;
+    const submissionEndTime = contest.submissionEndTime;
     const submissions = await Submission.find({
         problemSerialNumber: { $in: problemSerialNumbers },
         username: username,
