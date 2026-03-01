@@ -36,6 +36,29 @@ export default {
   ],
   theme: {
     extend: {
+      keyframes: {
+        "noise-1": {
+          "0%, 100%": { clipPath: "inset(10% 0 80% 0)", transform: "translate(2px, -2px)" },
+          "10%": { clipPath: "inset(40% 0 40% 0)", transform: "translate(-2px, 2px)" },
+          "20%": { clipPath: "inset(70% 0 10% 0)", transform: "translate(1px, -1px)" },
+          "30%": { clipPath: "inset(20% 0 50% 0)", transform: "translate(-3px, 0px)" },
+          "40%": { clipPath: "inset(50% 0 20% 0)", transform: "translate(2px, 2px)" },
+          "50%": { clipPath: "inset(80% 0 5% 0)", transform: "translate(-1px, -2px)" },
+          "60%": { clipPath: "inset(30% 0 60% 0)", transform: "translate(3px, 1px)" },
+        },
+        "noise-2": {
+          "0%, 100%": { clipPath: "inset(50% 0 20% 0)", transform: "translate(-2px, 2px)" },
+          "15%": { clipPath: "inset(10% 0 75% 0)", transform: "translate(2px, -1px)" },
+          "35%": { clipPath: "inset(60% 0 15% 0)", transform: "translate(-2px, -2px)" },
+          "55%": { clipPath: "inset(30% 0 40% 0)", transform: "translate(4px, 1px)" },
+          "75%": { clipPath: "inset(85% 0 5% 0)", transform: "translate(-1px, 2px)" },
+          "95%": { clipPath: "inset(15% 0 80% 0)", transform: "translate(2px, 0px)" },
+        },
+      },
+      animation: {
+        "noise-1": "noise-1 0.4s infinite linear alternate-reverse",
+        "noise-2": "noise-2 0.3s infinite linear alternate",
+      },
       colors: {
         code: "oklch(0.2491 0.0335 264.3)",
         background: "var(--background)",

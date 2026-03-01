@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiGet } from "@/utils/api";
-import CoolLink from "@/components/cool-link";
+import CoolLink from "@/components/CoolLink";
 import { User } from "@/types/user";
 import { FaTrophy, FaCircleCheck, FaUserShield, FaUserPen, FaGitAlt } from "react-icons/fa6";
 import Loading from "@/components/Loading";
