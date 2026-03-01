@@ -13,7 +13,7 @@ import { isAdmin, isTA } from "@/utils/users";
 export default function UserDetailPage() {
   const params = useParams();
   const username = params.username;
-  const sshPort = process.env.NEXT_PUBLIC_GITEA_SSH_PORT || 2222;
+  const sshPort = process.env.NEXT_PUBLIC_GITEA_SSH_PORT || 22;
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
