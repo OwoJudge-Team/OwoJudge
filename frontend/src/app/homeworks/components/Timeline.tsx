@@ -31,13 +31,13 @@ export default function ReactIconTimeline({ startTimeISO, midTimeISO, endTimeISO
 
   return (
     <div className="flex w-full flex-col">
-      <p className="p-2 font-medium text-slate-300">
+      <p className="mb-1 p-2 font-medium text-slate-300">
         Status:{" "}
         {isActive
           ? midMs
             ? midMs > nowMs
-              ? "Active (Before Soft Deadline)"
-              : "Active (After Soft Deadline)"
+              ? "Open for Submissions"
+              : "Open for Late Submissions"
             : "Active"
           : startMs > nowMs
             ? "Upcoming"
@@ -65,7 +65,7 @@ export default function ReactIconTimeline({ startTimeISO, midTimeISO, endTimeISO
               <FaRegFlag className={`text-xs text-white`} />
             </div>
             <div className="pointer-events-none absolute right-[50%] top-full mb-2 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-              End Time: {formatISOTime(endTimeISO)}
+              Late Submission End Time: {formatISOTime(endTimeISO)}
             </div>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function ReactIconTimeline({ startTimeISO, midTimeISO, endTimeISO
                 <FaRegFlag className={`text-xs text-white`} />
               </div>
               <div className="pointer-events-none absolute top-full mb-2 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-                Soft Deadline: {formatISOTime(midTimeISO)}
+                End Time: {formatISOTime(midTimeISO)}
               </div>
             </div>
           </div>
