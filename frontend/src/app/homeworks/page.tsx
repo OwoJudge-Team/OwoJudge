@@ -54,7 +54,7 @@ const ContestPage: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex max-w-60 items-center justify-start gap-3 text-nowrap rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1">
                       <FaClock />
-                      ????, ????, ?:?? ??
+                      ????-??-?? ??:??
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -62,7 +62,7 @@ const ContestPage: React.FC = () => {
                       className={`flex max-w-60 items-center justify-start gap-3 text-nowrap rounded-xl border-[3px] border-dashed border-slate-600/50 px-3 py-1`}
                     >
                       <FaClock />
-                      ????, ????, ?:?? ??
+                      ????-??-?? ??:??
                     </div>
                   </td>
                 </tr>
