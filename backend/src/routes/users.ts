@@ -58,6 +58,11 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
+
+    if (user.solvedProblems && Array.isArray(user.solvedProblems)) {
+      user.solvedProblems.sort((a, b) => Number(a) - Number(b));
+    }
+
     response.status(200).send(user);
   } catch (error) {
     console.error(error);
