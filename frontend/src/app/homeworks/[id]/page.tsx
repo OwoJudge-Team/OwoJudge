@@ -8,7 +8,7 @@ import { Problem } from "@/types/problems";
 import { useParams, useRouter } from "next/navigation";
 import ProblemTable from "@/components/ProblemTable";
 import Loading from "@/components/Loading";
-import { isAdmin } from "@/utils/users";
+import { isAdmin, isAdminOrTA } from "@/utils/users";
 import Toggle from "@/components/Toggle";
 import Modal from "@/components/Modal";
 import CumulativeModal from "@/app/homeworks/components/CulmulativeModal";
@@ -245,48 +245,67 @@ export default function ContestPage() {
         <ProblemTable showCreateProblem={false} problems={problems} />
       </div>
 
-      {isAdmin(user) && (
+      {isAdminOrTA(user) && (
         <section className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
           <h2 className="mb-4 text-2xl font-bold text-slate-100">Privileged Actions</h2>
           <div className="flex flex-col gap-8">
-            <div className="flex flex-col gap-3">
-              <h3 className="text-xl font-semibold text-slate-200">Download Scores</h3>
-              <p className="text-slate-300">
-                Download the score of every participant in CSV format. The CSV file will contain the
-                username, total score, and for each problem, the score and last submission time.
-              </p>
-              <button
-                className="w-fit rounded-lg bg-indigo-600 p-2 hover:bg-indigo-700"
-                onClick={() =>
-                  downloadCSV(contest.standings, problems, `${contest.title}_scores.csv`)
-                }
-              >
-                Download Scores
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
-              <p className="text-slate-300">
-                Toggling the released status of the homework changes the visibility of the homework
-                to users.
-              </p>
-              <div className="flex flex-row items-center gap-2">
-                <Toggle enabled={contest.released} onClick={toggleRelease} />
-                <p className="text-lg text-slate-200">
-                  {contest.released ? "Released" : "Not Released"}
-                </p>
+            {isAdminOrTA(user) && (
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-semibold text-slate-200">Update Homework</h3>
+                <p className="text-slate-300">Re-fill the homework form to update the homework.</p>
+                <button
+                  className="w-fit rounded-lg bg-indigo-600 p-2 hover:bg-indigo-700"
+                  onClick={() => router.push(`/homeworks/update/${id}`)}
+                >
+                  Update Homework
+                </button>
               </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <h3 className="text-xl font-semibold text-slate-200">Delete Homework</h3>
-              <p className="text-slate-300">Deleting the homework irreversibly.</p>
-              <button
-                className="w-fit rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
-                onClick={() => setIsModalOpen(true)}
-              >
-                Delete Homework
-              </button>
-            </div>
+            )}
+            {isAdmin(user) && (
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-semibold text-slate-200">Download Scores</h3>
+                <p className="text-slate-300">
+                  Download the score of every participant in CSV format. The CSV file will contain
+                  the username, total score, and for each problem, the score and last submission
+                  time.
+                </p>
+                <button
+                  className="w-fit rounded-lg bg-indigo-600 p-2 hover:bg-indigo-700"
+                  onClick={() =>
+                    downloadCSV(contest.standings, problems, `${contest.title}_scores.csv`)
+                  }
+                >
+                  Download Scores
+                </button>
+              </div>
+            )}
+            {isAdmin(user) && (
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-semibold text-slate-200">Toggle Release Status</h3>
+                <p className="text-slate-300">
+                  Toggling the released status of the homework changes the visibility of the
+                  homework to users.
+                </p>
+                <div className="flex flex-row items-center gap-2">
+                  <Toggle enabled={contest.released} onClick={toggleRelease} />
+                  <p className="text-lg text-slate-200">
+                    {contest.released ? "Released" : "Not Released"}
+                  </p>
+                </div>
+              </div>
+            )}
+            {isAdmin(user) && (
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-semibold text-slate-200">Delete Homework</h3>
+                <p className="text-slate-300">Deleting the homework irreversibly.</p>
+                <button
+                  className="w-fit rounded-lg bg-rose-600 p-2 hover:bg-rose-700"
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  Delete Homework
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}
