@@ -595,6 +595,42 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
   });
 };
 
+/**
+ * When a non-AC result occurs (e.g. after rejudge), check if the user
+ * no longer has any AC for the problem and remove it from solvedProblems.
+ */
+const removeSolvedProblemIfNeeded = async (
+  user: InstanceType<typeof User>,
+  submission: ISubmission,
+  problem: IProblem
+): Promise<void> => {
+  if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
+    return;
+  }
+
+  const remainingAC = await Submission.countDocuments({
+    username: submission.username,
+    problemSerialNumber: submission.problemSerialNumber,
+    status: SubmissionStatus.AC
+  });
+
+  if (remainingAC === 0) {
+    user.solvedProblems = user.solvedProblems.filter(
+      (p: number) => p !== submission.problemSerialNumber
+    );
+    user.solvedProblem = user.solvedProblems.length;
+    await user.save();
+
+    // Also update the problem's solved user count
+    const distinctSolvedUsers = await Submission.distinct('username', {
+      problemSerialNumber: submission.problemSerialNumber,
+      status: SubmissionStatus.AC
+    });
+    problem.userDetail.solved = distinctSolvedUsers.length;
+    await problem.save();
+  }
+};
+
 const processSubmission = async (submissionID: string): Promise<void> => {
   try {
     const submission = await Submission.findById(submissionID);
@@ -661,6 +697,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           problem.submissionDetail.compilationError += 1;
           problem.submissionDetail.submitted += 1;
           await problem.save();
+          await removeSolvedProblemIfNeeded(user, submission, problem);
           await updateContestStanding(submission);
           return;
         }
@@ -734,6 +771,13 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           await problem.save();
           break;
       }
+
+      // For non-AC results, remove the problem from solvedProblems if the
+      // user no longer has any AC for it (happens during rejudge).
+      if (finalStatus !== SubmissionStatus.AC) {
+        await removeSolvedProblemIfNeeded(user, submission, problem);
+      }
+
       await updateContestStanding(submission);
     } catch (error) {
       console.error('Error during worker execution:', error);
