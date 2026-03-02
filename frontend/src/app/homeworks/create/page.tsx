@@ -230,7 +230,7 @@ const CreateContestPage = () => {
           <div className="flex w-full shrink-0 flex-col gap-6 md:flex-row">
             <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
               <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
-                End Time
+                Soft Deadline
               </label>
               <DateTimePicker
                 value={softDeadline}
@@ -240,7 +240,7 @@ const CreateContestPage = () => {
 
             <div className="w-full rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-sm">
               <label htmlFor="deadline" className="mb-2 block text-lg font-semibold text-slate-300">
-                Late Submission End Time
+                Hard Deadline
               </label>
               <DateTimePicker
                 value={hardDeadline}
