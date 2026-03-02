@@ -3,7 +3,7 @@ import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from './submission-status';
 
 export const updateContestStanding = async (submission: ISubmission) => {
-    const now = new Date();
+    const now = submission.createdAt;
     // Find active contests containing this problem
     const contests = await Contest.find({
         "problems.serialNumber": submission.problemSerialNumber,
@@ -19,7 +19,7 @@ export const updateContestStanding = async (submission: ISubmission) => {
 export const updateUserStanding = async (contest: IContest, username: string) => {
     // 1. Get all submissions for this user for problems in this contest within time range
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
-    
+
     // We only care about submissions strictly within the contest window
     const submissionEndTime = contest.submissionEndTime;
     const submissions = await Submission.find({
@@ -51,7 +51,7 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
     // Note: We process all submissions to calculate the "Total Submission Count" (penalty)
     // and also to determine the best score per problem.
     // If requirement implies "Best Score" logic:
-    
+
     for (const sub of submissions) {
         const pScore = problemScoresMap.get(sub.problemSerialNumber);
         if (!pScore) continue;
@@ -64,13 +64,13 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
             pScore.score = submissionScore;
             pScore.lastSubmissionTime = sub.createdAt;
         }
-        
+
         // Mark as solved if full score (active contest logic usually assumes max score = solved, or AC)
         // Assuming contest.problems has max score.
         const problemDef = contest.problems.find(p => p.serialNumber === sub.problemSerialNumber);
         const maxScore = problemDef ? problemDef.score : 100;
-        
-        if (submissionScore >= maxScore) { 
+
+        if (submissionScore >= maxScore) {
             // Or check if status is AC? Usually score is safer if partial scoring exists.
             // But let's check status too if wanted. 
             // Standard OwoJudge seems to rely on score.
@@ -85,7 +85,7 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
             cost = 3;
         } else if (sub.status === SubmissionStatus.PD || sub.status === SubmissionStatus.QU || sub.status === SubmissionStatus.SE) {
             // Usually ignore pending/queue/system error in penalties
-            cost = 0; 
+            cost = 0;
         }
 
         pScore.submissionCount = (pScore.submissionCount || 0) + cost;
@@ -98,17 +98,17 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
     for (const [serial, pScore] of problemScoresMap) {
         totalScore += pScore.score;
         if (pScore.solved) solvedCount++;
-        
+
         if (pScore.lastSubmissionTime) {
-           if (!lastSubmissionTime || pScore.lastSubmissionTime > lastSubmissionTime) {
-               lastSubmissionTime = pScore.lastSubmissionTime;
-           }
+            if (!lastSubmissionTime || pScore.lastSubmissionTime > lastSubmissionTime) {
+                lastSubmissionTime = pScore.lastSubmissionTime;
+            }
         }
     }
 
     // 5. Update Contest Object
     const existingIndex = contest.standings.findIndex(s => s.username === username);
-    
+
     const newStanding: UserStanding = {
         username,
         totalScore,
@@ -135,7 +135,7 @@ export const recalculateContestStandings = async (contestId: string) => {
 
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
     const submissionEndTime = contest.submissionEndTime || contest.endTime;
-    
+
     // Find all users who have submitted to this contest
     const users = await Submission.distinct('username', {
         problemSerialNumber: { $in: problemSerialNumbers },
@@ -153,6 +153,6 @@ export const recalculateContestStandings = async (contestId: string) => {
             await updateUserStanding(contest, username);
         }
     }
-    
+
     return contest;
 };
