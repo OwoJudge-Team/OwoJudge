@@ -265,7 +265,7 @@ export default function SubmissionPage() {
 
       <div className="mb-12">
         <h3 className="mb-3 text-lg font-semibold text-slate-100">Code</h3>
-        <CodeBlock language={LANGUAGE_MAPPING[language] || "cpp"}>
+        <CodeBlock language={LANGUAGE_MAPPING[language] || "c"}>
           {userSolution[0].content}
         </CodeBlock>
       </div>
