@@ -7,8 +7,6 @@ Welcome to DSA Judge+! This tutorial will guide you step by step on how to submi
 
 Git is a **version control system** that helps you track the history of changes to your code. In this Judge, we use Git as the method for submitting code, replacing the traditional upload button.
 
-**In short**: You only need to learn a few simple Git commands to submit your assignments easily!
-
 
 ## Installing Git
 
@@ -58,13 +56,15 @@ If you see a version number (e.g., `git version 2.40.0`), the installation was s
 
 ## Generating an SSH Key
 
-DSA Judge+'s Git submission **only supports SSH Public Key authentication**.
+DSA Judge+'s Git submission **only supports SSH Public Key authentication**. Therefore, you need to generate an SSH Key and add the Public Key to your Judge account.
 
 ### Step 1: Check if You Already Have an SSH Key
 
 ```bash
 ls ~/.ssh
 ```
+
+> Note: If you are on Windows, you should use Git Bash, PowerShell, or WSL to run this command.
 
 If you see paired files like `id_rsa` and `id_rsa.pub` (or `id_ed25519` and `id_ed25519.pub`), you already have an SSH Key and can skip the generation step.
 
@@ -344,11 +344,6 @@ git push origin main
 git config --global user.email "your-email@example.com"
 git config --global user.name "your-name"
 ```
-
-### Q5: Can't find the Repository URL
-
-**Solution**:
-Go to the **Settings** page on DSA Judge+ to find your Git Repository URL.
 
 
 ## Important Notes

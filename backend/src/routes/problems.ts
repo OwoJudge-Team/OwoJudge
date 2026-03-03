@@ -401,7 +401,7 @@ const createProblem = async (
         console.error("Error creating problem:", dupError);
         // Cleanup extracted files on error
         fs.rmSync(problemDir, { recursive: true, force: true });
-        response.status(403).send("Error creating problem");
+        response.status(403).send(`Error creating problem: ${dupError}`);
         return;
       }
 
