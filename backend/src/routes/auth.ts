@@ -14,12 +14,12 @@ const loginUser = (request: IRequest, response: Response, next: any) => {
     }
     if (!user) {
       // Authentication failed (wrong username/password)
-      response.status(401).json({ 
-        message: info?.message || 'Authentication failed' 
+      response.status(401).json({
+        message: info?.message || 'Authentication failed'
       });
       return;
     }
-    
+
     // Login the user
     request.logIn(user, (loginErr: any) => {
       if (loginErr) {

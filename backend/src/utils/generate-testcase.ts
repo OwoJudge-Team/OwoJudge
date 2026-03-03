@@ -90,9 +90,9 @@ const computeOutputWithSolution = async (problemDir: string, input: string): Pro
     const candidates = [...(LANGUAGE_GRADER_DIR_MAP[language] || [language])];
     // Always check the exact language string first/last as fallback if not already present
     if (!candidates.includes(language)) {
-        candidates.push(language);
+      candidates.push(language);
     }
-    
+
     // Check which candidate directory exists
     for (const candidate of candidates) {
       // Handle spaces in language (if any) or simplified names
@@ -114,11 +114,11 @@ const computeOutputWithSolution = async (problemDir: string, input: string): Pro
 
       // Adjust compile command for C/C++ to include grader files
       if (compileCommand) {
-         if (language.startsWith('g++')) {
-           compileCommand = compileCommand.replace('main.cpp', '*.cpp');
-         } else if (language.startsWith('gcc')) {
-           compileCommand = compileCommand.replace('main.c', '*.c');
-         }
+        if (language.startsWith('g++')) {
+          compileCommand = compileCommand.replace('main.cpp', '*.cpp');
+        } else if (language.startsWith('gcc')) {
+          compileCommand = compileCommand.replace('main.c', '*.c');
+        }
       }
     }
 
@@ -219,11 +219,11 @@ export const generateSingleTestcase = async (problemSerialNumber: string, testca
       const lines = summaryContent.split('\n');
       for (const line of lines) {
         if (!line.trim() || line.trim().startsWith('#')) continue;
-        
+
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 3 && parts[0] === testcaseName) {
-           command = parts.slice(2).join(' ');
-           break;
+          command = parts.slice(2).join(' ');
+          break;
         }
       }
     }
@@ -231,7 +231,7 @@ export const generateSingleTestcase = async (problemSerialNumber: string, testca
   }
 
   if (!command) {
-     throw new Error(`Testcase '${testcaseName}' not found in gen_summary.`);
+    throw new Error(`Testcase '${testcaseName}' not found in gen_summary.`);
   }
 
   if (command.startsWith('manual ')) {
@@ -246,7 +246,7 @@ export const generateSingleTestcase = async (problemSerialNumber: string, testca
   return await IsolateManager.withBox(async (box) => {
     const boxDir = box.getBoxDir();
     const boxID = box.getBoxID();
-    
+
     console.log(`Generating testcase ${testcaseName} for ${problemSerialNumber} in isolated box ${boxID}`);
 
     // Copy gen directory to isolated box
@@ -285,10 +285,10 @@ export const generateSingleTestcase = async (problemSerialNumber: string, testca
         stdout: 'ls.out',
         cwd: '/box'
       });
-      
+
       const lsOutput = fs.readFileSync(path.join(boxDir, 'ls.out'), 'utf-8');
       const files = lsOutput.split('\n').map(f => f.trim());
-      
+
       if (!files.includes(exeName) && files.includes(`${exeName}.exe`)) {
         cmdParts[0] = `${exeName}.exe`;
         finalCommand = cmdParts.join(' ');

@@ -379,7 +379,7 @@ const runAllTests = async (
   if (fs.existsSync(testsDir)) {
     const dirContents = fs.readdirSync(testsDir);
     const inputFiles = new Set<string>();
-    
+
     for (const file of dirContents) {
       if (file.endsWith('.in')) {
         const testcaseName = file.slice(0, -3);
@@ -391,7 +391,7 @@ const runAllTests = async (
     // For each testcase found in directory, add it to the subtask if not already there
     for (const testcaseName of inputFiles) {
       let foundInMapping = false;
-      
+
       // Check if this testcase is already in the mapping
       for (const [subtaskName, cases] of subtaskTestCases.entries()) {
         if (cases.includes(testcaseName)) {
@@ -399,7 +399,7 @@ const runAllTests = async (
           break;
         }
       }
-      
+
       // If not in mapping, try to infer subtask from testcase name pattern (subtask-index format)
       if (!foundInMapping) {
         const testcaseParts = testcaseName.split('-');

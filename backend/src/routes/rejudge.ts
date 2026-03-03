@@ -19,7 +19,7 @@ export const rejudgeSubmissions = async (request: IRequest, response: Response):
 
   try {
     const submissions: ISubmission[] = await Submission.find({ serialNumber: { $in: serialNumbers } });
-    
+
     if (submissions.length === 0) {
       response.status(404).send('No submissions found');
       return;
@@ -51,14 +51,14 @@ export const rejudgeProblems = async (request: IRequest, response: Response): Pr
   try {
     // Verify problems exist
     const problems: IProblem[] = await Problem.find({ serialNumber: { $in: serialNumbers } });
-    
+
     if (problems.length === 0) {
       response.status(404).send('No problems found');
       return;
     }
 
     const foundProblemIDs = problems.map(p => p.serialNumber);
-    
+
     // Find all submissions for these problems
     const submissions: ISubmission[] = await Submission.find({ problemSerialNumber: { $in: foundProblemIDs } });
 

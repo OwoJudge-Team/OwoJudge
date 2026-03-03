@@ -127,8 +127,8 @@ const getStandings = async (request: IRequest, response: Response) => {
   } catch (error) {
     console.log(error);
     if (error instanceof Error && error.message === 'Contest not found') {
-       response.sendStatus(404);
-       return;
+      response.sendStatus(404);
+      return;
     }
     response.status(500).send(error);
   }
@@ -171,8 +171,8 @@ const updateStandings = async (request: IRequest, response: Response) => {
   } catch (error) {
     console.log(error);
     if (error instanceof Error && error.message === 'Contest not found') {
-       response.sendStatus(404);
-       return;
+      response.sendStatus(404);
+      return;
     }
     response.status(500).send(error);
   }

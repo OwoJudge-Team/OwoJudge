@@ -65,7 +65,7 @@ export class IsolateManager {
           } catch {
             try {
               fs.unlinkSync(lockFile);
-            } catch {}
+            } catch { }
           }
         } else {
           throw error;
@@ -105,7 +105,7 @@ export class IsolateManager {
         boxID = IsolateManager.boxIDCounter;
         IsolateManager.boxIDCounter++;
         if (IsolateManager.boxIDCounter >= IsolateManager.BOX_ID_RANGE_END) {
-            IsolateManager.boxIDCounter = IsolateManager.BOX_ID_RANGE_START;
+          IsolateManager.boxIDCounter = IsolateManager.BOX_ID_RANGE_START;
         }
         attempts++;
 
@@ -191,19 +191,19 @@ export class IsolateManager {
     }
 
     const targetPath = destPath ? `${this.boxDir}/${destPath}` : `${this.boxDir}/`;
-    
+
     // Check if sourcePath is a directory
     try {
-        const stats = fs.statSync(sourcePath);
-        if (stats.isDirectory()) {
-             // If it's a directory, copy its contents using /. suffix
-             await execAsync(`cp -r ${sourcePath}/. ${targetPath}`);
-        } else {
-             await execAsync(`cp -r ${sourcePath} ${targetPath}`);
-        }
-    } catch (e) {
-        // If stat fails (e.g. wildcard), fall back to direct copy
+      const stats = fs.statSync(sourcePath);
+      if (stats.isDirectory()) {
+        // If it's a directory, copy its contents using /. suffix
+        await execAsync(`cp -r ${sourcePath}/. ${targetPath}`);
+      } else {
         await execAsync(`cp -r ${sourcePath} ${targetPath}`);
+      }
+    } catch (e) {
+      // If stat fails (e.g. wildcard), fall back to direct copy
+      await execAsync(`cp -r ${sourcePath} ${targetPath}`);
     }
   }
 
