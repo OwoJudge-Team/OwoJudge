@@ -134,7 +134,7 @@ const runChecker = async (
     const checkerErrorFile = `checker-${baseName}.err`;
 
     try {
-      await box.run('./checker input.in user.out answer.out', {
+      await box.run('./checker input.in answer.out user.out', {
         processes: 1,
         timeLimit: 10,
         wallTimeLimit: 20,
