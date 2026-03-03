@@ -203,7 +203,7 @@ Type `yes` and press Enter.
    git commit -m "Solve problem 0"
    ```
 
-   > **Tips** The message in quotes can be anything describing your change.
+   > **Tip**: The message in quotes can be anything describing your change.
 
 5. **Push to the Judge**
    ```bash
