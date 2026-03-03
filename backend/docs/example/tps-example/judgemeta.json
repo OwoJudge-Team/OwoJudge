@@ -17,5 +17,5 @@
       "bash"
   ],
   "process_limit": 1,
-  "dailyQuota": 5
+  "dailyQuota": 10
 }

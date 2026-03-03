@@ -1,7 +1,7 @@
 {
-    "name": "Problem",
-    "code": "tps-example",
-    "title": "Problem Title",
+    "name": "GitTutorial",
+    "code": "GitTutorial",
+    "title": "Git Tutorial (A + B)",
     "type": "Batch",
     "time_limit": 1.0,
     "memory_limit": 2048,
