@@ -109,12 +109,21 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
         { $set: { 'standings.$': newStanding } }
     );
 
-    // If no existing standing was found, push a new one
+    // If no existing standing was found, push a new one.
+    // If that also fails to match (possible race where another process inserted
+    // the standing in between), retry with a $set to overwrite the existing one.
     if (!updated) {
-        await Contest.findOneAndUpdate(
+        const pushed = await Contest.findOneAndUpdate(
             { _id: contest._id, 'standings.username': { $ne: username } },
             { $push: { standings: newStanding } }
         );
+
+        if (!pushed) {
+            await Contest.findOneAndUpdate(
+                { _id: contest._id, 'standings.username': username },
+                { $set: { 'standings.$': newStanding } }
+            );
+        }
     }
 };
 
