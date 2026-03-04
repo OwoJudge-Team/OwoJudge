@@ -106,15 +106,13 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
     // Try to update existing standing first
     const updated = await Contest.findOneAndUpdate(
         { _id: contest._id, 'standings.username': username },
-        { $set: { 'standings.$': newStanding } }
-    );
         { $set: { 'standings.$': newStanding } },
         { runValidators: true }
     );
 
     // If no existing standing was found, push a new one
     if (!updated) {
-        await Contest.findOneAndUpdate(
+        let pushed = await Contest.findOneAndUpdate(
             { _id: contest._id, 'standings.username': { $ne: username } },
             { $push: { standings: newStanding } },
             { runValidators: true }
