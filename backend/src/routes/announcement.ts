@@ -61,6 +61,7 @@ const getAnnouncements = async (request: IRequest, response: Response) => {
  * - `404 Not Found` if the announcement does not exist.
  * 
  * @example
+ * ##### Response Body
  * ```json
  * {
  *   "_id": "68fb8a12b3c4d5e6f7890123",
@@ -107,6 +108,16 @@ const getAnnouncementByID = async (request: IRequest, response: Response) => {
  *   "content": "We are excited to announce the launch of OwoJudge!"
  * }
  * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb8a12b3c4d5e6f7890123",
+ *   "topic": "Welcome to OwoJudge",
+ *   "content": "We are excited to announce the launch of OwoJudge!",
+ *   "timestamp": "2025-10-25T08:00:00.000Z"
+ * }
+ * ```
  */
 const createAnnouncement = async (request: IRequest, response: Response) => {
   const errors = validationResult(request);
@@ -148,9 +159,20 @@ const createAnnouncement = async (request: IRequest, response: Response) => {
  * - `404 Not Found` if the announcement does not exist.
  * 
  * @example
+ * ##### Request Body
  * ```json
  * {
  *   "content": "The maintenance has been rescheduled."
+ * }
+ * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb8a12b3c4d5e6f7890123",
+ *   "topic": "Maintenance Notice",
+ *   "content": "The maintenance has been rescheduled.",
+ *   "timestamp": "2025-10-25T10:00:00.000Z"
  * }
  * ```
  */

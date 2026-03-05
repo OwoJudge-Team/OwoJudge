@@ -1,3 +1,11 @@
+/**
+ * Submission management routes.
+ *
+ * Endpoints for creating and querying code submissions.
+ *
+ * @module Submissions
+ */
+
 import { Router, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
@@ -11,6 +19,52 @@ import { isAuthenticated } from '../middleware/auth';
 
 const submissionRouter: Router = Router();
 
+/**
+ * Retrieves a paginated list of submissions with optional filters.
+ * Non-privileged users can only view their own submissions.
+ * Admins and TAs can view all submissions.
+ *
+ * @route `GET /api/submissions`
+ * @authentication Required.
+ *
+ * @param request - Express request. Supports query parameters:
+ *   - `username` — filter by username (regex for admins, exact for self).
+ *   - `userID` — filter by MongoDB ObjectId.
+ *   - `problemSerialNumber` — filter by problem serial number.
+ *   - `status` — filter by status (e.g. `AC`, `WA`, `TLE`). Regex supported.
+ *   - `minScore` / `maxScore` — score range filter.
+ *   - `offset` or `index` — number of records to skip (default 0).
+ *   - `limit` — number of records to return (default 20).
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with `{ total: number, submissions: ISubmission[] }`.
+ * - `400 Bad Request` on query error.
+ *
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "total": 123,
+ *   "submissions": [
+ *     {
+ *       "_id": "68fb7890a1b2c3d4e5f67890",
+ *       "serialNumber": 1000000,
+ *       "username": "admin",
+ *       "userID": "68fb6d6e6deaffa916ced917",
+ *       "problemSerialNumber": 0,
+ *       "problemTitle": "Problem Title",
+ *       "language": "g++ c++17",
+ *       "status": "AC",
+ *       "score": 100,
+ *       "time": 0.05,
+ *       "memory": 2048,
+ *       "createdAt": "2025-10-24T13:00:00.000Z"
+ *     }
+ *   ]
+ * }
+ * ```
+ */
 export const getSubmissions = async (request: IRequest, response: Response): Promise<void> => {
   const user = request.user as IUser;
   const isPrivileged = user.role === UserRole.JudgeAdmin || user.role === UserRole.TA;
@@ -64,6 +118,72 @@ export const getSubmissions = async (request: IRequest, response: Response): Pro
   }
 };
 
+/**
+ * Retrieves a single submission by its serial number.
+ * Non-admin users can only view their own submissions.
+ *
+ * @route `GET /api/submission/:serialNumber`
+ * @authentication Required.
+ *
+ * @param request - Express request with `serialNumber` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the full submission object (source code, results, etc.).
+ * - `403 Forbidden` if the user is not authorized to view this submission.
+ * - `404 Not Found` if the submission does not exist.
+ *
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb7890a1b2c3d4e5f67890",
+ *   "serialNumber": 1000000,
+ *   "username": "admin",
+ *   "userID": "68fb6d6e6deaffa916ced917",
+ *   "problemSerialNumber": 0,
+ *   "problemTitle": "Problem Title",
+ *   "language": "g++ c++17",
+ *   "status": "AC",
+ *   "score": 100,
+ *   "time": 0.05,
+ *   "memory": 2048,
+ *   "createdAt": "2025-10-24T13:00:00.000Z",
+ *   "userSolution": [
+ *     {
+ *       "filename": "main.cpp",
+ *       "content": "#include <iostream>\nusing namespace std;\nint main() { ... }"
+ *     }
+ *   ],
+ *   "results": {
+ *     "sample": {
+ *       "score": 0,
+ *       "testcases": [
+ *         {
+ *           "testcase": "0-01",
+ *           "status": "AC",
+ *           "time": 0.01,
+ *           "memory": 1024,
+ *           "message": "ok"
+ *         }
+ *       ]
+ *     },
+ *     "subtask1": {
+ *       "score": 100,
+ *       "testcases": [
+ *         {
+ *           "testcase": "1-01",
+ *           "status": "AC",
+ *           "time": 0.02,
+ *           "memory": 2048,
+ *           "message": "ok"
+ *         }
+ *       ]
+ *     }
+ *   }
+ * }
+ * ```
+ */
 export const getSubmissionByID = async (request: IRequest, response: Response): Promise<void> => {
   const user = request.user as IUser;
   const { serialNumber } = request.params;
@@ -88,6 +208,65 @@ export const getSubmissionByID = async (request: IRequest, response: Response): 
   }
 };
 
+/**
+ * Creates a new code submission for a problem.
+ *
+ * Validates the problem exists and is `ready`, checks daily quota, then
+ * queues the submission for judging. The initial status is `PD` (Pending).
+ *
+ * @route `POST /api/submissions`
+ * @authentication Required.
+ *
+ * @param request - Express request. Body must contain:
+ *   - `problemSerialNumber` (number) — the problem to submit to.
+ *   - `language` (string) — language identifier (e.g. `"g++ c++17"`, `"python3"`).
+ *   - `userSolution` (array) — source files, each with `filename` and `content`.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` with the saved submission object.
+ * - `400 Bad Request` if validation fails or the problem is not ready.
+ * - `404 Not Found` if the problem or user does not exist.
+ * - `429 Too Many Requests` if the daily submission quota is exceeded.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * {
+ *   "problemSerialNumber": 0,
+ *   "language": "g++ c++17",
+ *   "userSolution": [
+ *     {
+ *       "filename": "main.cpp",
+ *       "content": "#include <iostream>\nusing namespace std;\nint main() { ... }"
+ *     }
+ *   ]
+ * }
+ * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb7890a1b2c3d4e5f67890",
+ *   "serialNumber": 1000000,
+ *   "username": "admin",
+ *   "userID": "68fb6d6e6deaffa916ced917",
+ *   "problemSerialNumber": 0,
+ *   "problemTitle": "Problem Title",
+ *   "language": "g++ c++17",
+ *   "status": "PD",
+ *   "score": 0,
+ *   "createdAt": "2025-10-24T13:00:00.000Z",
+ *   "userSolution": [
+ *     {
+ *       "filename": "main.cpp",
+ *       "content": "#include <iostream>\nusing namespace std;\nint main() { ... }"
+ *     }
+ *   ],
+ *   "results": {}
+ * }
+ * ```
+ */
 export const createSubmission = async (request: IRequest, response: Response): Promise<void> => {
   const result = validationResult(request);
   if (!result.isEmpty()) {

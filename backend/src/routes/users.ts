@@ -1,3 +1,11 @@
+/**
+ * User management routes.
+ *
+ * Endpoints for creating, reading, updating, and deleting user accounts.
+ *
+ * @module Users
+ */
+
 import { Router, Request, Response } from 'express';
 import { validationResult, matchedData, checkSchema } from 'express-validator';
 import { User, IUser, UserRole } from '../mongoose/schemas/users';
@@ -12,6 +20,49 @@ import { usernameParamValidation } from '../validations/username-param-validatio
 
 const usersRouter = Router();
 
+/**
+ * Retrieves a list of all users, optionally filtered by a field.
+ *
+ * @route `GET /api/users`
+ *
+ * @param request - Express request. Accepts optional query parameters `filter` and `value` for
+ *   case-insensitive regex filtering on user fields (e.g. `username`, `displayName`).
+ *   Without filters, returns `id`, `username`, and `displayName` for all users.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with an array of user objects.
+ * - `400 Bad Request` on validation or query error.
+ * - `500 Internal Server Error` on database error.
+ *
+ * @example
+ * ##### Response Body (no filter)
+ * ```json
+ * [
+ *   {
+ *     "_id": "68fb6d6e6deaffa916ced917",
+ *     "username": "admin",
+ *     "displayName": "Admin User"
+ *   },
+ *   {
+ *     "_id": "68fb6d6e6deaffa916ced918",
+ *     "username": "student1",
+ *     "displayName": "Student One"
+ *   }
+ * ]
+ * ```
+ *
+ * ##### Response Body (with filter)
+ * ```json
+ * [
+ *   {
+ *     "username": "admin",
+ *     "displayName": "Admin User",
+ *     "rating": 1500
+ *   }
+ * ]
+ * ```
+ */
 const getAllUsers = async (request: IRequest, response: Response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
@@ -44,6 +95,35 @@ const getAllUsers = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Retrieves a specific user by their username.
+ *
+ * @route `GET /api/users/:username`
+ * @authentication Required.
+ *
+ * @param request - Express request with `username` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the user object (password excluded).
+ * - `404 Not Found` if the user does not exist.
+ *
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb6d6e6deaffa916ced917",
+ *   "username": "admin",
+ *   "displayName": "Admin User",
+ *   "role": "JudgeAdmin",
+ *   "rating": 1500,
+ *   "solvedProblems": [0, 1, 3],
+ *   "giteaId": 1,
+ *   "gitSshUrl": "git@localhost:admin/owojudge-solutions.git",
+ *   "createdAt": "2025-10-24T13:00:00.000Z"
+ * }
+ * ```
+ */
 const getUserByUsername = async (request: IRequest, response: Response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
@@ -70,6 +150,47 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Creates a new user account and a corresponding Gitea user and repository.
+ *
+ * @route `POST /api/users`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request. Body must contain `username`, `password`,
+ *   `displayName`, and optionally `role` (defaults to `Student`) and `studentId`.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` with the new user object (including Gitea data).
+ * - `400 Bad Request` if validation fails.
+ * - `500 Internal Server Error` if Gitea integration fails (user creation is rolled back).
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * {
+ *   "username": "student1",
+ *   "password": "securePassword123",
+ *   "displayName": "Student One",
+ *   "role": "Student",
+ *   "studentId": "B12345678"
+ * }
+ * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb6d6e6deaffa916ced920",
+ *   "username": "student1",
+ *   "displayName": "Student One",
+ *   "role": "Student",
+ *   "studentId": "B12345678",
+ *   "giteaId": 5,
+ *   "gitSshUrl": "git@localhost:student1/owojudge-solutions.git",
+ *   "createdAt": "2025-10-24T13:00:00.000Z"
+ * }
+ * ```
+ */
 const createUser = async (request: IRequest, response: Response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
@@ -135,6 +256,30 @@ const createUser = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Deletes a user account and the corresponding Gitea user.
+ *
+ * @route `DELETE /api/users/:username`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request with `username` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the deleted user object.
+ * - `404 Not Found` if the user does not exist.
+ *
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb6d6e6deaffa916ced920",
+ *   "username": "student1",
+ *   "displayName": "Student One",
+ *   "role": "Student"
+ * }
+ * ```
+ */
 const deleteUser = async (request: IRequest, response: Response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
@@ -165,6 +310,42 @@ const deleteUser = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Updates a user's information. Admins can update any user; regular users can
+ * only update themselves (and must provide their current password).
+ *
+ * @route `PATCH /api/users/:username`
+ * @authentication Required (admin or self).
+ *
+ * @param request - Express request with `username` route parameter and update fields in body.
+ *   Self-updates require `oldPassword` in the body. Only admins can change `role` or `studentId`.
+ *   If `gitPublicKey` is provided, the Gitea SSH key is updated.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with confirmation message.
+ * - `400 Bad Request` if missing `oldPassword` for self-update or validation fails.
+ * - `403 Forbidden` if not authorized or password is incorrect.
+ * - `404 Not Found` if the user does not exist.
+ *
+ * @example
+ * ##### Request Body (self-update)
+ * ```json
+ * {
+ *   "oldPassword": "currentPassword123",
+ *   "displayName": "New Display Name",
+ *   "password": "newPassword456"
+ * }
+ * ```
+ *
+ * ##### Request Body (admin update)
+ * ```json
+ * {
+ *   "role": "TA",
+ *   "studentId": "B98765432"
+ * }
+ * ```
+ */
 const updateUser = async (request: IRequest, response: Response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {

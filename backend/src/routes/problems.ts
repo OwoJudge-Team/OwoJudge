@@ -219,7 +219,7 @@ const getProblems = async (request: IRequest, response: Response) => {
  * and sample test cases read from the file system.
  *
  * @route `GET /api/problems/:serialNumber`
- * @authentication Only for loged-in users.
+ * @authentication Required.
  * - **Released** problems: open to all users.
  * - **Unreleased** problems: open to JudgeAdmins and TAs.
  * 
@@ -1183,7 +1183,7 @@ const updateProblemWithFile = async (
  * and returns a `.tar.gz` archive containing the input and output files.
  *
  * @route `GET /api/problems/:serialNumber/testcases/:testcaseName`
- * @authentication Only for logged-in users.
+ * @authentication Required.
  * - **Released** problems: open to all users.
  * - **Unreleased** problems: open to JudgeAdmins and TAs.
  *
@@ -1282,7 +1282,7 @@ const generateTestcase = async (request: IRequest, response: Response) => {
  * 
  * @internal
  * 
- * @authentication Only for logged-in users.
+ * @authentication Required.
  * - **Released** problems: open to all users.
  * - **Unreleased** problems: open to JudgeAdmins and TAs.
  *
