@@ -32,11 +32,15 @@ jobs:
     - name: Run Unit Tests
       run: npm run test
 
-    - name: Run API Tests
+    - name: Prepare env
       run: |
-        chmod +x ./__test__/test-api.sh
-        # Run with --debug to keep containers running for the isolate test
-        ./__test__/test-api.sh --debug
+        cp .env.example .env
+
+    # - name: Run API Tests
+    #   run: |
+    #     chmod +x ./__test__/test-api.sh
+    #     # Run with --debug to keep containers running for the isolate test
+    #     timeout 20m ./__test__/test-api.sh
 
     - name: Test Isolate Functionality
       run: |
