@@ -1,9 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import { validationResult, checkSchema, matchedData } from 'express-validator';
 import { giteaService } from '../utils/gitea-service';
 import { Submission, ISubmission, IUserSolution } from '../mongoose/schemas/submission';
-import { User } from '../mongoose/schemas/users';
-import { Problem } from '../mongoose/schemas/problems';
+import { User, UserRole } from "../mongoose/schemas/users";
+import { Problem, ProblemStatus } from '../mongoose/schemas/problems';
 import { giteaWebhookValidation } from '../validations/gitea-webhook-validation';
 import { submitUserSubmission } from '../judger/judger';
 
@@ -61,6 +62,56 @@ const extractProblemInfo = (filename: string): { problemSerialNumber: number; la
         problemSerialNumber: serialNumber,
         language: 'gcc c17'
     };
+};
+
+/**
+ * Middleware to verify Gitea webhook signature using HMAC-SHA256 shared secret.
+ * Gitea sends the signature in the X-Gitea-Signature header.
+ */
+const verifyWebhookSecret = (req: Request, res: Response, next: NextFunction): void => {
+    const secret = process.env.GITEA_WEBHOOK_SECRET;
+    if (!secret) {
+        console.warn('[Webhook] GITEA_WEBHOOK_SECRET not set, skipping signature verification');
+        next();
+        return;
+    }
+
+    const signature = req.headers['x-gitea-signature'] as string | undefined;
+    if (!signature) {
+        console.error('[Webhook] Missing X-Gitea-Signature header');
+        res.status(403).send({ error: 'Missing webhook signature' });
+        return;
+    }
+
+    // Use the raw body buffer captured by express.json({ verify }) for HMAC computation.
+    // JSON.stringify(req.body) re-serializes the parsed object which may differ from the
+    // original bytes that Gitea used to compute the signature.
+    const rawBody = (req as any).rawBody as Buffer | undefined;
+    if (!rawBody) {
+        console.error('[Webhook] Raw body not available for signature verification');
+        res.status(500).send({ error: 'Raw body not available' });
+        return;
+    }
+
+    const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
+
+    const isValid = signature.length === expectedSignature.length &&
+        crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+
+
+    console.log(`[Webhook] Received signature: ${signature}`);
+    console.log(`[Webhook] Expected signature: ${expectedSignature}`);
+    if (!isValid) {
+        console.error('[Webhook] Invalid webhook signature');
+        res.status(403).send({ error: 'Invalid webhook signature' });
+        return;
+    }
+
+    console.log('[Webhook] Signature verified successfully');
+    next();
 };
 
 /**
@@ -187,9 +238,13 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                     console.error(`[Webhook] Problem with serial number ${problemSerialNumber} not found, skipping submission`);
                     continue;
                 }
+                if (problem.status !== ProblemStatus.Ready) {
+                    console.error(`[Webhook] Problem with serial number ${problemSerialNumber} is not ready, skipping submission`);
+                    continue;
+                }
 
                 // Check daily quota
-                if (problem.dailyQuota && problem.dailyQuota > 0) {
+                if (problem.dailyQuota && problem.dailyQuota > 0 && owoUser.role !== UserRole.JudgeAdmin && owoUser.role !== UserRole.TA) {
                     if (!owoUser.quotaUsage) {
                         owoUser.quotaUsage = new Map();
                     }
@@ -211,11 +266,11 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                     }
 
                     // Increment quota usage
-                    owoUser.quotaUsage.set(problemID, { 
-                        count: currentCount + 1, 
-                        date: today 
+                    owoUser.quotaUsage.set(problemID, {
+                        count: currentCount + 1,
+                        date: today
                     });
-                    
+
                     // Save user quota update
                     await owoUser.save();
                 }
@@ -278,6 +333,6 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
 };
 
 // Routes
-webhookRouter.post('/api/webhook/gitea', checkSchema(giteaWebhookValidation), handleGiteaWebhook);
+webhookRouter.post('/api/webhook/gitea', verifyWebhookSecret, checkSchema(giteaWebhookValidation), handleGiteaWebhook);
 
 export default webhookRouter;

@@ -58,6 +58,11 @@ const getUserByUsername = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
+
+    if (user.solvedProblems && Array.isArray(user.solvedProblems)) {
+      user.solvedProblems.sort((a, b) => Number(a) - Number(b));
+    }
+
     response.status(200).send(user);
   } catch (error) {
     console.error(error);
@@ -143,7 +148,17 @@ const deleteUser = async (request: IRequest, response: Response) => {
       response.sendStatus(404);
       return;
     }
-    response.status(201).send(deletedUser);
+
+    // Delete the corresponding Gitea user
+    try {
+      await giteaService.deleteUser(username);
+      console.log(`Gitea user ${username} deleted successfully`);
+    } catch (giteaError) {
+      console.error(`Failed to delete Gitea user ${username}:`, giteaError);
+      // Continue even if Gitea deletion fails — the local user is already removed
+    }
+
+    response.status(200).send(deletedUser);
   } catch (error) {
     console.error(error);
     response.status(500).send(error);
@@ -175,7 +190,7 @@ const updateUser = async (request: IRequest, response: Response) => {
   }
 
   const { oldPassword } = request.body;
-  
+
   // Require password verification for self-updates
   if (oldUsername === user.username) {
     if (!oldPassword) {
@@ -202,16 +217,26 @@ const updateUser = async (request: IRequest, response: Response) => {
     if (updates.gitPublicKey) {
       const existingUser = await User.findOne({ username: oldUsername });
       if (existingUser && updates.gitPublicKey !== existingUser.gitPublicKey) {
-        console.log(`New public key detected for user ${oldUsername}, adding to Gitea...`);
+        console.log(`New public key detected for user ${oldUsername}, updating Gitea...`);
         try {
+          // First, get existing keys (before adding new one)
+          const existingKeys = await giteaService.getUserPublicKeys(oldUsername);
+
+          // Add the new public key first (so user is never left without a key)
           await giteaService.addPublicKey(oldUsername, {
             key: updates.gitPublicKey,
             read_only: true,
             title: `OwoJudge SSH Key - ${new Date().toISOString()}`
           });
+
+          // Then delete all old public keys
+          for (const key of existingKeys) {
+            console.log(`Deleting old public key ${key.id} (${key.title}) for user ${oldUsername}...`);
+            await giteaService.deletePublicKey(oldUsername, key.id);
+          }
         } catch (giteaError) {
-          console.error(`Failed to add public key to Gitea for ${oldUsername}:`, giteaError);
-          response.status(500).send({ message: 'Failed to add public key to Gitea', error: giteaError });
+          console.error(`Failed to update public key in Gitea for ${oldUsername}:`, giteaError);
+          response.status(500).send({ message: 'Failed to update public key in Gitea', error: giteaError });
           return;
         }
       }

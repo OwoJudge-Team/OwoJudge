@@ -44,6 +44,15 @@ interface AddPublicKeyOptions {
   title?: string;
 }
 
+interface GiteaPublicKey {
+  id: number;
+  key: string;
+  title: string;
+  fingerprint: string;
+  created_at: string;
+  read_only: boolean;
+}
+
 /**
  * Load the README content from the git_tutorial.md file
  * Falls back to a simple message if the file cannot be read
@@ -282,6 +291,25 @@ class GiteaService {
     };
 
     await this.request(endpoint, 'POST', payload);
+  }
+
+  /**
+   * Get all public SSH keys for a user (admin operation)
+   * @param username Username to get the keys for
+   */
+  async getUserPublicKeys(username: string): Promise<GiteaPublicKey[]> {
+    const endpoint = `/api/v1/users/${username}/keys`;
+    return this.request<GiteaPublicKey[]>(endpoint, 'GET');
+  }
+
+  /**
+   * Delete a user's public SSH key (admin operation)
+   * @param username Username whose key is to be deleted
+   * @param keyId ID of the key to delete
+   */
+  async deletePublicKey(username: string, keyId: number): Promise<void> {
+    const endpoint = `/api/v1/admin/users/${username}/keys/${keyId}`;
+    await this.request<void>(endpoint, 'DELETE');
   }
 }
 

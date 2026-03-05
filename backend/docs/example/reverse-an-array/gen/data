@@ -1,0 +1,16 @@
+@subtask samples
+manual sample-01.in
+manual sample-02.in
+
+@subtask full
+@include samples
+gen 5 100 12 -n=1 as8kdfj
+gen 5 100 12 1-n=10 jeot
+gen 5 100 12 -n=10 ehjk
+gen 1 2000000 9 -n=1000000 jafogrt
+gen 1 2000000 9 -n=1000000 asvlb
+gen 1 2000000 9 vmncsogfsag
+gen 5 2000000 2 remtbpadf
+gen 5 2000000 2 kln
+gen 5 2000000 2 mzgomarjg
+gen 5 2000000 2 mzgomarjg

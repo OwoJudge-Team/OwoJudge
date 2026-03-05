@@ -1,0 +1,6 @@
+{
+    "hyper_bonus.c": { "verdict": "model_solution" },
+    "bonus.c": { "verdict": "partially_correct" },
+    "correct.c": { "verdict": "partially_correct" },
+    "claudeAI.c": { "verdict": "incorrect" }
+}

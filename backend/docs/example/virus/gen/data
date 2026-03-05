@@ -1,0 +1,118 @@
+@testset 0-sample
+manual 0-sample-01.in
+manual 0-sample-02.in
+manual 0-sample-03.in
+
+@subtask samples
+@include 0-sample
+
+@testset 1-public
+@include samples
+manual 2.in
+manual 3-1.in
+gen      5         30        0    public
+gen      5         30        3    publicidk
+gen      10        100       0    publicyee
+gen      100       1000      0    public
+gen      100       1000      2    public
+gen      1000      1000      0    public
+gen      10        100       1    public
+gen      100       1000      3    public
+gen      1000      1000      1    public
+
+@testset 1-private
+gen      5         30        0    al,gk
+gen      5         30        0    noooplzzd
+gen      10        100       0    aawa
+gen      10        100       0    byhu
+gen      100       1000      0    awtf
+gen      100       1000      0    b
+gen      100       1000      2    a
+gen      100       1000      2    b
+gen      1000      1000      0    a
+gen      1000      1000      0    b
+gen      10        100       1    ab
+gen      10        100       1    b
+gen      100       1000      3    a
+gen      100       1000      3    b
+gen      1000      1000      1    a
+gen      1000      1000      1    b
+
+@subtask brute
+@include 1-public
+@include 1-private
+
+@testset 2-public
+gen      50        1000      4    public
+gen      3000      50000     4    public
+gen      10000     100000    4    public
+gen      50000     100000    4    public
+gen      500000    500000    4    public
+
+@testset 2-private
+gen      50        1000      4    a
+gen      3000      50000     4    a
+gen      10000     100000    4    a
+gen      50000     100000    4    a
+gen      50000     100000    4    b
+gen      500000    500000    4    a
+gen      500000    500000    4    b
+edge2    50000     500000    4
+edge3    5000      100000    4    10
+
+@subtask basic_dsu
+@include 2-public
+@include 2-private
+
+@testset 3-public
+gen      50        1000      5    public
+gen      3000      50000     5    public
+gen      10000     100000    5    public
+gen      50000     100000    5    public
+gen      500000    500000    5    public
+
+@testset 3-private
+gen      50        1000      5    a
+gen      3000      50000     5    a
+gen      10000     100000    5    a
+gen      50000     100000    5    a
+gen      50000     100000    5    b
+gen      500000    500000    5    a
+gen      500000    500000    5    b
+edge2    50000     500000    5
+edge2    500000    500000    5
+edge3    5000      100000    5    10
+edge3    5000      100000    5    1000
+edge4    262144    500000    7
+
+@subtask no_fusion
+@include basic_dsu
+@include 3-public
+@include 3-private
+
+@testset 4-public
+gen      3000      100000    1    public
+gen      10000     100000    1    public
+gen      3000      100000    3    public
+gen      10000     100000    3    public
+gen      500000    500000    1    public
+
+@testset 4-private
+gen      3000      100000    1    a
+gen      10000     100000    1    a
+gen      3000      100000    3    a
+gen      10000     100000    3    a
+gen      500000    500000    1    a
+edge1    50000     500000    1    100000
+edge1    500000    500000    1    100000
+edge2    50000     500000    1
+edge2    500000    500000    1
+edge3    5000      100000    1    10
+edge3    5000      100000    1    1000
+edge4    262144    500000    6
+
+@subtask full
+@include brute
+@include no_fusion
+@include 4-public
+@include 4-private

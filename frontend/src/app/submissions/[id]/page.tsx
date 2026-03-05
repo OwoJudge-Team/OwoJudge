@@ -5,13 +5,14 @@ import { useParams } from "next/navigation";
 import { apiGet, apiPost } from "@/utils/api";
 import { Submission, StatusToCode } from "@/types/submissions";
 import { formatISOTime } from "@/utils/time";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { nord } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getStatusColor } from "@/utils/submission-status";
 import { useAuth } from "@/contexts/AuthContext";
 import { FaRotateRight } from "react-icons/fa6";
 import Loading from "@/components/Loading";
 import { isAdmin } from "@/utils/users";
+import { HiDocumentAdd } from "react-icons/hi";
+import Modal from "@/components/Modal";
+import CodeBlock from "@/components/CodeBlock";
 
 const LANGUAGE_MAPPING: { [key: string]: string } = {
   "C++": "cpp",
@@ -31,6 +32,11 @@ export default function SubmissionPage() {
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [isRejudging, setIsRejudging] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [currentTestcase, setCurrentTestcase] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [finished, setFinished] = useState(false);
 
   const fetchSubmission = useCallback(async () => {
     try {
@@ -64,6 +70,43 @@ export default function SubmissionPage() {
       alert("An error occurred while triggering rejudge.");
     } finally {
       setIsRejudging(false);
+    }
+  };
+
+  const handleGenerateTestcase = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await apiGet(
+        `/api/problems/${submission?.problemSerialNumber}/testcases/${currentTestcase}`
+      );
+      console.log(`/api/problems/${submission?.problemSerialNumber}/testcases/${currentTestcase}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(new Blob([blob], { type: "application/gzip" }));
+
+        const link: HTMLAnchorElement = document.createElement("a");
+        link.href = url;
+        link.setAttribute(
+          "download",
+          submission?.problemSerialNumber + "-" + currentTestcase + ".tar.gz"
+        );
+
+        document.body.appendChild(link);
+        link.click();
+
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        setMessage("Testcase generated successfully.");
+      } else {
+        const errorMsg = await res.text();
+        setMessage(`Unable to generate the testcase: ${errorMsg}`);
+      }
+    } catch (error) {
+      setMessage("An error occurred while generating the testcase.");
+      console.error("Error generating testcase:", error);
+    } finally {
+      setIsGenerating(false);
+      setFinished(true);
     }
   };
 
@@ -110,7 +153,7 @@ export default function SubmissionPage() {
           <div className="text-s mb-4 text-slate-400">Score</div>
 
           <div
-            className={`text-5xl font-semibold ${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
+            className={`text-5xl font-semibold bg-${getStatusColor(status)} rounded-lg p-3 text-slate-100`}
           >
             {StatusToCode[status]}
           </div>
@@ -184,12 +227,28 @@ export default function SubmissionPage() {
                         key={`${groupName}-${index}`}
                         className="border-t border-slate-700 text-slate-100"
                       >
-                        <td className="px-4 py-3 text-sm">{testcase.testcase}</td>
+                        <td className="group/button px-4 py-3 text-sm hover:text-indigo-400">
+                          <button
+                            className="inline-flex items-center"
+                            onClick={() => {
+                              setCurrentTestcase(testcase.testcase);
+                              setMessage(
+                                `Generate new test data for test case ${testcase.testcase}?`
+                              );
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <span className="transition-transform duration-150 group-hover/button:translate-x-1">
+                              {testcase.testcase}
+                            </span>
+                            <HiDocumentAdd className="-translate-x-2 -translate-y-[1px] text-lg opacity-0 transition-all duration-150 group-hover/button:translate-x-2 group-hover/button:opacity-100" />
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-sm">{testcase.time.toFixed(3)} s</td>
                         <td className="px-4 py-3 text-sm">{testcase.memory} KB</td>
                         <td className={`px-4 py-3 text-sm font-medium`}>
                           <div
-                            className={`${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
+                            className={`bg-${getStatusColor(testcase.status)} w-[5ch] rounded-md p-1 text-center text-slate-100`}
                           >
                             {StatusToCode[testcase.status]}
                           </div>
@@ -206,14 +265,24 @@ export default function SubmissionPage() {
 
       <div className="mb-12">
         <h3 className="mb-3 text-lg font-semibold text-slate-100">Code</h3>
-        <SyntaxHighlighter
-          language={LANGUAGE_MAPPING[language] || "cpp"}
-          style={nord}
-          showLineNumbers={true}
-        >
+        <CodeBlock language={LANGUAGE_MAPPING[language] || "c"}>
           {userSolution[0].content}
-        </SyntaxHighlighter>
+        </CodeBlock>
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          if (finished) {
+            setFinished(false);
+          }
+        }}
+        onConfirm={handleGenerateTestcase}
+        message={message}
+        confirm={!isGenerating && !finished}
+        loading={isGenerating}
+      />
     </div>
   );
 }

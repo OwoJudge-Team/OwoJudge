@@ -4,7 +4,7 @@ const fetch = require('node-fetch');
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:8787/api';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWD || 'adminpassword';
 
 // Contest Configuration
 const CONTEST_COUNT = process.argv[2] ? parseInt(process.argv[2]) : 5;
@@ -105,7 +105,7 @@ function generateRandomContest(index, problems) {
     title: `Mock Contest ${index} - ${startTime.toISOString().split('T')[0]}`,
     description: `This is a generated mock contest #${index}.\n\nStart Time: ${startTime.toLocaleString()}\nDuration: ${durationMs / 3600000} hours.`,
     startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
+    submissionEndTime: endTime.toISOString(),
     problems: contestProblems,
     released: true,
     visibility: 'public' // or 'private' randomly?

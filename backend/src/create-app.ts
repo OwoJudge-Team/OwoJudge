@@ -12,8 +12,11 @@ import authRouter from './routes/auth.js';
 import contestsRouter from './routes/contests.js';
 import webhookRouter from './routes/webhook.js';
 import rejudgeRouter from './routes/rejudge.js';
+import announcementRouter from './routes/announcement.js';
+import proxyRouter from './routes/proxy.js';
 
 // Custom middleware to apply express.json() only to non-multipart requests
+// Also captures raw body for webhook signature verification
 const conditionalJsonParser = (req: Request, res: Response, next: NextFunction) => {
   const contentType = req.headers['content-type'] || '';
 
@@ -22,8 +25,13 @@ const conditionalJsonParser = (req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
-  // For all other requests, use the JSON parser
-  return express.json()(req, res, next);
+  // For all other requests, use the JSON parser with raw body capture
+  return express.json({
+    verify: (req: any, _res, buf) => {
+      // Store the raw body buffer for webhook signature verification
+      req.rawBody = buf;
+    }
+  })(req, res, next);
 };
 
 export const createApp = (): Application => {
@@ -48,14 +56,14 @@ export const createApp = (): Application => {
   // Use conditional JSON parsing instead of applying it globally
   app.use(conditionalJsonParser);
   app.use(express.urlencoded({ extended: true }));
-  app.use(cookieParser('cj6u.4t/6'));
+  app.use(cookieParser(process.env.COOKIE_SECRET || 'cj6u.4t/6'));
   app.use(
     session({
-      secret: 'z/ fup6ql4',
+      secret: process.env.SESSION_SECRET || 'z/ fup6ql4',
       saveUninitialized: false,
       resave: false,
       cookie: {
-        maxAge: oneHour * 24 // One Day
+        maxAge: oneHour * 24 * 120 // 120 days
       },
       store: MongoStore.create({
         client: mongoose.connection.getClient() as any
@@ -73,5 +81,7 @@ export const createApp = (): Application => {
   app.use(contestsRouter);
   app.use(webhookRouter);
   app.use(rejudgeRouter);
+  app.use(announcementRouter);
+  app.use(proxyRouter);
   return app;
 };

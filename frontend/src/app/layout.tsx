@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OwoJudge",
+  title: "DSA Judge+",
   description: "d(Owo)b Online Judge",
 };
 

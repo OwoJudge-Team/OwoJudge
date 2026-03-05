@@ -1,0 +1,12 @@
+{
+  "sol.c": { "verdict": "model_solution" },
+  "short.c": { "verdict": "correct" },
+  "fastio.c": { "verdict": "correct" },
+  "bf.c": {
+    "verdict": "time_limit",
+    "except": {
+      "samples": "correct",
+      "brute": "correct"
+    }
+  }
+}

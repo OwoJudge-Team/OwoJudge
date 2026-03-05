@@ -7,6 +7,7 @@ interface ModalProps {
   onConfirm?: () => void;
   confirm?: boolean;
   loading?: boolean;
+  style?: "danger" | "safe";
 }
 
 export default function Modal({
@@ -16,6 +17,7 @@ export default function Modal({
   onConfirm,
   confirm,
   loading,
+  style = "safe",
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -47,7 +49,7 @@ export default function Modal({
             {confirm && onConfirm && (
               <button
                 onClick={onConfirm}
-                className="ml-4 inline-flex justify-center rounded-md border border-transparent bg-rose-600 px-4 py-2 text-base font-medium text-slate-100 shadow-sm hover:bg-rose-700 focus:outline-none"
+                className={`ml-4 inline-flex justify-center rounded-md border border-transparent ${style === "danger" ? "bg-rose-600" : "bg-green-700"} px-4 py-2 text-base font-medium text-slate-100 shadow-sm ${style === "danger" ? "hover:bg-rose-700" : "hover:bg-green-800"} focus:outline-none`}
               >
                 Confirm
               </button>

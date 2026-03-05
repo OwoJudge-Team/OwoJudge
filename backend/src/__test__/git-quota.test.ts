@@ -51,6 +51,11 @@ vi.mock('../mongoose/schemas/problems', () => ({
 vi.mock('../mongoose/schemas/users', () => ({
     User: {
         findOne: vi.fn().mockResolvedValue(mockUser)
+    },
+    UserRole: {
+        Admin: 'admin',
+        Student: 'student',
+        TA: 'ta'
     }
 }));
 

@@ -1,0 +1,30 @@
+{
+  "global_validators": ["validator.cpp"],
+  "subtasks": {
+    "samples": {
+      "index": 0,
+      "score": 0,
+      "validators": []
+    },
+    "brute": {
+      "index": 1,
+      "score": 10,
+      "validators": []
+    },
+    "basic_dsu": {
+      "index": 2,
+      "score": 10,
+      "validators": []
+    },
+    "no_fusion": {
+      "index": 3,
+      "score": 20,
+      "validators": []
+    },
+    "full": {
+      "index": 4,
+      "score": 60,
+      "validators": []
+    }
+  }
+}

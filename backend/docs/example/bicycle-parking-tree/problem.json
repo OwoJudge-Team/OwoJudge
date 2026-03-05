@@ -1,0 +1,12 @@
+{
+    "name": "BicycleParkingTree",
+    "code": "bicycle-parking-tree",
+    "title": "Bicycle Parking Tree",
+    "type": "Batch",
+    "time_limit": 1.0,
+    "memory_limit": 2048,
+    "score_policy": "sum",
+    "has_grader": false,
+    "java_enabled": false,
+    "python_enabled": false
+}

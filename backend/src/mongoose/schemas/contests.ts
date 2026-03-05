@@ -26,7 +26,8 @@ interface IContest extends Document {
   title: string;
   description: string;
   startTime: Date;
-  endTime: Date;
+  endTime?: Date;
+  submissionEndTime: Date;
   released: boolean;
   problems: ProblemInContest[];
   standings: UserStanding[];
@@ -46,6 +47,10 @@ const contestSchema: Schema = new Schema({
     required: true
   },
   endTime: {
+    type: Schema.Types.Date,
+    required: false
+  },
+  submissionEndTime: {
     type: Schema.Types.Date,
     required: true
   },

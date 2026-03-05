@@ -8,6 +8,16 @@ export const randomString = (size: number): string => {
 let salt: string | undefined;
 
 const readSalt = (): void => {
+  if (process.env.SALT) {
+    salt = process.env.SALT;
+    try {
+      FileSystem.writeFileSync('./salt.json', JSON.stringify({ salt }, null, 4));
+    } catch (err) {
+      console.warn('Failed to write salt to salt.json:', err);
+    }
+    return;
+  }
+
   try {
     const SALT: string = JSON.parse(FileSystem.readFileSync('./salt.json', 'utf-8')).salt;
     salt = SALT;

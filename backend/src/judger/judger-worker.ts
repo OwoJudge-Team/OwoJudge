@@ -134,7 +134,7 @@ const runChecker = async (
     const checkerErrorFile = `checker-${baseName}.err`;
 
     try {
-      await box.run('./checker input.in user.out answer.out', {
+      await box.run('./checker input.in answer.out user.out', {
         processes: 1,
         timeLimit: 10,
         wallTimeLimit: 20,
@@ -296,6 +296,7 @@ const runAllTests = async (
 
   const checkerCompiled = await compileChecker(problemDir, workDir);
   if (!checkerCompiled) {
+    console.log('Fail to compile checker');
     return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {}, time: 0, memory: 0 };
   }
 
@@ -373,6 +374,49 @@ const runAllTests = async (
     subtaskTestCases.get(subtaskName)!.push(testcaseName);
   }
 
+  // Also scan the tests directory to find all test cases (including dynamically generated ones)
+  const testsDir = path.join(problemDir, 'tests');
+  if (fs.existsSync(testsDir)) {
+    const dirContents = fs.readdirSync(testsDir);
+    const inputFiles = new Set<string>();
+    
+    for (const file of dirContents) {
+      if (file.endsWith('.in')) {
+        const testcaseName = file.slice(0, -3);
+        inputFiles.add(testcaseName);
+      }
+    }
+
+    // Merge directory scan results with mapping file results
+    // For each testcase found in directory, add it to the subtask if not already there
+    for (const testcaseName of inputFiles) {
+      let foundInMapping = false;
+      
+      // Check if this testcase is already in the mapping
+      for (const [subtaskName, cases] of subtaskTestCases.entries()) {
+        if (cases.includes(testcaseName)) {
+          foundInMapping = true;
+          break;
+        }
+      }
+      
+      // If not in mapping, try to infer subtask from testcase name pattern (subtask-index format)
+      if (!foundInMapping) {
+        const testcaseParts = testcaseName.split('-');
+        if (testcaseParts.length >= 1) {
+          const inferredSubtask = testcaseParts[0];
+          // If the inferred subtask exists in the subtasks, add it
+          if (inferredSubtask in subtasks.subtasks) {
+            if (!subtaskTestCases.has(inferredSubtask)) {
+              subtaskTestCases.set(inferredSubtask, []);
+            }
+            subtaskTestCases.get(inferredSubtask)!.push(testcaseName);
+          }
+        }
+      }
+    }
+  }
+
   const allTestCases = new Set<string>();
   for (const subtaskName of Object.keys(subtasks.subtasks)) {
     const cases = subtaskTestCases.get(subtaskName);
@@ -413,8 +457,16 @@ const runAllTests = async (
       }
       if (!result || result.status !== SubmissionStatus.AC) {
         subtaskOk = false;
-        if (finalStatus === SubmissionStatus.AC) {
-          finalStatus = result?.status || SubmissionStatus.SE;
+        const currentStatus = result?.status || SubmissionStatus.SE;
+        const statusPriority: Partial<Record<SubmissionStatus, number>> = {
+          [SubmissionStatus.TLE]: 4,
+          [SubmissionStatus.RE]: 3,
+          [SubmissionStatus.WA]: 2,
+          [SubmissionStatus.PS]: 1,
+          [SubmissionStatus.AC]: 0
+        };
+        if ((statusPriority[currentStatus] ?? 5) > (statusPriority[finalStatus] ?? 5)) {
+          finalStatus = currentStatus;
         }
       }
     }
@@ -436,7 +488,7 @@ const runAllTests = async (
     } else {
       finalStatus = SubmissionStatus.SE;
     }
-  } else if (totalScore > 0 && totalScore < (problemMeta?.fullScore || 100)) {
+  } else if (finalStatus === SubmissionStatus.PS && totalScore > 0 && totalScore < (problemMeta?.fullScore || 100)) {
     finalStatus = SubmissionStatus.PS;
   }
 
@@ -453,11 +505,28 @@ const runAllTests = async (
 
 const compileUserSolution = async (submission: ISubmission, workDir: string): Promise<{ status: SubmissionStatus; errorMessage?: string }> => {
   const metaFile = path.join(workDir, 'compile.meta');
-  const boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
+  let boxCompileCommand = languageSupport[submission.language as keyof typeof languageSupport].compileCommand;
+
+  const problem = await Problem.findOne({ serialNumber: submission.problemSerialNumber });
 
   return await IsolateManager.withBox(async (box) => {
     const boxDir = box.getBoxDir();
     const boxID = box.getBoxID();
+
+    if (problem?.hasGrader) {
+      const graderDir = path.join('problems', submission.problemSerialNumber.toString(), 'grader', submission.language);
+      if (fs.existsSync(graderDir)) {
+        const files = fs.readdirSync(graderDir);
+        for (const file of files) {
+          fs.copyFileSync(path.join(graderDir, file), path.join(boxDir, file));
+        }
+        if (submission.language.startsWith('g++')) {
+          boxCompileCommand = boxCompileCommand.replace('main.cpp', '*.cpp');
+        } else if (submission.language.startsWith('gcc')) {
+          boxCompileCommand = boxCompileCommand.replace('main.c', '*.c');
+        }
+      }
+    }
 
     try {
       // Write user solution to box
@@ -526,6 +595,42 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
   });
 };
 
+/**
+ * When a non-AC result occurs (e.g. after rejudge), check if the user
+ * no longer has any AC for the problem and remove it from solvedProblems.
+ */
+const removeSolvedProblemIfNeeded = async (
+  user: InstanceType<typeof User>,
+  submission: ISubmission,
+  problem: IProblem
+): Promise<void> => {
+  if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
+    return;
+  }
+
+  const remainingAC = await Submission.countDocuments({
+    username: submission.username,
+    problemSerialNumber: submission.problemSerialNumber,
+    status: SubmissionStatus.AC
+  });
+
+  if (remainingAC === 0) {
+    user.solvedProblems = user.solvedProblems.filter(
+      (p: number) => p !== submission.problemSerialNumber
+    );
+    user.solvedProblem = user.solvedProblems.length;
+    await user.save();
+
+    // Also update the problem's solved user count
+    const distinctSolvedUsers = await Submission.distinct('username', {
+      problemSerialNumber: submission.problemSerialNumber,
+      status: SubmissionStatus.AC
+    });
+    problem.userDetail.solved = distinctSolvedUsers.length;
+    await problem.save();
+  }
+};
+
 const processSubmission = async (submissionID: string): Promise<void> => {
   try {
     const submission = await Submission.findById(submissionID);
@@ -556,7 +661,10 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
     // If first attempt, update problem's attempted count
     if (isFirstAttempt) {
-      problem.userDetail.attempted += 1;
+      const distinctUsers = await Submission.distinct('username', {
+        problemSerialNumber: submission.problemSerialNumber
+      });
+      problem.userDetail.attempted = distinctUsers.length;
       await problem.save();
     }
 
@@ -589,6 +697,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           problem.submissionDetail.compilationError += 1;
           problem.submissionDetail.submitted += 1;
           await problem.save();
+          await removeSolvedProblemIfNeeded(user, submission, problem);
           await updateContestStanding(submission);
           return;
         }
@@ -619,14 +728,18 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
           if (previousAC === 0) {
             // First time solving this problem
-            problem.userDetail.solved += 1;
+            const distinctSolvedUsers = await Submission.distinct('username', {
+              problemSerialNumber: submission.problemSerialNumber,
+              status: SubmissionStatus.AC
+            });
+            problem.userDetail.solved = distinctSolvedUsers.length;
             await problem.save();
 
             // Update user statistics
-            user.solvedProblem += 1;
             if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
               user.solvedProblems.push(submission.problemSerialNumber);
             }
+            user.solvedProblem = user.solvedProblems.length;
             await user.save();
           } else {
             await problem.save();
@@ -658,6 +771,13 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           await problem.save();
           break;
       }
+
+      // For non-AC results, remove the problem from solvedProblems if the
+      // user no longer has any AC for it (happens during rejudge).
+      if (finalStatus !== SubmissionStatus.AC) {
+        await removeSolvedProblemIfNeeded(user, submission, problem);
+      }
+
       await updateContestStanding(submission);
     } catch (error) {
       console.error('Error during worker execution:', error);

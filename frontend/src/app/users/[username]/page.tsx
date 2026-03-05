@@ -4,21 +4,28 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiGet } from "@/utils/api";
-import CoolLink from "@/components/cool-link";
+import CoolLink from "@/components/CoolLink";
 import { User } from "@/types/user";
-import { FaTrophy, FaCircleCheck, FaUserShield, FaUserPen } from "react-icons/fa6";
+import { FaTrophy, FaCircleCheck, FaUserShield, FaUserPen, FaGitAlt } from "react-icons/fa6";
 import Loading from "@/components/Loading";
 import { isAdmin, isTA } from "@/utils/users";
 
 export default function UserDetailPage() {
   const params = useParams();
   const username = params.username;
+  const sshPort = process.env.NEXT_PUBLIC_GITEA_SSH_PORT || 22;
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [domain, setDomain] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDomain(window.location.hostname);
+    }
+
     const fetchUser = async () => {
       try {
         const userRes = await apiGet(`/api/users/${username}`);
@@ -45,6 +52,17 @@ export default function UserDetailPage() {
   if (loading) {
     return <Loading message="Loading profile..." />;
   }
+
+  const handleCopySSH = async () => {
+    const sshURL = `ssh://git@${domain}:${sshPort}/${user?.username}/${user?.username}-dsa.git`;
+    try {
+      await navigator.clipboard.writeText(sshURL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   if (error || !user) {
     return (
@@ -75,7 +93,7 @@ export default function UserDetailPage() {
           <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             {/* User Info */}
             <div>
-              <div className="mb-2 flex items-center gap-3">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
                 <h1 className="text-4xl font-bold text-slate-100">{user.displayName}</h1>
                 {isAdmin(user) && (
                   <span className="flex items-center gap-1 rounded-full bg-rose-900/50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-200 ring-1 ring-rose-500/50">
@@ -89,6 +107,22 @@ export default function UserDetailPage() {
                 )}
               </div>
               <p className="text-xl text-slate-400">@{user.username}</p>
+              <div
+                onClick={handleCopySSH}
+                className={`no-scrollbar flex cursor-pointer items-center overflow-x-scroll text-nowrap rounded-lg transition ${
+                  copied
+                    ? "text-lg text-emerald-300"
+                    : "text-xl text-slate-400 hover:text-slate-300"
+                }`}
+                title="Click to copy"
+              >
+                <FaGitAlt className="shrink-0 text-xl" />
+                <p>
+                  {copied
+                    ? "Git Repo SSH URL Copied!"
+                    : `ssh://git@${domain}:${sshPort}/${user.username}/${user.username}-dsa.git`}
+                </p>
+              </div>
             </div>
 
             {/* Stats Row within Header */}

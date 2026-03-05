@@ -56,12 +56,13 @@ const createContest = async (request: IRequest, response: Response) => {
     response.status(400).send(result.array());
     return;
   }
-  const { title, description, startTime, endTime, problems, released } = request.body;
+  const { title, description, startTime, endTime, submissionEndTime, problems, released } = request.body;
   const newContest = new Contest({
     title,
     description,
     startTime,
     endTime,
+    submissionEndTime,
     problems,
     released: released ?? false
   });
@@ -119,6 +120,7 @@ const getStandings = async (request: IRequest, response: Response) => {
     response.status(400).send('Contest ID is required');
     return;
   }
+
   try {
     const contest: IContest | null = await Contest.findById(id);
     if (!contest) {
@@ -152,8 +154,8 @@ const updateStandings = async (request: IRequest, response: Response) => {
   }
 
   try {
-     const contest = await recalculateContestStandings(id);
-     response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
+    const contest = await recalculateContestStandings(id);
+    response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
   } catch (error) {
     console.log(error);
     if (error instanceof Error && error.message === 'Contest not found') {

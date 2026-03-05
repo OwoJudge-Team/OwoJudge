@@ -1,0 +1,12 @@
+{
+    "name": "a9",
+    "code": "a9",
+    "title": "Reverse an Array",
+    "type": "Batch",
+    "has_grader": true,
+    "java_enabled": false,
+    "python_enabled": false,
+    "score_policy": "sum",
+    "time_limit": 5.0,
+    "memory_limit": 64
+}

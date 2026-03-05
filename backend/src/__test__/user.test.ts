@@ -232,7 +232,7 @@ describe('User Routes', () => {
     mockFindOneAndDelete.mockResolvedValue({ username: 'testuser' });
 
     await deleteUser(req, res);
-    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
 

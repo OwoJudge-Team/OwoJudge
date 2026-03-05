@@ -1,8 +1,8 @@
 # Git 繳交教學
 
-歡迎使用 OwoJudge！本教學將帶領你一步一步學會如何使用 Git 繳交程式作業。
+歡迎使用 DSA Judge+！本教學將帶領你一步一步學會如何使用 Git 繳交程式作業。
 
-> 💡 **小提示**：使用 Git 是資工人必備的技能，學會之後不僅能在這裡繳交作業，未來在職場或開源社群都會用到！
+> 💡 **小提示**：使用 Git 是資訊人必備的技能，學會之後不僅能在這裡繳交作業，未來在職場或開源社群都會用到！
 
 ---
 
@@ -67,7 +67,7 @@ git --version
 
 ## 產生 SSH Key
 
-為了安全性，OwoJudge 的 Git 上傳方式**只支援 SSH Public Key 登入**。
+DSA Judge+ 的 Git 上傳方式**只支援 SSH Public Key 登入**。
 
 ### 步驟一：檢查是否已有 SSH Key
 
@@ -121,7 +121,7 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... your_email@example.com
 
 ## 設定 SSH Key 到 Judge
 
-1. 登入 OwoJudge 網站
+1. 登入 DSA Judge+ 網站
 2. 點擊右上角的 **Settings**（或個人設定）
 3. 找到 **SSH Public Key** 欄位
 4. 將剛才複製的 SSH Public Key 貼上
@@ -139,14 +139,14 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... your_email@example.com
 
 ## Clone 你的專屬 Repository
 
-每個使用者在 OwoJudge 上都有一個專屬的 Git repository。
+每個使用者在 DSA Judge+ 上都有一個專屬的 Git repository。
 
 ### 步驟一：找到你的 Git Repository URL
 
 在 **Settings** 頁面或個人資料頁面，你可以看到你的 **Git Repository** URL，格式類似：
 
 ```
-git@dsajudge:b14902000/b14902000-dsa.git
+ssh://git@dsa.csie.ntu.edu.tw:22/B14902000/B14902000-dsa.git
 ```
 
 ### 步驟二：Clone Repository
@@ -159,7 +159,7 @@ git clone <你的 Git Repository URL>
 
 例如：
 ```bash
-git clone git@dsajudge:22/b14902000/b14902000-dsa.git
+git clone ssh://git@dsa.csie.ntu.edu.tw:22/B14902000/B14902000-dsa.git
 ```
 
 如果一切正常，你會看到一個以你的使用者名稱命名的資料夾被建立。
@@ -168,7 +168,7 @@ git clone git@dsajudge:22/b14902000/b14902000-dsa.git
 
 第一次連接時，系統可能會詢問是否信任此伺服器：
 ```
-The authenticity of host 'dsajudge' can't be established.
+The authenticity of host 'dsa.csie.ntu.edu.tw' can't be established.
 Are you sure you want to continue connecting (yes/no)?
 ```
 請輸入 `yes` 並按 Enter。
@@ -284,7 +284,7 @@ git push origin main
 
 如果一切順利，你應該會：
 1. 在 `git push` 的輸出中看到 Submission ID
-2. 在 OwoJudge 網站的 Submissions 頁面看到你的繳交紀錄
+2. 在 DSA Judge+ 網站的 Submissions 頁面看到你的繳交紀錄
 3. 看到這題的結果是 **AC（Accepted）**🎉
 
 > 💡 **恭喜你！** 如果成功拿到 AC，代表你已經學會使用 Git 繳交程式了！
@@ -295,19 +295,13 @@ git push origin main
 
 Push 完成後，你可以：
 
-1. **在終端機查看**
+1. **在 Judge 網站查看**
    
-   `git push` 的輸出會顯示這次繳交的 Submission ID。
-
-   ![Git Push Result](https://i.imgur.com/b3YDr2b.png)
-
-2. **在 Judge 網站查看**
-   
-   登入 OwoJudge 後，前往 **Submissions** 頁面，你應該能看到剛才上傳的程式。
+   登入 DSA Judge+ 後，前往 **Submissions** 頁面，你應該能看到剛才上傳的程式。
 
    ![Submission List](https://i.imgur.com/3MmgoBH.png)
 
-3. **查看評測結果**
+2. **查看評測結果**
 
    點擊 Submission 可以查看詳細的評測結果。
 
@@ -322,7 +316,7 @@ Push 完成後，你可以：
 **原因**：SSH Key 沒有正確設定。
 
 **解決方式**：
-1. 確認已將 Public Key 加入 OwoJudge Settings
+1. 確認已將 Public Key 加入 DSA Judge+ Settings
 2. 確認本機有對應的 Private Key
 3. 執行 `ssh-add ~/.ssh/id_ed25519`（或 `id_rsa`）將 Key 加入 SSH Agent
 
@@ -361,7 +355,7 @@ git config --global user.name "your-name"
 ### Q5: Repository URL 找不到
 
 **解決方式**：
-前往 OwoJudge 的 **Settings** 頁面查看你的 Git Repository URL。
+前往 DSA Judge+ 的 **Settings** 頁面查看你的 Git Repository URL。
 
 ---
 

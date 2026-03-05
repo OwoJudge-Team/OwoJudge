@@ -51,7 +51,7 @@ export default function LoginPage() {
         {/* Title */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-slate-100">Welcome Back</h1>
-          <p className="mt-2 text-slate-400">Sign in to continue to OwoJudge</p>
+          <p className="mt-2 text-slate-400">Sign in to continue to DSA Judge+</p>
         </div>
 
         {/* Login Form */}

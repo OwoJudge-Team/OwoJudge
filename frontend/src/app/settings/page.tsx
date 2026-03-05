@@ -142,7 +142,7 @@ export default function SettingsPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card title="User Information">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <LabeledInput
                 id="username"
                 label="Username"
@@ -163,7 +163,7 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <LabeledInput
                 id="displayName"
                 label="Display Name"
@@ -195,7 +195,7 @@ export default function SettingsPage() {
           </Card>
 
           <Card title="Change Password">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <LabeledInput
                 id="newPassword"
                 label="New Password"

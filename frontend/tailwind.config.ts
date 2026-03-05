@@ -7,6 +7,23 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   safelist: [
+    "bg-emerald-600/90",
+    "bg-yellow-500/70",
+    "bg-rose-600/70",
+    "bg-slate-600/50",
+    "text-emerald-600/90",
+    "text-yellow-500/70",
+    "text-rose-600/70",
+    "text-slate-600/50",
+    "stroke-green-600/50",
+    "stroke-red-600/50",
+    "stroke-blue-600/50",
+    "stroke-purple-600/50",
+    "stroke-yellow-400/50",
+    "stroke-orange-500/50",
+    "stroke-zinc-600/50",
+    "stroke-lime-500/50",
+    "stroke-pink-500/50",
     "bg-green-600/50",
     "bg-red-600/50",
     "bg-blue-600/50",
@@ -19,6 +36,29 @@ export default {
   ],
   theme: {
     extend: {
+      keyframes: {
+        "noise-1": {
+          "0%, 100%": { clipPath: "inset(10% 0 80% 0)", transform: "translate(2px, -2px)" },
+          "10%": { clipPath: "inset(40% 0 40% 0)", transform: "translate(-2px, 2px)" },
+          "20%": { clipPath: "inset(70% 0 10% 0)", transform: "translate(1px, -1px)" },
+          "30%": { clipPath: "inset(20% 0 50% 0)", transform: "translate(-3px, 0px)" },
+          "40%": { clipPath: "inset(50% 0 20% 0)", transform: "translate(2px, 2px)" },
+          "50%": { clipPath: "inset(80% 0 5% 0)", transform: "translate(-1px, -2px)" },
+          "60%": { clipPath: "inset(30% 0 60% 0)", transform: "translate(3px, 1px)" },
+        },
+        "noise-2": {
+          "0%, 100%": { clipPath: "inset(50% 0 20% 0)", transform: "translate(-2px, 2px)" },
+          "15%": { clipPath: "inset(10% 0 75% 0)", transform: "translate(2px, -1px)" },
+          "35%": { clipPath: "inset(60% 0 15% 0)", transform: "translate(-2px, -2px)" },
+          "55%": { clipPath: "inset(30% 0 40% 0)", transform: "translate(4px, 1px)" },
+          "75%": { clipPath: "inset(85% 0 5% 0)", transform: "translate(-1px, 2px)" },
+          "95%": { clipPath: "inset(15% 0 80% 0)", transform: "translate(2px, 0px)" },
+        },
+      },
+      animation: {
+        "noise-1": "noise-1 0.4s infinite linear alternate-reverse",
+        "noise-2": "noise-2 0.3s infinite linear alternate",
+      },
       colors: {
         code: "oklch(0.2491 0.0335 264.3)",
         background: "var(--background)",
