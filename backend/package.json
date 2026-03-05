@@ -54,6 +54,7 @@
     "@types/tar": "^6.1.13",
     "nodemon": "^3.1.9",
     "supertest": "^7.0.0",
+    "tsdoc": "^0.0.4",
     "tsx": "^4.19.3",
     "typescript": "^5.0.0",
     "vitest": "^3.0.8"
