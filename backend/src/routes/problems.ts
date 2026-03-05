@@ -1,3 +1,12 @@
+/**
+ * Problem management routes.
+ *
+ * Endpoints for creating, reading, updating, and deleting programming problems,
+ * as well as generating test cases and querying allowed languages.
+ *
+ * @module API/Problems
+ */
+
 import { Router, Request, Response } from "express";
 import { validationResult, matchedData, checkSchema } from "express-validator";
 import { Problem, IProblem, ProblemStatus } from "../mongoose/schemas/problems";
@@ -95,6 +104,61 @@ const upload = multer({
   },
 }).single("problem");
 
+/**
+ * Retrieves a list of all problems.
+ * For authenticated users, the remaining daily submission quota is calculated per problem.
+ *
+ * @route `GET /api/problems`
+ * 
+ * @authentication
+ * - **Released** problems: open to all users.
+ * - **Unreleased** problems: open to JudgeAdmins and TAs.
+ *
+ * @param request - Express request. Authenticated users get quota-adjusted results.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with an array of problem summary objects.
+ * - `400 Bad Request` on query error.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * [
+ *   {
+ *     "submissionDetail": {
+ *       "accepted": 0,
+ *       "submitted": 0,
+ *       "timeLimitExceeded": 0,
+ *       "memoryLimitExceeded": 0,
+ *       "wrongAnswer": 0,
+ *       "runtimeError": 0,
+ *       "compilationError": 0,
+ *       "processLimitExceeded": 0
+ *     },
+ *     "userDetail": {
+ *       "solved": 0,
+ *       "attempted": 0
+ *     },
+ *     "_id": "68fb738f149ff1b7927a14a6",
+ *     "serialNumber": 0,
+ *     "status": "ready",
+ *     "createdTime": "2025-10-24T12:39:43.750Z",
+ *     "title": "Problem Title",
+ *     "timeLimit": 1,
+ *     "memoryLimit": 2048,
+ *     "tags": [
+ *       "basic"
+ *     ],
+ *     "problemRelatedTags": [
+ *       "math"
+ *     ],
+ *     "fullScore": 100,
+ *     "dailyQuota": 3
+ *   }
+ * ]
+ * ```
+ */
 const getProblems = async (request: IRequest, response: Response) => {
   try {
     const user = request.user as IUser | undefined;
@@ -150,6 +214,70 @@ const getProblems = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Retrieves a single problem by its serial number, including its description
+ * and sample test cases read from the file system.
+ *
+ * @route `GET /api/problems/:serialNumber`
+ * @authentication Required.
+ * - **Released** problems: open to all users.
+ * - **Unreleased** problems: open to JudgeAdmins and TAs.
+ * 
+ * @param request - Express request with `serialNumber` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the full problem object (description, sample test cases, quota).
+ * - `400 Bad Request` if the serial number is invalid.
+ * - `404 Not Found` if the problem does not exist or is unreleased for non-admins.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "submissionDetail": {
+ *     "accepted": 0,
+ *     "submitted": 0,
+ *     "timeLimitExceeded": 0,
+ *     "memoryLimitExceeded": 0,
+ *     "wrongAnswer": 0,
+ *     "runtimeError": 0,
+ *     "compilationError": 0,
+ *     "processLimitExceeded": 0
+ *   },
+ *   "userDetail": {
+ *     "solved": 0,
+ *     "attempted": 0
+ *   },
+ *   "_id": "68fb738f149ff1b7927a14a6",
+ *   "serialNumber": 0,
+ *   "status": "ready",
+ *   "createdTime": "2025-10-24T12:39:43.750Z",
+ *   "title": "Problem Title",
+ *   "timeLimit": 1,
+ *   "memoryLimit": 2048,
+ *   "processes": 1,
+ *   "fullScore": 100,
+ *   "scorePolicy": "sum",
+ *   "tags": [
+ *     "basic"
+ *   ],
+ *   "problemRelatedTags": [
+ *     "math"
+ *   ],
+ *   "dailyQuota": 3,
+ *   "__v": 0,
+ *   "description": "# TPS example problem (a + b)\n\n## Story\n\n...",
+ *   "sampleTestcases": [
+ *     {
+ *       "name": "0-01",
+ *       "input": "1 2\n",
+ *       "output": "3\n"
+ *     }
+ *   ]
+ * }
+ * ```
+ */
 const getProblemByID = async (request: IRequest, response: Response) => {
   const serialNumber = parseInt(request.params.serialNumber);
 
@@ -267,17 +395,42 @@ const getProblemByID = async (request: IRequest, response: Response) => {
   }
 };
 
-/// The problem structure is as follows
-/// problems
-/// ├── problem1
-/// │   ├── metadata.json
-/// │   ├── testcases
-/// │   │   ├── test1.in
-/// │   │   ├── test1.out
-/// │   │   └── ...
-/// │   ├── description.md
-/// │   └── ...
-/// └── ...
+/**
+ * Creates a new problem by uploading a `.tar.gz` file containing the problem data
+ * (metadata, statement, checker, optional grader, optional generator). You can see
+ * docs/example/tps-example.
+ *
+ * Test case generation via `tps gen` runs asynchronously in an isolated sandbox
+ * after the response is sent. The problem status starts as `waiting` and becomes
+ * `ready` (or `error`) once generation completes.
+ *
+ * @route `POST /api/problems`
+ * @authentication Only for TAs and JudgeAdmins.
+ *
+ * @param request - Express request with a `multipart/form-data` file field named `problem`.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` with the new problem object.
+ * - `400 Bad Request` if the file is missing, not `.tar.gz`, or metadata is invalid.
+ * - `403 Forbidden` if a problem with the same filename already exists.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb738f149ff1b7927a14a6",
+ *   "serialNumber": 0,
+ *   "title": "Problem Title",
+ *   "status": "waiting",
+ *   "createdTime": "2025-10-24T12:39:43.750Z",
+ *   "timeLimit": 1,
+ *   "memoryLimit": 2048,
+ *   "tags": ["basic"],
+ *   "problemRelatedTags": ["math"]
+ * }
+ * ```
+ */
 const createProblem = async (
   request: IRequest,
   response: Response,
@@ -571,6 +724,31 @@ const createProblem = async (
   }
 };
 
+/**
+ * Deletes a problem and its associated files from the file system and database.
+ *
+ * @route `DELETE /api/problems/:serialNumber`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request with `serialNumber` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` with the deleted problem object.
+ * - `400 Bad Request` if the serial number is invalid.
+ * - `401 Unauthorized` if the user is not a Judge Admin.
+ * - `404 Not Found` if the problem does not exist.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "serialNumber": 0,
+ *   "title": "Problem Title",
+ *   "status": "ready"
+ * }
+ * ```
+ */
 const deleteProblem = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
   if (
@@ -621,6 +799,34 @@ const deleteProblem = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Updates specific metadata fields of a problem without re-uploading the archive.
+ *
+ * @route `PATCH /api/problems/:serialNumber`
+ * @authentication Only for TAs and JudgeAdmins.
+ *
+ * @param request - Express request with `serialNumber` route parameter and
+ *   partial problem fields in the body.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` with the updated problem summary.
+ * - `400 Bad Request` if the serial number is invalid or no valid fields provided.
+ * - `404 Not Found` if the problem does not exist.
+ * 
+ * @example
+ * ##### Request Body
+ * Partial `IProblem` object.
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "serialNumber": 0,
+ *   "title": "Updated Problem Title",
+ *   "createdTime": "2025-10-24T12:39:43.750Z"
+ * }
+ * ```
+ */
 const updateProblem = async (request: IRequest, response: Response) => {
   const serialNumber = parseInt(request.params.serialNumber);
 
@@ -656,6 +862,23 @@ const updateProblem = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Updates an existing problem by uploading a new `.tar.gz` archive.
+ * Replaces the problem files on disk and re-runs test case generation
+ * asynchronously in an isolated sandbox.
+ *
+ * @route `PUT /api/problems/:serialNumber`
+ * @authentication Only for TAs and JudgeAdmins.
+ *
+ * @param request - Express request with `serialNumber` route parameter and
+ *   a `multipart/form-data` file field named `problem`.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` on success.
+ * - `400 Bad Request` if the file is missing, not `.tar.gz`, or metadata is invalid.
+ * - `404 Not Found` if the problem does not exist.
+ */
 const updateProblemWithFile = async (
   request: IRequest,
   response: Response,
@@ -955,6 +1178,23 @@ const updateProblemWithFile = async (
   }
 };
 
+/**
+ * Generates a single test case for a problem using `tps gen` in an isolated sandbox
+ * and returns a `.tar.gz` archive containing the input and output files.
+ *
+ * @route `GET /api/problems/:serialNumber/testcases/:testcaseName`
+ * @authentication Required.
+ * - **Released** problems: open to all users.
+ * - **Unreleased** problems: open to JudgeAdmins and TAs.
+ *
+ * @param request - Express request with `serialNumber` and `testcaseName` route parameters.
+ * @param response - Express response streaming the archive download.
+ *
+ * @returns
+ * - `200 OK` with `application/gzip` archive containing `{name}.in` and `{name}.out`.
+ * - `400 Bad Request` if the serial number is invalid.
+ * - `404 Not Found` if the problem does not exist or is unreleased for non-admins.
+ */
 const generateTestcase = async (request: IRequest, response: Response) => {
   const user = request.user as IUser;
   const { testcaseName } = request.params;
@@ -1034,6 +1274,28 @@ const generateTestcase = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Retrieves the list of programming languages allowed for submissions to a specific problem.
+ * Reads from `judgemeta.json` first, falling back to `problem.json`.
+ *
+ * @route `GET /api/problems/:serialNumber/allowed-languages`
+ * 
+ * @internal
+ * 
+ * @authentication Required.
+ * - **Released** problems: open to all users.
+ * - **Unreleased** problems: open to JudgeAdmins and TAs.
+ *
+ * @param request - Express request with `serialNumber` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with an array of allowed language identifier strings
+ *   (e.g. `["gcc c17", "g++ c++17", "python3"]`). Returns `[]` if none configured.
+ * - `400 Bad Request` if the serial number is invalid.
+ * - `404 Not Found` if the problem does not exist or is unreleased for non-admins.
+ * - `500 Internal Server Error` on file read errors.
+ */
 const getAllowedLanguages = async (request: IRequest, response: Response) => {
   const serialNumber = parseInt(request.params.serialNumber);
 
@@ -1166,5 +1428,6 @@ export {
   deleteProblem,
   updateProblem,
   updateProblemWithFile,
+  getAllowedLanguages,
   generateTestcase,
 };

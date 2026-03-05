@@ -9,9 +9,6 @@ OwoJudge is a modern, open-source online judge system designed for competitive p
 - [Prerequisites](#prerequisites)
 - [Helper Scripts](#helper-scripts)
 - [Backup and Restore](#backup-and-restore)
-- [API Documentation](./docs/api.md)
-- [Database Schema](./docs/database.md)
-- [Judging Process](./docs/judger.md)
 
 ## Features
 

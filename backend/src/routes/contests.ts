@@ -1,3 +1,11 @@
+/**
+ * Contest management routes.
+ *
+ * Endpoints for creating, updating, deleting contests and viewing/recalculating standings.
+ *
+ * @module API/Contests
+ */
+
 import { Router, Response } from 'express';
 import { validationResult, checkSchema } from 'express-validator';
 import { Contest, IContest, UserStanding } from '../mongoose/schemas/contests';
@@ -12,6 +20,20 @@ import { UserRole } from '../mongoose/schemas/users';
 
 const contestsRouter = Router();
 
+/**
+ * Retrieves all contests.
+ *
+ * @route `GET /api/contests`
+ * @authentication
+ * - **Released** contests: open to all users.
+ * - **Unreleased** contests: open to JudgeAdmins and TAs.
+ *
+ * @param request - Express request with session.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with an array of contest objects, sorted newest first.
+ */
 const getAllContests = async (request: IRequest, response: Response) => {
   try {
     const user = request.user as IUser | undefined;
@@ -24,6 +46,22 @@ const getAllContests = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Retrieves a single contest by its MongoDB ObjectId.
+ *
+ * @route `GET /api/contests/:id`
+ * @authentication
+ * - **Released** contests: open to all users.
+ * - **Unreleased** contests: open to JudgeAdmins and TAs.
+ *
+ * @param request - Express request with `id` route parameter.
+ * @param response - Express response.
+ *
+ * @returns 
+ * - `200 OK` with the contest object (problems populated).
+ * - `400 Bad Request` if `id` is missing.
+ * - `404 Not Found` if the contest does not exist or is unreleased for this user.
+ */
 const getContestByID = async (request: IRequest, response: Response) => {
   const id: string | undefined = request.params?.id;
   if (!id) {
@@ -50,6 +88,62 @@ const getContestByID = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Creates a new contest.
+ *
+ * @route `POST /api/contests`
+ * @authentication Only for TAs and JudgeAdmins.
+ *
+ * @param request - Express request. Body fields:
+ *   - `title` (string) - contest title.
+ *   - `description` (string) - contest description.
+ *   - `startTime` (Date) - contest start time.
+ *   - `endTime` (Date) - contest end time.
+ *   - `submissionEndTime` (Date, optional) - deadline for late submissions.
+ *   - `problems` (ObjectId[]) - array of problem references.
+ *   - `released` (boolean, default false) - whether the contest is publicly visible.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `201 Created` with the saved contest object.
+ * - `400 Bad Request` if validation fails.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * {
+ *   "title": "Fall Programming Contest 2025",
+ *   "description": "Annual fall programming contest featuring algorithmic challenges.",
+ *   "startTime": "2025-11-01T09:00:00.000Z",
+ *   "endTime": "2025-11-01T14:00:00.000Z",
+ *   "problems": [
+ *     {
+ *       "serialNumber": 0,
+ *       "score": 100
+ *     }
+ *   ]
+ * }
+ * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb7a00b2c3d4e5f6789012",
+ *   "title": "Fall Programming Contest 2025",
+ *   "description": "Annual fall programming contest featuring algorithmic challenges.",
+ *   "startTime": "2025-11-01T09:00:00.000Z",
+ *   "endTime": "2025-11-01T14:00:00.000Z",
+ *   "problems": [
+ *     {
+ *       "serialNumber": 0,
+ *       "score": 100
+ *     }
+ *   ],
+ *   "standings": [],
+ *   "createdTime": "2025-10-24T13:30:00.000Z"
+ * }
+ * ```
+ */
 const createContest = async (request: IRequest, response: Response) => {
   const result = validationResult(request);
   if (!result.isEmpty()) {
@@ -75,6 +169,38 @@ const createContest = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Updates an existing contest.
+ *
+ * @route `PATCH /api/contests/:id`
+ * @authentication Only for TAs and JudgeAdmins.
+ *
+ * @param request - Express request with `id` route parameter and update fields in body.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the updated contest object.
+ * - `400 Bad Request` if `id` is missing or update fails.
+ * - `404 Not Found` if the contest does not exist.
+ * 
+ * @example
+ * ##### Request Body
+ * ```json
+ * {
+ *   "title": "Fall Programming Contest 2025 - Updated",
+ *   "endTime": "2025-11-01T15:00:00.000Z"
+ * }
+ * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb7a00b2c3d4e5f6789012",
+ *   "title": "Fall Programming Contest 2025 - Updated",
+ *   "endTime": "2025-11-01T15:00:00.000Z"
+ * }
+ * ```
+ */
 const updateContest = async (request: IRequest, response: Response) => {
   const id: string | undefined = request.params?.id;
   if (!id) {
@@ -95,6 +221,29 @@ const updateContest = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Deletes a contest.
+ *
+ * @route `DELETE /api/contests/:id`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request with `id` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the deleted contest object.
+ * - `400 Bad Request` if `id` is missing.
+ * - `404 Not Found` if the contest does not exist.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "_id": "68fb7a00b2c3d4e5f6789012",
+ *   "title": "Fall Programming Contest 2025"
+ * }
+ * ```
+ */
 const deleteContest = async (request: IRequest, response: Response) => {
   const id: string | undefined = request.params?.id;
   if (!id) {
@@ -114,6 +263,45 @@ const deleteContest = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Retrieves the standings for a contest.
+ * Standings are sorted by `totalScore` descending, then by `submissionCount` ascending (lower is better).
+ *
+ * @route `GET /api/contests/:id/standings`
+ *
+ * @param request - Express request with `id` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with a sorted array of {@link UserStanding} objects.
+ * - `400 Bad Request` if `id` is missing.
+ * - `404 Not Found` if the contest does not exist.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * [
+ *   {
+ *     "username": "user1",
+ *     "totalScore": 200,
+ *     "solvedCount": 2,
+ *     "problemScores": [
+ *       {
+ *         "serialNumber": 0,
+ *         "score": 100,
+ *         "lastSubmissionTime": "2025-11-01T10:00:00.000Z"
+ *       },
+ *       {
+ *         "serialNumber": 1,
+ *         "score": 100,
+ *         "lastSubmissionTime": "2025-11-01T11:00:00.000Z"
+ *       }
+ *     ],
+ *     "lastSubmissionTime": "2025-11-01T11:00:00.000Z"
+ *   }
+ * ]
+ * ```
+ */
 const getStandings = async (request: IRequest, response: Response) => {
   const id: string | undefined = request.params?.id;
   if (!id) {
@@ -146,6 +334,44 @@ const getStandings = async (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Recalculates and updates the standings for a contest.
+ * Delegates to {@link recalculateContestStandings}.
+ *
+ * @route `POST /api/contests/:id/standings/update`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request with `id` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with `{ message, standings }` on success.
+ * - `400 Bad Request` if `id` is missing.
+ * - `404 Not Found` if the contest does not exist.
+ * 
+ * @example
+ * ##### Response Body
+ * ```json
+ * {
+ *   "message": "Standings updated successfully",
+ *   "standings": [
+ *     {
+ *       "username": "user1",
+ *       "totalScore": 200,
+ *       "solvedCount": 2,
+ *       "problemScores": [
+ *         {
+ *           "serialNumber": 0,
+ *           "score": 100,
+ *           "lastSubmissionTime": "2025-11-01T10:00:00.000Z"
+ *         }
+ *       ],
+ *       "lastSubmissionTime": "2025-11-01T11:00:00.000Z"
+ *     }
+ *   ]
+ * }
+ * ```
+ */
 const updateStandings = async (request: IRequest, response: Response) => {
   const id: string | undefined = request.params?.id;
   if (!id) {
@@ -170,7 +396,7 @@ contestsRouter.get('/api/contests', getAllContests);
 contestsRouter.get('/api/contests/:id', getContestByID);
 contestsRouter.get('/api/contests/:id/standings', getStandings);
 contestsRouter.post('/api/contests', isTA, checkSchema(createContestValidation), createContest);
-contestsRouter.post('/api/contests/:id/standings/update', isAuthenticated, updateStandings);
+contestsRouter.post('/api/contests/:id/standings/update', isJudgeAdmin, updateStandings);
 contestsRouter.patch(
   '/api/contests/:id',
   isTA,
