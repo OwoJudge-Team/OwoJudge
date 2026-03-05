@@ -615,19 +615,21 @@ const removeSolvedProblemIfNeeded = async (
   });
 
   if (remainingAC === 0) {
-    user.solvedProblems = user.solvedProblems.filter(
+    const newSolvedProblems = user.solvedProblems.filter(
       (p: number) => p !== submission.problemSerialNumber
     );
-    user.solvedProblem = user.solvedProblems.length;
-    await user.save();
-
-    // Also update the problem's solved user count
+    await User.findOneAndUpdate(
+      { _id: user._id },
+      { $set: { solvedProblems: newSolvedProblems, solvedProblem: newSolvedProblems.length } }
+    );
     const distinctSolvedUsers = await Submission.distinct('username', {
       problemSerialNumber: submission.problemSerialNumber,
       status: SubmissionStatus.AC
     });
-    problem.userDetail.solved = distinctSolvedUsers.length;
-    await problem.save();
+    await Problem.findOneAndUpdate(
+      { _id: problem._id },
+      { $set: { 'userDetail.solved': distinctSolvedUsers.length } }
+    );
   }
 };
 
@@ -661,11 +663,12 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
     // If first attempt, update problem's attempted count
     if (isFirstAttempt) {
-      const distinctUsers = await Submission.distinct('username', {
-        problemSerialNumber: submission.problemSerialNumber
-      });
-      problem.userDetail.attempted = distinctUsers.length;
-      await problem.save();
+      const distinctUsers = await Submission.distinct('username', { problemSerialNumber: submission.problemSerialNumber });
+      // Use findOneAndUpdate instead of save
+      await Problem.findOneAndUpdate(
+        { _id: problem._id },
+        { $set: { 'userDetail.attempted': distinctUsers.length } }
+      );
     }
 
     submission.status = SubmissionStatus.QU;
@@ -694,9 +697,10 @@ const processSubmission = async (submissionID: string): Promise<void> => {
           await submission.save();
 
           // Update submission statistics
-          problem.submissionDetail.compilationError += 1;
-          problem.submissionDetail.submitted += 1;
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.compilationError': 1, 'submissionDetail.submitted': 1 } }
+          );
           await removeSolvedProblemIfNeeded(user, submission, problem);
           await updateContestStanding(submission);
           return;
@@ -711,13 +715,9 @@ const processSubmission = async (submissionID: string): Promise<void> => {
       submission.results = groupedResults;
       await submission.save();
 
-      // Update submission statistics based on final status
-      problem.submissionDetail.submitted += 1;
-
+      // Update submission statistics based on final status using findOneAndUpdate
       switch (finalStatus) {
         case SubmissionStatus.AC:
-          problem.submissionDetail.accepted += 1;
-
           // Check if this is the user's first AC on this problem
           const previousAC = await Submission.countDocuments({
             username: submission.username,
@@ -725,50 +725,71 @@ const processSubmission = async (submissionID: string): Promise<void> => {
             status: SubmissionStatus.AC,
             _id: { $ne: submissionID }
           });
-
           if (previousAC === 0) {
             // First time solving this problem
             const distinctSolvedUsers = await Submission.distinct('username', {
-              problemSerialNumber: submission.problemSerialNumber,
-              status: SubmissionStatus.AC
+              problemSerialNumber: submission.problemSerialNumber, status: SubmissionStatus.AC
             });
-            problem.userDetail.solved = distinctSolvedUsers.length;
-            await problem.save();
-
+            await Problem.findOneAndUpdate(
+              { _id: problem._id },
+              {
+                $set: { 'userDetail.solved': distinctSolvedUsers.length },
+                $inc: { 'submissionDetail.accepted': 1, 'submissionDetail.submitted': 1 }
+              }
+            );
             // Update user statistics
-            if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
-              user.solvedProblems.push(submission.problemSerialNumber);
+            const newSolvedProblems = [...user.solvedProblems];
+            if (!newSolvedProblems.includes(submission.problemSerialNumber)) {
+              newSolvedProblems.push(submission.problemSerialNumber);
             }
-            user.solvedProblem = user.solvedProblems.length;
-            await user.save();
+            await User.findOneAndUpdate(
+              { _id: user._id },
+              { $set: { solvedProblems: newSolvedProblems, solvedProblem: newSolvedProblems.length } }
+            );
           } else {
-            await problem.save();
+            await Problem.findOneAndUpdate(
+              { _id: problem._id },
+              { $inc: { 'submissionDetail.accepted': 1, 'submissionDetail.submitted': 1 } }
+            );
           }
           break;
         case SubmissionStatus.WA:
-          problem.submissionDetail.wrongAnswer += 1;
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.wrongAnswer': 1, 'submissionDetail.submitted': 1 } }
+          );
           break;
         case SubmissionStatus.TLE:
-          problem.submissionDetail.timeLimitExceeded += 1;
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.timeLimitExceeded': 1, 'submissionDetail.submitted': 1 } }
+          );
           break;
         case SubmissionStatus.MLE:
-          problem.submissionDetail.memoryLimitExceeded += 1;
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.memoryLimitExceeded': 1, 'submissionDetail.submitted': 1 } }
+          );
           break;
         case SubmissionStatus.RE:
-          problem.submissionDetail.runtimeError += 1;
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.runtimeError': 1, 'submissionDetail.submitted': 1 } }
+          );
           break;
         case SubmissionStatus.PE:
           // PE doesn't have a specific counter, treat as wrong answer
-          problem.submissionDetail.wrongAnswer += 1;
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.wrongAnswer': 1, 'submissionDetail.submitted': 1 } }
+          );
           break;
         default:
           // For SE, PS and other statuses
-          await problem.save();
+          await Problem.findOneAndUpdate(
+            { _id: problem._id },
+            { $inc: { 'submissionDetail.submitted': 1 } }
+          );
           break;
       }
 
