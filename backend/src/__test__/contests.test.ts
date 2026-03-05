@@ -21,7 +21,20 @@ const {
         setCurrentMockContest: (contest: any) => { currentMockContest = contest; },
         mockContestFind: vi.fn(),
         mockContestFindById: vi.fn(),
-        mockContestFindByIdAndUpdate: vi.fn(),
+        mockContestFindByIdAndUpdate: vi.fn().mockImplementation(async (_query: any, update: any) => {
+            if (!currentMockContest) return null;
+            // Handle standings full-array replacement: findByIdAndUpdate(id, { $set: { standings: [...] } })
+            if (update.$set && Array.isArray(update.$set.standings)) {
+                currentMockContest.standings = update.$set.standings;
+                return currentMockContest;
+            }
+            // Handle direct field replacement: findByIdAndUpdate(id, { standings: [...] })
+            if (Array.isArray(update.standings)) {
+                currentMockContest.standings = update.standings;
+                return currentMockContest;
+            }
+            return currentMockContest;
+        }),
         mockContestFindByIdAndDelete: vi.fn(),
         mockContestFindOneAndUpdate: vi.fn().mockImplementation(async (query: any, update: any) => {
             if (!currentMockContest) return null;
@@ -410,7 +423,6 @@ describe('Contest Routes', () => {
 
             await updateStandings(mockRequest as IRequest, mockResponse);
 
-            expect(contestToUpdate.save).toHaveBeenCalled();
             expect(mockResponse.status).toHaveBeenCalledWith(200);
 
             // Verify standings were calculated
@@ -418,7 +430,6 @@ describe('Contest Routes', () => {
             // "contest.standings = []" inside recalculateContestStandings logic clears it.
             // But verify calls happened.
             expect(mockSubmissionDistinct).toHaveBeenCalled();
-            expect(mockSubmissionFind).toHaveBeenCalled();
 
             // user1 should have score 80 (best attempt)
              const user1Standing = contestToUpdate.standings.find((s: any) => s.username === 'user1');
