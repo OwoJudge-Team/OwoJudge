@@ -604,10 +604,6 @@ const removeSolvedProblemIfNeeded = async (
   submission: ISubmission,
   problem: IProblem
 ): Promise<void> => {
-  if (!user.solvedProblems.includes(submission.problemSerialNumber)) {
-    return;
-  }
-
   const remainingAC = await Submission.countDocuments({
     username: submission.username,
     problemSerialNumber: submission.problemSerialNumber,
@@ -615,12 +611,12 @@ const removeSolvedProblemIfNeeded = async (
   });
 
   if (remainingAC === 0) {
-    const newSolvedProblems = user.solvedProblems.filter(
-      (p: number) => p !== submission.problemSerialNumber
-    );
     await User.findOneAndUpdate(
       { _id: user._id },
-      { $set: { solvedProblems: newSolvedProblems, solvedProblem: newSolvedProblems.length } }
+      [
+        { $set: { solvedProblems: { $filter: { input: '$solvedProblems', cond: { $ne: ['$$this', submission.problemSerialNumber] } } } } },
+        { $set: { solvedProblem: { $size: '$solvedProblems' } } }
+      ]
     );
     const distinctSolvedUsers = await Submission.distinct('username', {
       problemSerialNumber: submission.problemSerialNumber,
@@ -737,14 +733,12 @@ const processSubmission = async (submissionID: string): Promise<void> => {
                 $inc: { 'submissionDetail.accepted': 1, 'submissionDetail.submitted': 1 }
               }
             );
-            // Update user statistics
-            const newSolvedProblems = [...user.solvedProblems];
-            if (!newSolvedProblems.includes(submission.problemSerialNumber)) {
-              newSolvedProblems.push(submission.problemSerialNumber);
-            }
             await User.findOneAndUpdate(
               { _id: user._id },
-              { $set: { solvedProblems: newSolvedProblems, solvedProblem: newSolvedProblems.length } }
+              [
+                { $set: { solvedProblems: { $setUnion: ['$solvedProblems', [submission.problemSerialNumber]] } } },
+                { $set: { solvedProblem: { $size: '$solvedProblems' } } }
+              ]
             );
           } else {
             await Problem.findOneAndUpdate(
