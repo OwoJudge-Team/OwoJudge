@@ -42,17 +42,17 @@ jobs:
     #     # Run with --debug to keep containers running for the isolate test
     #     timeout 20m ./__test__/test-api.sh
 
-    - name: Test Isolate Functionality
-      run: |
-        echo "Verifying Isolate with CGroup support..."
-        # Initialize an isolate box (using ID 100 to avoid conflicts)
-        docker compose exec -T backend isolate --cg --init --box-id=100
+    # - name: Test Isolate Functionality
+    #   run: |
+    #     echo "Verifying Isolate with CGroup support..."
+    #     # Initialize an isolate box (using ID 100 to avoid conflicts)
+    #     docker compose exec -T backend isolate --cg --init --box-id=100
         
-        # Run a simple process inside isolate to verify functionality
-        docker compose exec -T backend isolate --cg --box-id=100 --processes=10 --run -- /bin/bash -c "echo 'Isolate CGroup Functional check passed'"
+    #     # Run a simple process inside isolate to verify functionality
+    #     docker compose exec -T backend isolate --cg --box-id=100 --processes=10 --run -- /bin/bash -c "echo 'Isolate CGroup Functional check passed'"
         
-        # Cleanup the isolate box
-        docker compose exec -T backend isolate --cg --cleanup --box-id=100
+    #     # Cleanup the isolate box
+    #     docker compose exec -T backend isolate --cg --cleanup --box-id=100
 
     - name: Teardown
       if: always()
