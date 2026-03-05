@@ -22,7 +22,8 @@ const announcementRouter = Router();
  * @param request - Express request.
  * @param response - Express response.
  *
- * @returns `200 OK` with an array of announcement objects.
+ * @returns
+ * - `200 OK` with an array of announcement objects.
  * 
  * @example
  * ##### Response Body
@@ -55,8 +56,9 @@ const getAnnouncements = async (request: IRequest, response: Response) => {
  * @param request - Express request with `id` route parameter.
  * @param response - Express response.
  *
- * @returns `200 OK` with the announcement object.
- * @returns `404 Not Found` if the announcement does not exist.
+ * @returns
+ * - `200 OK` with the announcement object.
+ * - `404 Not Found` if the announcement does not exist.
  * 
  * @example
  * ```json
@@ -93,8 +95,9 @@ const getAnnouncementByID = async (request: IRequest, response: Response) => {
  *   - `content` (string) - announcement body.
  * @param response - Express response.
  *
- * @returns `201 Created` with the saved announcement object.
- * @returns `400 Bad Request` if validation fails.
+ * @returns
+ * - `201 Created` with the saved announcement object.
+ * - `400 Bad Request` if validation fails.
  * 
  * @example
  * ##### Request Body
@@ -139,9 +142,10 @@ const createAnnouncement = async (request: IRequest, response: Response) => {
  *   - `content` (string, optional) - new content.
  * @param response - Express response.
  *
- * @returns `200 OK` with the updated announcement object.
- * @returns `400 Bad Request` if validation fails.
- * @returns `404 Not Found` if the announcement does not exist.
+ * @returns
+ * - `200 OK` with the updated announcement object.
+ * - `400 Bad Request` if validation fails.
+ * - `404 Not Found` if the announcement does not exist.
  * 
  * @example
  * ```json
