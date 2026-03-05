@@ -3,7 +3,7 @@
  *
  * Endpoints for creating and querying code submissions.
  *
- * @module Submissions
+ * @module API/Submissions
  */
 
 import { Router, Response } from 'express';

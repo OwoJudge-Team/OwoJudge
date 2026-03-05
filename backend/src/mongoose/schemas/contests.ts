@@ -4,7 +4,7 @@
  * Defines the Mongoose schema and model for programming contests,
  * including embedded problem lists and live standings.
  *
- * @module ContestSchema
+ * @module Schemas/Contest
  */
 
 import mongoose, { Document, Schema } from 'mongoose';

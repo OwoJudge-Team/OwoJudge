@@ -3,7 +3,7 @@
  *
  * Defines the Mongoose schema and model for announcements.
  *
- * @module AnnouncementSchema
+ * @module Schemas/Announcement
  */
 
 import mongoose, { ObjectId } from 'mongoose';

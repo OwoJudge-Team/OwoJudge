@@ -4,7 +4,7 @@
  * Endpoints for retriggering judgement on existing submissions, individually or in batch.
  * All endpoints require JudgeAdmin privileges.
  *
- * @module Rejudge
+ * @module API/Rejudge
  */
 
 import { Router, Response } from 'express';

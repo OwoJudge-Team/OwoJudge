@@ -3,7 +3,7 @@
  *
  * Endpoints for creating, reading, updating, and deleting user accounts.
  *
- * @module Users
+ * @module API/Users
  */
 
 import { Router, Request, Response } from 'express';

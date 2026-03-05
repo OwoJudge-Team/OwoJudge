@@ -3,7 +3,7 @@
  *
  * Endpoints for creating, reading, and updating announcements.
  *
- * @module Announcements
+ * @module API/Announcements
  */
 
 import { Router, Response } from 'express';

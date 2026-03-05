@@ -4,7 +4,7 @@
  * Defines the Mongoose schema and model for programming problems,
  * including testcase metadata, score policies, and submission/user statistics.
  *
- * @module ProblemSchema
+ * @module Schemas/Problem
  */
 
 import mongoose, { Document, Schema } from 'mongoose';

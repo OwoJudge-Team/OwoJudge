@@ -3,7 +3,7 @@
  *
  * Authentication is handled via session cookies. Most endpoints require a user to be logged in.
  *
- * @module Auth
+ * @module API/Auth
  */
 
 import { Router, Response } from 'express';

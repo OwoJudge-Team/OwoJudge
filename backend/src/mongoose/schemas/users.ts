@@ -4,7 +4,7 @@
  * Defines the Mongoose schema and model for user accounts,
  * including roles, Gitea integration fields, and submission quota tracking.
  *
- * @module UserSchema
+ * @module Schemas/User
  */
 
 import mongoose, { ObjectId } from 'mongoose';

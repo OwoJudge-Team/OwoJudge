@@ -3,7 +3,7 @@
  *
  * Endpoints for creating, updating, deleting contests and viewing/recalculating standings.
  *
- * @module Contests
+ * @module API/Contests
  */
 
 import { Router, Response } from 'express';

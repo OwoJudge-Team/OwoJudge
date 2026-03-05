@@ -4,7 +4,7 @@
  * Provides an auto-increment counter collection used by other schemas
  * (e.g. {@link IProblem | Problem}) to generate sequential serial numbers.
  *
- * @module CounterSchema
+ * @module Schemas/Counter
  */
 
 import mongoose, { Schema, Document } from 'mongoose';

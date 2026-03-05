@@ -4,7 +4,7 @@
  * Endpoints for creating, reading, updating, and deleting programming problems,
  * as well as generating test cases and querying allowed languages.
  *
- * @module Problems
+ * @module API/Problems
  */
 
 import { Router, Request, Response } from "express";

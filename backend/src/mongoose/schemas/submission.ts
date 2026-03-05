@@ -4,7 +4,7 @@
  * Defines the Mongoose schema and model for code submissions,
  * including user solution files, judge results, and auto-increment serial numbers.
  *
- * @module SubmissionSchema
+ * @module Schemas/Submission
  */
 
 import mongoose, { Schema, model, Document } from 'mongoose';
