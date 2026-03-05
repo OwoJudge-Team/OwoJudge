@@ -1,3 +1,12 @@
+/**
+ * Rejudge routes.
+ *
+ * Endpoints for retriggering judgement on existing submissions, individually or in batch.
+ * All endpoints require JudgeAdmin privileges.
+ *
+ * @module API/Rejudge
+ */
+
 import { Router, Response } from 'express';
 import { Submission, ISubmission } from '../mongoose/schemas/submission';
 import { SubmissionStatus } from '../utils/submission-status';
@@ -9,6 +18,31 @@ import { isJudgeAdmin } from '../middleware/auth';
 
 const rejudgeRouter: Router = Router();
 
+/**
+ * Batch rejudge multiple submissions by serial numbers.
+ * Resets each submission’s status to `PD`, score to 0, clears results,
+ * and re-queues it for judging.
+ *
+ * @route `POST /api/rejudge/submissions`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request. Body must contain:
+ *   - `serialNumbers` (number[]) — array of submission serial numbers to rejudge.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with a message indicating how many submissions were rejudged.
+ * - `400 Bad Request` if `serialNumbers` is not an array.
+ * - `404 Not Found` if no matching submissions exist.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * {
+ *   "serialNumbers": [100, 101, 102]
+ * }
+ * ```
+ */
 export const rejudgeSubmissions = async (request: IRequest, response: Response): Promise<void> => {
   const { serialNumbers } = request.body;
 
@@ -40,6 +74,31 @@ export const rejudgeSubmissions = async (request: IRequest, response: Response):
   }
 };
 
+/**
+ * Batch rejudge all submissions for the given problem serial numbers.
+ * Finds every submission associated with the specified problems, resets them,
+ * and re-queues them for judging.
+ *
+ * @route `POST /api/rejudge/problems`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request. Body must contain:
+ *   - `serialNumbers` (number[]) — array of problem serial numbers.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with a message indicating counts of rejudged submissions and problems.
+ * - `400 Bad Request` if `serialNumbers` is not an array.
+ * - `404 Not Found` if no matching problems exist.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * {
+ *   "serialNumbers": [1, 2]
+ * }
+ * ```
+ */
 export const rejudgeProblems = async (request: IRequest, response: Response): Promise<void> => {
   const { serialNumbers } = request.body;
 
@@ -77,6 +136,19 @@ export const rejudgeProblems = async (request: IRequest, response: Response): Pr
   }
 };
 
+/**
+ * Rejudge a single submission by its serial number.
+ *
+ * @route `POST /api/rejudge/submission/:serialNumber`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request with `serialNumber` route parameter.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with the updated submission object.
+ * - `404 Not Found` if the submission does not exist.
+ */
 export const rejudgeSubmission = async (request: IRequest, response: Response): Promise<void> => {
   const { serialNumber } = request.params;
 
@@ -101,6 +173,20 @@ export const rejudgeSubmission = async (request: IRequest, response: Response): 
   }
 };
 
+/**
+ * Rejudge all submissions for a single problem.
+ *
+ * @route `POST /api/rejudge/problem/:serialNumber`
+ * @authentication Only for JudgeAdmins.
+ *
+ * @param request - Express request with `serialNumber` route parameter (problem serial number).
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with a message indicating how many submissions were rejudged.
+ * - `400 Bad Request` if `serialNumber` is not a valid number.
+ * - `404 Not Found` if the problem does not exist.
+ */
 export const rejudgeProblem = async (request: IRequest, response: Response): Promise<void> => {
   const serialNumber = parseInt(request.params.serialNumber);
 

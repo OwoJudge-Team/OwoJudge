@@ -1,11 +1,46 @@
+/**
+ * User schema module.
+ *
+ * Defines the Mongoose schema and model for user accounts,
+ * including roles, Gitea integration fields, and submission quota tracking.
+ *
+ * @module Schemas/User
+ */
+
 import mongoose, { ObjectId } from 'mongoose';
 
+/**
+ * Enumeration of user roles.
+ *
+ * | Role           | Value          | Permissions                            |
+ * |----------------|----------------|----------------------------------------|
+ * | `Student`      | `"student"`    | Submit solutions, view own submissions |
+ * | `TA`           | `"ta"`         | Manage problems, view all submissions  |
+ * | `JudgeAdmin`   | `"judgeAdmin"` | Full administrative access              |
+ */
 export enum UserRole {
   Student = 'student',
   TA = 'ta',
   JudgeAdmin = 'judgeAdmin'
 }
 
+/**
+ * Represents a user document in MongoDB.
+ *
+ * @property username - Unique login name.
+ * @property displayName - Name shown in the UI.
+ * @property password - Hashed password (SHA-256 + salt).
+ * @property role - One of {@link UserRole}.
+ * @property solvedProblem - Total count of distinct solved problems.
+ * @property solvedProblems - Array of solved problem serial numbers.
+ * @property rating - User's rating score.
+ * @property gitPublicKey - SSH public key for Gitea integration.
+ * @property studentId - Student ID (unique, sparse index).
+ * @property giteaId - Corresponding Gitea user ID.
+ * @property gitSshUrl - Git SSH clone URL for the user's solution repository.
+ * @property id - MongoDB ObjectId.
+ * @property quotaUsage - Per-problem daily submission quota tracking map.
+ */
 interface IUser extends mongoose.Document {
   username: string;
   displayName: string;
@@ -22,6 +57,26 @@ interface IUser extends mongoose.Document {
   quotaUsage: Map<string, { count: number; date: Date }>;
 }
 
+/**
+ * Mongoose schema for {@link IUser}.
+ *
+ * Collection: `users`
+ *
+ * | Field            | Type     | Required | Default     | Unique  | Notes                              |
+ * |------------------|----------|----------|-------------|---------|------------------------------------|
+ * | `username`       | `String` | Yes      | —           | Yes     | Login name                         |
+ * | `displayName`    | `String` | Yes      | —           | No      | Display name                       |
+ * | `password`       | `String` | Yes      | —           | No      | Hashed password                    |
+ * | `role`           | `String` | Yes      | `"student"` | No      | {@link UserRole} enum value        |
+ * | `solvedProblem`  | `Number` | Yes      | `0`         | No      | Solved problem count               |
+ * | `solvedProblems` | `Array`  | Yes      | `[]`        | No      | Solved problem serial numbers      |
+ * | `rating`         | `Number` | Yes      | `0`         | No      | User rating                        |
+ * | `gitPublicKey`   | `String` | No       | —           | No      | SSH public key                     |
+ * | `studentId`      | `String` | No       | —           | Sparse  | Student ID                         |
+ * | `giteaId`        | `Number` | No       | —           | Sparse  | Gitea user ID                      |
+ * | `gitSshUrl`      | `String` | No       | —           | No      | Git SSH URL                        |
+ * | `quotaUsage`     | `Map`    | No       | `{}`        | No      | Daily submission quota per problem  |
+ */
 const userSchema = new mongoose.Schema<IUser>({
   username: {
     type: mongoose.Schema.Types.String,
@@ -87,5 +142,6 @@ const userSchema = new mongoose.Schema<IUser>({
   }
 });
 
+/** Mongoose model for the `users` collection. */
 export const User = mongoose.model<IUser>('User', userSchema);
-export { IUser };
+export { IUser, userSchema };
