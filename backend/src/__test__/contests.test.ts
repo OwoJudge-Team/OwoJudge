@@ -6,22 +6,44 @@ import { UserRole } from '../mongoose/schemas/users';
 
 // Use vi.hoisted to properly hoist mock function declarations
 const {
+    setCurrentMockContest,
     mockContestFind,
     mockContestFindById,
     mockContestFindByIdAndUpdate,
     mockContestFindByIdAndDelete,
+    mockContestFindOneAndUpdate,
     mockSubmissionFind,
     mockSubmissionDistinct,
     mockContestSave
-} = vi.hoisted(() => ({
-    mockContestFind: vi.fn(),
-    mockContestFindById: vi.fn(),
-    mockContestFindByIdAndUpdate: vi.fn(),
-    mockContestFindByIdAndDelete: vi.fn(),
-    mockSubmissionFind: vi.fn(),
-    mockSubmissionDistinct: vi.fn(),
-    mockContestSave: vi.fn()
-}));
+} = vi.hoisted(() => {
+    let currentMockContest: any = null;
+    return {
+        setCurrentMockContest: (contest: any) => { currentMockContest = contest; },
+        mockContestFind: vi.fn(),
+        mockContestFindById: vi.fn(),
+        mockContestFindByIdAndUpdate: vi.fn(),
+        mockContestFindByIdAndDelete: vi.fn(),
+        mockContestFindOneAndUpdate: vi.fn().mockImplementation(async (query: any, update: any) => {
+            if (!currentMockContest) return null;
+            if (update.$push && update.$push.standings) {
+                currentMockContest.standings.push(update.$push.standings);
+                return currentMockContest;
+            }
+            if (update.$set && update.$set['standings.$']) {
+                const username = query['standings.username'];
+                const idx = currentMockContest.standings.findIndex((s: any) => s.username === username);
+                if (idx !== -1) {
+                    currentMockContest.standings[idx] = update.$set['standings.$'];
+                    return currentMockContest;
+                }
+            }
+            return null;
+        }),
+        mockSubmissionFind: vi.fn(),
+        mockSubmissionDistinct: vi.fn(),
+        mockContestSave: vi.fn()
+    };
+});
 
 // Mock Contest model - handles both direct findById and findById().populate() patterns
 vi.mock('../mongoose/schemas/contests', () => {
@@ -42,6 +64,7 @@ vi.mock('../mongoose/schemas/contests', () => {
         };
     };
     ContestMock.findByIdAndUpdate = mockContestFindByIdAndUpdate;
+    ContestMock.findOneAndUpdate = mockContestFindOneAndUpdate;
     ContestMock.findByIdAndDelete = mockContestFindByIdAndDelete;
 
     return {
@@ -305,7 +328,7 @@ describe('Contest Routes', () => {
             expect(mockResponse.status).toHaveBeenCalledWith(200);
             // Verify standings are sorted: user3 (100, count 2), user2 (100, count 5), user1 (50, count 1)
             const sentStandings = (mockResponse.send as any).mock.calls[0][0];
-            expect(sentStandings[0].username).toBe('user3'); // 100 points, lower count
+            console.log('SENT STANDINGS:', sentStandings); expect(sentStandings[0].username).toBe('user3'); // 100 points, lower count
             expect(sentStandings[1].username).toBe('user2'); // 100 points, higher count
             expect(sentStandings[2].username).toBe('user1'); // 50 points
         });
@@ -360,6 +383,7 @@ describe('Contest Routes', () => {
                 problems: [{ serialNumber: 1, score: 100 }, { serialNumber: 2, score: 100 }],
                 standings: []
             });
+            setCurrentMockContest(contestToUpdate);
             mockContestFindById.mockResolvedValue(contestToUpdate);
             // Mock submission usernames for distinct
             mockSubmissionDistinct.mockResolvedValue(['user1', 'user2']);
