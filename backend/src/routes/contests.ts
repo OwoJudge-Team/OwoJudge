@@ -25,8 +25,8 @@ const contestsRouter = Router();
  *
  * @route `GET /api/contests`
  * @authentication
- *   - **Released** contests: open to all users.
- *   - **Unreleased** contests: open to JudgeAdmins and TAs.
+ * - **Released** contests: open to all users.
+ * - **Unreleased** contests: open to JudgeAdmins and TAs.
  *
  * @param request - Express request with session.
  * @param response - Express response.
@@ -51,8 +51,8 @@ const getAllContests = async (request: IRequest, response: Response) => {
  *
  * @route `GET /api/contests/:id`
  * @authentication
- *   - **Released** contests: open to all users.
- *   - **Unreleased** contests: open to JudgeAdmins and TAs.
+ * - **Released** contests: open to all users.
+ * - **Unreleased** contests: open to JudgeAdmins and TAs.
  *
  * @param request - Express request with `id` route parameter.
  * @param response - Express response.
