@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "tsx ./src/index.ts",
     "start:prod": "node ./dist/index.js",
-    "dev": "tsx ./test-multer.ts"
+    "dev": "tsx ./test-multer.ts",
+    "build-docs": "typedoc"
   },
   "repository": {
     "type": "git",

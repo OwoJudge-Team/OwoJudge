@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/tsdoc",
+  "plugin": [],
+  "theme": "default",
+  "name": "OwoJudge Documentation",
+  "includeVersion": true,
+  "readme": "README.md"
+}
