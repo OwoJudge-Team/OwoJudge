@@ -1,9 +1,19 @@
 {
-  "entryPoints": ["src/index.ts"],
+  "entryPoints": [
+    "src/routes/auth.ts",
+    "src/routes/users.ts",
+    "src/routes/problems.ts",
+    "src/routes/submission.ts",
+    "src/routes/contests.ts",
+    "src/routes/rejudge.ts",
+    "src/routes/announcement.ts"
+  ],
   "out": "docs/tsdoc",
   "plugin": [],
   "theme": "default",
-  "name": "OwoJudge Documentation",
+  "name": "OwoJudge API Documentation",
   "includeVersion": true,
-  "readme": "README.md"
+  "readme": "README.md",
+  "categoryOrder": ["Auth", "Users", "Problems", "Submissions", "Contests", "Rejudge", "Announcements"],
+  "sort": ["source-order"]
 }

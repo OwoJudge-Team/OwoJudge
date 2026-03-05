@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json/tsdoc/v0/tsdoc.schema.json",
+  "tagDefinitions": [
+    {
+      "tagName": "@route",
+      "syntaxKind": "block"
+    },
+    {
+      "tagName": "@authentication",
+      "syntaxKind": "block"
+    }
+  ]
+}
