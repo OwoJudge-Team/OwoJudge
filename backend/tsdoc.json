@@ -8,6 +8,14 @@
     {
       "tagName": "@authentication",
       "syntaxKind": "block"
+    },
+    {
+      "tagName": "@module",
+      "syntaxKind": "block"
+    },
+    {
+      "tagName": "@property",
+      "syntaxKind": "block"
     }
   ]
 }

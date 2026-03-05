@@ -6,7 +6,13 @@
     "src/routes/submission.ts",
     "src/routes/contests.ts",
     "src/routes/rejudge.ts",
-    "src/routes/announcement.ts"
+    "src/routes/announcement.ts",
+    "src/mongoose/schemas/announcement.ts",
+    "src/mongoose/schemas/contests.ts",
+    "src/mongoose/schemas/counters.ts",
+    "src/mongoose/schemas/problems.ts",
+    "src/mongoose/schemas/submission.ts",
+    "src/mongoose/schemas/users.ts"
   ],
   "out": "docs/tsdoc",
   "plugin": [],
