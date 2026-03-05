@@ -122,18 +122,6 @@ const getStandings = async (request: IRequest, response: Response) => {
   }
 
   try {
-    const contest = await recalculateContestStandings(id);
-    response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
-  } catch (error) {
-    console.log(error);
-    if (error instanceof Error && error.message === 'Contest not found') {
-      response.sendStatus(404);
-      return;
-    }
-    response.status(500).send(error);
-  }
-
-  try {
     const contest: IContest | null = await Contest.findById(id);
     if (!contest) {
       response.sendStatus(404);

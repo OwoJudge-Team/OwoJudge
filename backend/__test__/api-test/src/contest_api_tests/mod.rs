@@ -445,7 +445,7 @@ async fn test_contest_standings_logic() {
         .send()
         .await
         .expect("Failed to create contest");
-    assert_eq!(res.status(), StatusCode::CREATED);
+    assert_eq!(res.status(), StatusCode::CREATED, "Failed to create contest");
     
     let created_contest: Value = res.json().await.unwrap();
     let contest_id = created_contest["_id"].as_str().unwrap().to_string();
@@ -515,7 +515,7 @@ async fn test_contest_standings_logic() {
     // 9. Fetch Standings
     let res = client.get(&format!("http://localhost:8787/api/contests/{}/standings", contest_id))
         .send().await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::OK, "Should be able to fetch standing");
     
     let standings: Value = res.json().await.unwrap();
     let rows = standings.as_array().expect("Standings should be array");
