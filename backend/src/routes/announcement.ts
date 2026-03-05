@@ -89,8 +89,8 @@ const getAnnouncementByID = async (request: IRequest, response: Response) => {
  * @authentication Required. TA or JudgeAdmin only.
  *
  * @param request - Express request. Body must contain:
- *   - `topic` (string) — announcement topic / title.
- *   - `content` (string) — announcement body.
+ *   - `topic` (string) - announcement topic / title.
+ *   - `content` (string) - announcement body.
  * @param response - Express response.
  *
  * @returns `201 Created` with the saved announcement object.
@@ -135,8 +135,8 @@ const createAnnouncement = async (request: IRequest, response: Response) => {
  * @authentication Required. TA or JudgeAdmin only.
  *
  * @param request - Express request with `id` route parameter. Body may contain:
- *   - `topic` (string, optional) — new topic.
- *   - `content` (string, optional) — new content.
+ *   - `topic` (string, optional) - new topic.
+ *   - `content` (string, optional) - new content.
  * @param response - Express response.
  *
  * @returns `200 OK` with the updated announcement object.
