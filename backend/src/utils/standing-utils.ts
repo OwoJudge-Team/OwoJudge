@@ -152,5 +152,7 @@ export const recalculateContestStandings = async (contestId: string) => {
         }
     }
 
-    return contest;
+    // Refresh the contest from the database to get the updated standings
+    const updatedContest = await Contest.findById(contestId);
+    return updatedContest || contest;
 };
