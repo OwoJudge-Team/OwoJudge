@@ -119,7 +119,8 @@ import {
     deleteContest,
     getStandings,
     updateStandings,
-    useGoldenMedal
+    useGoldenMedal,
+    batchUseGoldenMedal
 } from '../routes/contests';
 
 // Helper to create mock response
@@ -868,6 +869,241 @@ describe('Contest Routes', () => {
             // user2 should have score 100
             const user2Standing = contestToUpdate.standings.find((s: any) => s.username === 'user2');
             expect(user2Standing?.totalScore).toBe(100);
+        });
+    });
+
+    describe('batchUseGoldenMedal', () => {
+        const END_TIME = new Date('2025-01-01T03:00:00Z');
+
+        const makeStanding = (goldenMedalCount: number) => ({
+            username: 'testuser',
+            totalScore: 0,
+            solvedCount: 0,
+            goldenMedalCount,
+            problemScores: [],
+            submissionCount: 0
+        });
+
+        it('should return 400 if body is not a plain object', async () => {
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: [{ contestId: 1 }]
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 400 if any count is negative', async () => {
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: -1 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 400 if any count is a non-integer', async () => {
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 1.5 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 400 if any count exceeds the per-contest cap of 8', async () => {
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 9 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 400 if the total across all contests exceeds 8', async () => {
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 5, c2: 4 } // total = 9
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 404 if a contest is not found', async () => {
+            mockContestFindById.mockResolvedValue(null);
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { 'nonexistent': 2 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(404);
+        });
+
+        it('should return 400 if canApplyGM is false on a contest', async () => {
+            mockContestFindById.mockResolvedValue(createMockContest({ canApplyGM: false }));
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { contest1: 2 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 404 if user has no standing in a contest', async () => {
+            mockContestFindById.mockResolvedValue(createMockContest({ canApplyGM: true, standings: [] }));
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { contest1: 2 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(404);
+        });
+
+        it('should return 200 with empty body (no contests specified)', async () => {
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: {}
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(200);
+            expect((mockResponse.send as any).mock.calls[0][0]).toEqual({});
+        });
+
+        it('should allocate GMs to a single contest and return updated standing', async () => {
+            // 1 day late; with 1 GM → delay 0 → no penalty → score 100
+            const LATE_TIME = new Date(END_TIME.getTime() + 86400 * 1000);
+            const contest = createMockContest({
+                _id: 'c1',
+                canApplyGM: true,
+                endTime: END_TIME,
+                standings: [makeStanding(0)]
+            });
+            setCurrentMockContest(contest);
+            mockContestFindById.mockResolvedValue(contest);
+            mockSubmissionFind.mockResolvedValue([
+                { username: 'testuser', problemSerialNumber: 1, score: 100, status: SubmissionStatus.AC, createdAt: LATE_TIME }
+            ]);
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 1 }
+            };
+
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(200);
+            const body = (mockResponse.send as any).mock.calls[0][0];
+            expect(body).toHaveProperty('c1');
+            expect(body.c1.goldenMedalCount).toBe(1);
+            expect(body.c1.standing.totalScore).toBeCloseTo(100);
+        });
+
+        it('should allocate GMs across two contests independently', async () => {
+            // contest1: 1 day late, 1 GM → no penalty → 100
+            // contest2: 2 days late, 2 GMs → no penalty → 100
+            const ONE_DAY_LATE  = new Date(END_TIME.getTime() + 1 * 86400 * 1000);
+            const TWO_DAYS_LATE = new Date(END_TIME.getTime() + 2 * 86400 * 1000);
+
+            const contest1 = createMockContest({
+                _id: 'c1',
+                canApplyGM: true,
+                endTime: END_TIME,
+                standings: [makeStanding(0)]
+            });
+            const contest2 = createMockContest({
+                _id: 'c2',
+                canApplyGM: true,
+                endTime: END_TIME,
+                standings: [makeStanding(0)]
+            });
+
+            // Sequence: findById(c1), findById(c1 updated), findById(c2), findById(c2 updated)
+            mockContestFindById
+                .mockResolvedValueOnce(contest1)
+                .mockResolvedValueOnce(contest1)
+                .mockResolvedValueOnce(contest2)
+                .mockResolvedValueOnce(contest2);
+
+            // Override findOneAndUpdate to update the right contest by _id
+            mockContestFindOneAndUpdate.mockImplementation(async (query: any, update: any) => {
+                const targetContest = query._id?.toString() === 'c1' ? contest1 : contest2;
+                if (update.$set?.['standings.$']) {
+                    const idx = targetContest.standings.findIndex((s: any) => s.username === query['standings.username']);
+                    if (idx !== -1) targetContest.standings[idx] = update.$set['standings.$'];
+                    return targetContest;
+                }
+                if (update.$push?.standings) {
+                    targetContest.standings.push(update.$push.standings);
+                    return targetContest;
+                }
+                return null;
+            });
+
+            mockSubmissionFind
+                .mockResolvedValueOnce([
+                    { username: 'testuser', problemSerialNumber: 1, score: 100, status: SubmissionStatus.AC, createdAt: ONE_DAY_LATE }
+                ])
+                .mockResolvedValueOnce([
+                    { username: 'testuser', problemSerialNumber: 1, score: 100, status: SubmissionStatus.AC, createdAt: TWO_DAYS_LATE }
+                ]);
+
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 1, c2: 2 }
+            };
+
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(200);
+            const body = (mockResponse.send as any).mock.calls[0][0];
+            expect(body).toHaveProperty('c1');
+            expect(body).toHaveProperty('c2');
+            expect(body.c1.goldenMedalCount).toBe(1);
+            expect(body.c2.goldenMedalCount).toBe(2);
+            // Both delays cancelled by matching number of GMs → no penalty → score 100 each
+            expect(body.c1.standing.totalScore).toBeCloseTo(100);
+            expect(body.c2.standing.totalScore).toBeCloseTo(100);
+        });
+
+        it('should stop and return 404 if a later contest in the map is not found', async () => {
+            const contest1 = createMockContest({ _id: 'c1', canApplyGM: true, standings: [makeStanding(0)] });
+            setCurrentMockContest(contest1);
+            mockSubmissionFind.mockResolvedValue([]);
+            mockContestFindById
+                .mockResolvedValueOnce(contest1) // c1 found
+                .mockResolvedValueOnce(contest1) // c1 after update
+                .mockResolvedValueOnce(null);    // c2 not found
+
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 1, c2: 2 }
+            };
+
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(404);
+        });
+
+        it('should handle 500 on database error', async () => {
+            mockContestFindById.mockRejectedValue(new Error('DB error'));
+            mockRequest = {
+                isAuthenticated: () => true,
+                user: { username: 'testuser', role: UserRole.Student } as any,
+                body: { c1: 1 }
+            };
+            await batchUseGoldenMedal(mockRequest as IRequest, mockResponse);
+            expect(mockResponse.status).toHaveBeenCalledWith(500);
         });
     });
 });
