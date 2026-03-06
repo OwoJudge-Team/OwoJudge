@@ -12,7 +12,7 @@ import { Contest, IContest, UserStanding } from '../mongoose/schemas/contests';
 import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import { Submission } from '../mongoose/schemas/submission';
-import { recalculateContestStandings } from '../utils/standing-utils';
+import { recalculateContestStandings, updateUserStanding } from '../utils/standing-utils';
 import { createContestValidation } from '../validations/create-contest-validation';
 import { updateContestValidation } from '../validations/update-contest-validation';
 import { isJudgeAdmin, isTA, isAuthenticated } from '../middleware/auth';
@@ -150,7 +150,7 @@ const createContest = async (request: IRequest, response: Response) => {
     response.status(400).send(result.array());
     return;
   }
-  const { title, description, startTime, endTime, submissionEndTime, problems, released } = request.body;
+  const { title, description, startTime, endTime, submissionEndTime, problems, released, canApplyGM } = request.body;
   const newContest = new Contest({
     title,
     description,
@@ -158,7 +158,8 @@ const createContest = async (request: IRequest, response: Response) => {
     endTime,
     submissionEndTime,
     problems,
-    released: released ?? false
+    released: released ?? false,
+    canApplyGM: canApplyGM ?? false
   });
   try {
     const savedContest: IContest = await newContest.save();
@@ -392,11 +393,131 @@ const updateStandings = async (request: IRequest, response: Response) => {
   }
 };
 
+const GM_BUDGET = 8;
+
+/**
+ * Sets the number of golden medals the authenticated user allocates to a contest.
+ * Each golden medal reduces the late-submission delay by 1 day for every problem
+ * in the contest. A user has a total budget of 8 golden medals shared across all
+ * contests; the sum of medals allocated across all contests must not exceed this limit.
+ * The user's standing is recalculated immediately after the allocation changes.
+ *
+ * Late penalty formula:
+ * `effective_score = submission_score * max(0, 1 - delay_secs / (5 * 86400))`
+ * where `delay_secs = max(0, seconds_after_end_time - count * 86400)`.
+ *
+ * @route `PATCH /api/contests/:id/use-gm`
+ * @authentication Required.
+ *
+ * @param request - Express request with `id` route parameter. Body fields:
+ *   - `count` (number, 0–8) - number of golden medals to allocate to this contest.
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` with `{ goldenMedalCount, standing }` after recalculating.
+ * - `400 Bad Request` if `id` is missing, golden medals are not allowed, `count` is
+ *   invalid, or the allocation would exceed the user's total budget of 8.
+ * - `404 Not Found` if the contest does not exist or the user has no standing.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * { "count": 2 }
+ * ```
+ *
+ * ##### Response Body
+ * ```json
+ * {
+ *   "goldenMedalCount": 2,
+ *   "standing": {
+ *     "username": "user1",
+ *     "totalScore": 195,
+ *     "solvedCount": 2,
+ *     "goldenMedalCount": 2,
+ *     "problemScores": [
+ *       {
+ *         "serialNumber": 0,
+ *         "score": 98,
+ *         "lastSubmissionTime": "2025-11-02T10:00:00.000Z"
+ *       }
+ *     ],
+ *     "lastSubmissionTime": "2025-11-02T10:00:00.000Z"
+ *   }
+ * }
+ * ```
+ */
+const useGoldenMedal = async (request: IRequest, response: Response) => {
+  const id: string | undefined = request.params?.id;
+  if (!id) {
+    response.status(400).send('Contest ID is required');
+    return;
+  }
+
+  const count: number = request.body?.count;
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 0 || count > GM_BUDGET) {
+    response.status(400).send(`count must be an integer between 0 and ${GM_BUDGET}`);
+    return;
+  }
+
+  try {
+    const contest = await Contest.findById(id);
+    if (!contest) {
+      response.sendStatus(404);
+      return;
+    }
+
+    if (!contest.canApplyGM) {
+      response.status(400).send('Golden medals are not allowed in this contest');
+      return;
+    }
+
+    const user = request.user as IUser;
+    const username = user.username;
+
+    const existingStanding = contest.standings.find(s => s.username === username);
+    if (!existingStanding) {
+      response.status(404).send('You have no standing in this contest');
+      return;
+    }
+
+    // Sum GM usage across all other contests for this user
+    const otherContests = await Contest.find({
+      _id: { $ne: contest._id },
+      'standings.username': username
+    });
+    const usedElsewhere = otherContests.reduce((sum, c) => {
+      const s = c.standings.find(s => s.username === username);
+      return sum + (s?.goldenMedalCount ?? 0);
+    }, 0);
+
+    if (usedElsewhere + count > GM_BUDGET) {
+      response.status(400).send(
+        `Insufficient golden medals: ${usedElsewhere} already allocated elsewhere, only ${GM_BUDGET - usedElsewhere} remaining`
+      );
+      return;
+    }
+
+    await updateUserStanding(contest, username, count);
+
+    const updatedContest = await Contest.findById(id);
+    const updatedStanding = updatedContest?.standings.find(s => s.username === username);
+
+    response.status(200).send({
+      goldenMedalCount: count,
+      standing: updatedStanding
+    });
+  } catch (error) {
+    console.log(error);
+    response.status(500).send(error);
+  }
+};
+
 contestsRouter.get('/api/contests', getAllContests);
 contestsRouter.get('/api/contests/:id', getContestByID);
 contestsRouter.get('/api/contests/:id/standings', getStandings);
 contestsRouter.post('/api/contests', isTA, checkSchema(createContestValidation), createContest);
 contestsRouter.post('/api/contests/:id/standings/update', isJudgeAdmin, updateStandings);
+contestsRouter.patch('/api/contests/:id/use-gm', isAuthenticated, useGoldenMedal);
 contestsRouter.patch(
   '/api/contests/:id',
   isTA,
@@ -406,5 +527,5 @@ contestsRouter.patch(
 contestsRouter.delete('/api/contests/:id', isJudgeAdmin, deleteContest);
 
 export default contestsRouter;
-export { getAllContests, getContestByID, createContest, updateContest, deleteContest, getStandings, updateStandings };
+export { getAllContests, getContestByID, createContest, updateContest, deleteContest, getStandings, updateStandings, useGoldenMedal };
 

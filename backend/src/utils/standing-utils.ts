@@ -16,22 +16,55 @@ export const updateContestStanding = async (submission: ISubmission) => {
     }
 };
 
-export const updateUserStanding = async (contest: IContest, username: string) => {
-    // 1. Get all submissions for this user for problems in this contest within time range
+const MS_PER_SEC = 1000;
+const SECS_PER_DAY = 60 * 60 * 24;
+const GM_REDUCTION_SECS = SECS_PER_DAY;
+
+/**
+ * Calculates the effective score for a submission after applying late penalty.
+ *
+ * Formula: effective_score = submission_score * max(0, (1.0 - delay_secs / (5 * 86400)))
+ * where delay_secs = max(0, (submission_time - end_time) in seconds - gm_secs)
+ *
+ * @param submissionScore - Raw score of the submission.
+ * @param submissionTime - When the submission was created.
+ * @param endTime - Contest end time (late penalty starts after this).
+ * @param gmSecs - Number of seconds reduced by golden medals.
+ * @returns The effective score after applying late penalty.
+ */
+const calculateEffectiveScore = (
+    submissionScore: number,
+    submissionTime: Date,
+    endTime: Date | undefined,
+    gmSecs: number
+): number => {
+    if (!endTime || submissionTime <= endTime) return submissionScore;
+
+    const delayMs = submissionTime.getTime() - endTime.getTime();
+    const delaySecs = Math.max(0, delayMs / MS_PER_SEC - gmSecs);
+    const penaltyFactor = Math.max(0, (1.0 - delaySecs / (5 * SECS_PER_DAY)));
+    return submissionScore * penaltyFactor;
+};
+
+export const updateUserStanding = async (contest: IContest, username: string, goldenMedalCount?: number) => {
     const problemSerialNumbers = contest.problems.map(p => p.serialNumber);
 
-    // We only care about submissions strictly within the contest window
-    const submissionEndTime = contest.submissionEndTime;
+    if (goldenMedalCount === undefined) {
+        const existingStanding = contest.standings.find(s => s.username === username);
+        goldenMedalCount = existingStanding?.goldenMedalCount ?? 0;
+    }
+
+    const gmSecs = goldenMedalCount * GM_REDUCTION_SECS;
+
     const submissions = await Submission.find({
         problemSerialNumber: { $in: problemSerialNumbers },
         username: username,
         createdAt: {
             $gte: contest.startTime,
-            $lte: submissionEndTime
+            $lte: contest.submissionEndTime
         }
     }).sort({ createdAt: 1 }); // Process in order
 
-    // 2. Initialize standing data
     let totalScore = 0;
     let solvedCount = 0;
     let totalSubmissionCount = 0;
@@ -47,22 +80,28 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
         });
     }
 
-    // 3. Process submissions
     for (const sub of submissions) {
         const pScore = problemScoresMap.get(sub.problemSerialNumber);
         if (!pScore) continue;
 
         const submissionScore = sub.score || 0;
+        const effectiveScore = calculateEffectiveScore(
+            submissionScore, sub.createdAt, contest.endTime, gmSecs
+        );
 
-        if (submissionScore > pScore.score) {
-            pScore.score = submissionScore;
+        if (effectiveScore > pScore.score) {
+            pScore.score = effectiveScore;
             pScore.lastSubmissionTime = sub.createdAt;
         }
 
         const problemDef = contest.problems.find(p => p.serialNumber === sub.problemSerialNumber);
-        const maxScore = problemDef ? problemDef.score : 100;
+        if (problemDef == undefined) {
+            console.log(`[Update Standing] Problem: ${sub.problemSerialNumber} is not found for submission: ${sub.serialNumber}`)
+            return;
+        }
+        const maxScore = problemDef.score;
 
-        if (submissionScore >= maxScore) {
+        if (effectiveScore >= maxScore) {
             pScore.solved = true;
         }
 
@@ -100,7 +139,8 @@ export const updateUserStanding = async (contest: IContest, username: string) =>
         solvedCount,
         problemScores: Array.from(problemScoresMap.values()),
         lastSubmissionTime,
-        submissionCount: totalSubmissionCount
+        submissionCount: totalSubmissionCount,
+        goldenMedalCount
     };
 
     // Try to update existing standing first

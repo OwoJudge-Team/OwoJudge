@@ -20,6 +20,8 @@
   "name": "OwoJudge API Documentation",
   "includeVersion": true,
   "readme": "README.md",
+  "exclude": ["**/node_modules/**", "**/secrets/**", "**/*.spec.ts"],
+  "excludeExternals": true,
   "categoryOrder": ["API", "API/Auth", "API/Users", "API/Problems", "API/Submissions", "API/Contests", "API/Rejudge", "API/Announcements", "Schemas", "Schemas/Announcement", "Schemas/Contest", "Schemas/Counter", "Schemas/Problem", "Schemas/Submission", "Schemas/User"],
   "sort": ["source-order"]
 }

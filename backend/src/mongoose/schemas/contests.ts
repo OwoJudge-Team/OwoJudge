@@ -46,6 +46,7 @@ interface ProblemScore {
  * @property problemScores - Per-problem breakdown of scores.
  * @property lastSubmissionTime - Timestamp of the user's most recent submission.
  * @property submissionCount - Total submissions across all problems.
+ * @property goldenMedalCount - Number of golden medals the user has applied to this contest.
  */
 interface UserStanding {
     username: string;
@@ -54,6 +55,7 @@ interface UserStanding {
     problemScores: ProblemScore[];
     lastSubmissionTime?: Date;
     submissionCount?: number;
+    goldenMedalCount?: number;
 }
 
 /**
@@ -65,6 +67,7 @@ interface UserStanding {
  * @property endTime - When the contest ends (optional for open-ended contests).
  * @property submissionEndTime - Hard deadline for accepting submissions.
  * @property released - Whether the contest is publicly visible.
+ * @property canApplyGM - Whether golden medals can be applied in this contest.
  * @property problems - Embedded array of {@link ProblemInContest} entries.
  * @property standings - Embedded array of {@link UserStanding} entries.
  */
@@ -75,6 +78,7 @@ interface IContest extends Document {
   endTime?: Date;
   submissionEndTime: Date;
   released: boolean;
+  canApplyGM: boolean;
   problems: ProblemInContest[];
   standings: UserStanding[];
 }
@@ -84,16 +88,17 @@ interface IContest extends Document {
  *
  * Collection: `contests`
  *
- * | Field               | Type             | Required | Default | Notes                                   |
- * |---------------------|------------------|----------|---------|-----------------------------------------|
- * | `title`             | `String`         | Yes      | —       | Contest title                           |
- * | `description`       | `String`         | Yes      | —       | Contest description                     |
- * | `startTime`         | `Date`           | Yes      | —       | Contest start time                      |
- * | `endTime`           | `Date`           | No       | —       | Contest end time (optional)             |
- * | `submissionEndTime` | `Date`           | Yes      | —       | Hard deadline for submissions           |
- * | `released`          | `Boolean`        | No       | `false` | Public visibility flag                  |
- * | `problems`          | `ProblemInContest[]` | No    | `[]`    | Embedded problem entries                |
- * | `standings`         | `UserStanding[]` | No       | `[]`    | Live scoreboard entries                 |
+ * | Field               | Type                 | Required | Default | Notes                                   |
+ * |---------------------|----------------------|----------|---------|-----------------------------------------|
+ * | `title`             | `String`             | Yes      | —       | Contest title                           |
+ * | `description`       | `String`             | Yes      | —       | Contest description                     |
+ * | `startTime`         | `Date`               | Yes      | —       | Contest start time                      |
+ * | `endTime`           | `Date`               | No       | —       | Contest end time (optional)             |
+ * | `submissionEndTime` | `Date`               | Yes      | —       | Hard deadline for submissions           |
+ * | `released`          | `Boolean`            | No       | `false` | Public visibility flag                  |
+ * | `canApplyGM`        | `Boolean`            | No       | `false` | Whether golden medals can be applied    |
+ * | `problems`          | `ProblemInContest[]` | No       | `[]`    | Embedded problem entries                |
+ * | `standings`         | `UserStanding[]`     | No       | `[]`    | Live scoreboard entries                 |
  */
 const contestSchema: Schema = new Schema({
   title: {
@@ -117,6 +122,10 @@ const contestSchema: Schema = new Schema({
     required: true
   },
   released: {
+    type: Schema.Types.Boolean,
+    default: false
+  },
+  canApplyGM: {
     type: Schema.Types.Boolean,
     default: false
   },
@@ -149,7 +158,8 @@ const contestSchema: Schema = new Schema({
         }
       ],
       lastSubmissionTime: Schema.Types.Date,
-      submissionCount: { type: Schema.Types.Number, default: 0 }
+      submissionCount: { type: Schema.Types.Number, default: 0 },
+      goldenMedalCount: { type: Schema.Types.Number, default: 0 }
     }
   ]
 });

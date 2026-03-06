@@ -45,6 +45,13 @@ export const createContestValidation: Schema = {
     toBoolean: true,
     errorMessage: 'Released must be a boolean'
   },
+  canApplyGM: {
+    in: ['body'],
+    optional: true,
+    isBoolean: true,
+    toBoolean: true,
+    errorMessage: 'canApplyGM must be a boolean'
+  },
   problems: {
     in: ['body'],
     isArray: true,
