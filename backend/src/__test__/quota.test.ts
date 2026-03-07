@@ -71,7 +71,7 @@ vi.mock('../mongoose/schemas/users', () => ({
 }));
 
 vi.mock('../mongoose/schemas/submission', () => ({
-    Submission: vi.fn(() => mockSubmission)
+    Submission: vi.fn(function() { return mockSubmission; })
 }));
 
 vi.mock('../judger/judger', () => ({

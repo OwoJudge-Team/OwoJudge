@@ -47,14 +47,16 @@ const createChainable = (result: any) => {
 };
 
 vi.mock('../mongoose/schemas/users', () => {
-  const User: any = vi.fn().mockImplementation((data) => ({
-    ...data,
-    save: mockSave,
-    password: data.password || '',
-    solvedProblem: 0,
-    solvedProblems: [],
-    rating: 0
-  }));
+  const User: any = vi.fn().mockImplementation(function(data: any) {
+    return {
+      ...data,
+      save: mockSave,
+      password: data.password || '',
+      solvedProblem: 0,
+      solvedProblems: [],
+      rating: 0
+    };
+  });
   User.find = mockFind;
   User.findOne = mockFindOne;
   User.findOneAndDelete = mockFindOneAndDelete;
