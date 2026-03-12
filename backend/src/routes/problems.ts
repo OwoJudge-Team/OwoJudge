@@ -390,7 +390,7 @@ const getProblemByID = async (request: IRequest, response: Response) => {
       response.status(200).send(problem);
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(400).send(error);
   }
 };
@@ -441,7 +441,6 @@ const createProblem = async (
     return;
   }
 
-  console.log(filePath);
   const file = readFileSync(filePath as string);
   if (!isTarGz(file)) {
     response.status(400).send("Invalid file format. Expected tar.gz file.");
@@ -458,12 +457,9 @@ const createProblem = async (
       return;
     }
 
-    console.log(targetPath);
-
     spawnSync("mv", [filePath as string, targetPath]);
 
     const stats = fs.statSync(targetPath);
-    console.log(`File size at ${targetPath}: ${stats.size}`);
 
     // Create a directory for this specific upload to avoid conflicts
     const extractDir = "problems/" + fileName.replace(".tar.gz", "");
@@ -509,7 +505,7 @@ const createProblem = async (
           judgeMeta = JSON.parse(judgeMetaContent);
         }
       } catch (err) {
-        console.warn("Error reading judgemeta.json:", err);
+        console.error("[create-problem] Error reading judgemeta.json:", err);
       }
 
       let newProblem: IProblem;
@@ -699,7 +695,7 @@ const createProblem = async (
       response.status(201).json(newProblem);
       return;
     } catch (error) {
-      console.error("Error reading or parsing metadata.json:", error);
+      console.error("[create-problem] Error:", error);
       // Cleanup extracted files on error
       if (fs.existsSync(problemDir)) {
         fs.rmSync(problemDir, { recursive: true, force: true });
@@ -707,7 +703,6 @@ const createProblem = async (
       throw error;
     }
   } catch (error) {
-    console.log(error);
     const problemDir = "problems/" + fileName.replace(".tar.gz", "");
     const tarFilePath = "problems/" + fileName;
     try {
@@ -792,7 +787,6 @@ const deleteProblem = async (request: IRequest, response: Response) => {
     await Problem.findOneAndDelete({ serialNumber });
     response.status(201).send(problem);
   } catch (error) {
-    console.log(error);
     response.status(400).send(error);
   } finally {
     releaseLock();
@@ -836,7 +830,6 @@ const updateProblem = async (request: IRequest, response: Response) => {
   }
 
   const data = matchedData(request);
-  console.log(data);
   try {
     if (Object.keys(data).length === 2) {
       throw {
@@ -857,7 +850,7 @@ const updateProblem = async (request: IRequest, response: Response) => {
     );
     response.status(201).send(problem);
   } catch (error) {
-    console.log(error);
+    console.error(`[update-problem] unknown: ${error}`);
     response.status(400).send(error);
   }
 };
@@ -1157,7 +1150,6 @@ const updateProblemWithFile = async (
       throw error; // Re-throw to be caught by the outer catch block for cleanup
     }
   } catch (error) {
-    console.log(error);
     // Cleanup uploaded and extracted files on error
     // Prevent directory traversal by ensuring paths are within the 'problems' directory
     const problemsBaseDir = path.resolve("problems");
@@ -1217,7 +1209,7 @@ const generateTestcase = async (request: IRequest, response: Response) => {
       return;
     }
   } catch (error) {
-    console.log(error);
+    console.error(`[generate-testcase] ${error}`);
     response.sendStatus(500);
     return;
   }
@@ -1350,7 +1342,7 @@ const getAllowedLanguages = async (request: IRequest, response: Response) => {
       response.status(200).send([]);
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(500).send("Internal Server Error");
   }
 };

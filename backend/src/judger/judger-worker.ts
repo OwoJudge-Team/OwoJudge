@@ -43,7 +43,6 @@ interface WorkerResponse {
 
 const writeUserSolution = (submission: ISubmission, dir: string) => {
   for (let i = 0; i < submission.userSolution.length; i++) {
-    console.log(`Writing user solution file ${i}`);
     const file = submission.userSolution[i];
     const content = file.content;
     // Use the filename provided in the submission, but ensure it's just the basename for security
@@ -93,7 +92,6 @@ const compileChecker = async (problemDir: string, workDir: string): Promise<bool
       if (fs.existsSync(compiledCheckerPath)) {
         fs.copyFileSync(compiledCheckerPath, checkerExecutablePath);
         fs.chmodSync(checkerExecutablePath, 0o755);
-        console.log(`[${workDir}] Checker compilation successful`);
         return true;
       } else {
         console.error(`[${workDir}] Checker compilation failed, executable not found.`);
@@ -124,7 +122,7 @@ const runChecker = async (
       fs.copyFileSync(userOutputFile, path.join(boxDir, 'user.out'));
       fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
     } catch (error) {
-      console.error(`Failed to copy files to box:`, error);
+      console.error(`Failed to copy files for checker to box: ${error}`);
       return { status: SubmissionStatus.SE, message: `Box setup error: ${error}` };
     }
 
@@ -172,7 +170,7 @@ const runChecker = async (
 
       return { status: SubmissionStatus.SE, message: 'Invalid score from checker' };
     } catch (error) {
-      console.error('Checker execution error:', error);
+      console.error(`Checker execution error: ${error}`);
       return { status: SubmissionStatus.SE, message: `Checker error: ${error}` };
     }
   });
@@ -207,7 +205,7 @@ const runUserSolution = async (
       }
       fs.copyFileSync(testcaseInput, path.join(boxDir, path.basename(testcaseInput)));
     } catch (error) {
-      console.error(`Failed to copy files to box:`, error);
+      console.error(`[${submission.serialNumber}]Failed to copy files to box:`, error);
       return {
         testcase: path.basename(testcaseInput, '.in'),
         status: SubmissionStatus.SE,
@@ -231,7 +229,7 @@ const runUserSolution = async (
         stderr: path.basename(userErrorFile)
       }, (problemMeta.timeLimit + 1) * 1000);
     } catch (error) {
-      console.error(`[${workDir}] Execution failed:`, error);
+      // console.error(`[${workDir}] Execution failed:`, error);
     }
 
     // Compare user output with expected output
@@ -296,7 +294,7 @@ const runAllTests = async (
 
   const checkerCompiled = await compileChecker(problemDir, workDir);
   if (!checkerCompiled) {
-    console.log('Fail to compile checker');
+    console.error('Fail to compile checker');
     return { finalStatus: SubmissionStatus.SE, score: 0, groupedResults: {}, time: 0, memory: 0 };
   }
 
@@ -311,7 +309,7 @@ const runAllTests = async (
   } catch (error) {
     // Run tps gen in isolated environment for security using IsolateManager
     try {
-      console.log(`Generating test cases for ${problemSerialNumber} in isolated environment`);
+      console.warn(`Generating test cases for ${problemSerialNumber} in isolated environment`);
 
       await IsolateManager.withBox(async (box) => {
         const genBoxDir = box.getBoxDir();
@@ -430,7 +428,7 @@ const runAllTests = async (
     const inputFile = path.join(problemDir, 'tests', `${testcase}.in`);
     const outputFile = path.join(problemDir, 'tests', `${testcase}.out`);
     if (!fs.existsSync(inputFile) || !fs.existsSync(outputFile)) {
-      console.error(`Missing input or output file for testcase ${testcase}`);
+      console.error(`[${submission.serialNumber}] Missing input or output file for testcase ${testcase}`);
       testCaseResults.push({ testcase, status: SubmissionStatus.SE, time: 0, memory: 0, message: 'Missing test case files' });
       continue;
     }
@@ -536,8 +534,6 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
       return { status: SubmissionStatus.SE, errorMessage: `Failed to write files: ${error}` };
     }
 
-    console.log('Running compilation command for box ID:', boxID);
-
     try {
       await box.run(boxCompileCommand, {
         processes: 20,
@@ -561,7 +557,6 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
       if (fs.existsSync(executablePath)) {
         fs.copyFileSync(executablePath, targetPath);
         fs.chmodSync(targetPath, 0o755);
-        console.log(`[${workDir}] Compilation successful, executable copied`);
         return { status: SubmissionStatus.QU };
       }
 
@@ -569,12 +564,12 @@ const compileUserSolution = async (submission: ISubmission, workDir: string): Pr
       let errorMessage = '';
       if (fs.existsSync(targetErrorPath)) {
         errorMessage = fs.readFileSync(targetErrorPath, 'utf-8');
-        console.log(`[${workDir}] Compilation error:\n${errorMessage}`);
+        console.log(`[${submission.serialNumber}] Compilation error:\n${errorMessage}`);
       }
 
       return { status: SubmissionStatus.CE, errorMessage };
     } catch (error) {
-      console.error(`[${workDir}] Compilation failed:`, error);
+      console.error(`[${submission.serialNumber}] Compilation failed:`, error);
 
       // Try to get error message even on exception
       const errorFilePath = path.join(boxDir, 'compile.error');
@@ -632,8 +627,6 @@ const removeSolvedProblemIfNeeded = async (
 const processSubmission = async (submissionID: string): Promise<void> => {
   try {
     const submission = await Submission.findById(submissionID);
-    console.log(`Processing submission ${submissionID}`);
-    console.log(submission);
     if (!submission) {
       throw new Error(`Submission ${submissionID} not found`);
     }
@@ -686,7 +679,7 @@ const processSubmission = async (submissionID: string): Promise<void> => {
 
           // Log compilation error for debugging (but don't store in submission)
           if (errorMessage) {
-            console.log(`[${workDir}] Detailed compilation error for submission ${submissionID}:`);
+            console.log(`Detailed compilation error for submission ${submissionID}:`);
             console.log(errorMessage);
           }
 

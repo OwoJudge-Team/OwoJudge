@@ -15,7 +15,7 @@ import { User, IUser, UserRole } from '../mongoose/schemas/users';
 import { createSubmissionValidation } from '../validations/create-submission-validation';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
-import { isAuthenticated } from '../middleware/auth';
+import { isAuthenticated, isTA } from '../middleware/auth';
 
 const submissionRouter: Router = Router();
 
@@ -203,7 +203,7 @@ export const getSubmissionByID = async (request: IRequest, response: Response): 
 
     response.status(200).send(submission);
   } catch (error: unknown) {
-    console.log(`Error: ${error}`);
+    console.error(`[get-submission-by-id] Error: ${error}`);
     response.status(400).send(error);
   }
 };
@@ -336,13 +336,13 @@ export const createSubmission = async (request: IRequest, response: Response): P
     submitUserSubmission(savedSubmission);
     response.status(201).send(savedSubmission);
   } catch (error: unknown) {
-    console.log(`Error: ${error}`);
+    console.error(`[create-submission]Error: ${error}`);
     response.status(400).send(error);
   }
 };
 
 submissionRouter.get('/api/submissions', isAuthenticated, getSubmissions);
 submissionRouter.get('/api/submission/:serialNumber', isAuthenticated, getSubmissionByID);
-submissionRouter.post('/api/submissions', isAuthenticated, checkSchema(createSubmissionValidation), createSubmission);
+submissionRouter.post('/api/submissions', isTA, checkSchema(createSubmissionValidation), createSubmission);
 
 export default submissionRouter;
