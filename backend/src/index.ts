@@ -1,3 +1,6 @@
+import { setupDiscordLogger } from './utils/discord-logger';
+setupDiscordLogger(); // Must be called before any other imports that log
+
 import { createApp } from './create-app';
 import { Application } from 'express';
 import { setupWorker, shutdownJudger } from './judger/judger';
