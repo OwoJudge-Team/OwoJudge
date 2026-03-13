@@ -336,7 +336,7 @@ export const createSubmission = async (request: IRequest, response: Response): P
     submitUserSubmission(savedSubmission);
     response.status(201).send(savedSubmission);
   } catch (error: unknown) {
-    console.error(`[create-submission]Error: ${error}`);
+    console.error(`[create-submission] Error: ${error}`);
     response.status(400).send(error);
   }
 };
