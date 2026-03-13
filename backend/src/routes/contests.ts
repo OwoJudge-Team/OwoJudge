@@ -41,7 +41,7 @@ const getAllContests = async (request: IRequest, response: Response) => {
     const contests: IContest[] = await Contest.find(query).sort({ _id: -1 });
     response.status(200).send(contests);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(500).send(error);
   }
 };
@@ -83,7 +83,7 @@ const getContestByID = async (request: IRequest, response: Response) => {
 
     response.status(200).send(contest);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(500).send(error);
   }
 };
@@ -164,7 +164,7 @@ const createContest = async (request: IRequest, response: Response) => {
     const savedContest: IContest = await newContest.save();
     response.status(201).send(savedContest);
   } catch (error) {
-    console.log(`Error: ${error}`);
+    console.error(`Error: ${error}`);
     response.status(400).send(error);
   }
 };
@@ -216,7 +216,7 @@ const updateContest = async (request: IRequest, response: Response) => {
     }
     response.status(200).send(updatedContest);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(400).send(error);
   }
 };
@@ -258,7 +258,7 @@ const deleteContest = async (request: IRequest, response: Response) => {
     }
     response.status(200).send(contest);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(500).send(error);
   }
 };
@@ -329,7 +329,7 @@ const getStandings = async (request: IRequest, response: Response) => {
 
     response.status(200).send(sortedStandings);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     response.status(500).send(error);
   }
 };
@@ -383,11 +383,11 @@ const updateStandings = async (request: IRequest, response: Response) => {
     const contest = await recalculateContestStandings(id);
     response.status(200).send({ message: 'Standings updated successfully', standings: contest.standings });
   } catch (error) {
-    console.log(error);
     if (error instanceof Error && error.message === 'Contest not found') {
-       response.sendStatus(404);
-       return;
+      response.sendStatus(404);
+      return;
     }
+    console.error(error);
     response.status(500).send(error);
   }
 };

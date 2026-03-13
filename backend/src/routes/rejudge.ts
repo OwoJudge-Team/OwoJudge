@@ -69,7 +69,7 @@ export const rejudgeSubmissions = async (request: IRequest, response: Response):
 
     response.status(200).send(`Rejudge triggered for ${submissions.length} submissions.`);
   } catch (error: unknown) {
-    console.log(`Error: ${error}`);
+    console.error(`[rejudge-submissions] Error: ${error}`);
     response.status(400).send(error);
   }
 };
@@ -131,7 +131,7 @@ export const rejudgeProblems = async (request: IRequest, response: Response): Pr
 
     response.status(200).send(`Rejudge triggered for ${submissions.length} submissions across ${problems.length} problems.`);
   } catch (error: unknown) {
-    console.log(`Error: ${error}`);
+    console.error(`[rejudge-problems] Error: ${error}`);
     response.status(400).send(error);
   }
 };
@@ -168,7 +168,7 @@ export const rejudgeSubmission = async (request: IRequest, response: Response): 
 
     response.status(200).send(submission);
   } catch (error: unknown) {
-    console.log(`Error: ${error}`);
+    console.error(`[rejudge-submission] Error: ${error}`);
     response.status(400).send(error);
   }
 };
@@ -218,7 +218,7 @@ export const rejudgeProblem = async (request: IRequest, response: Response): Pro
 
     response.status(200).send(`Rejudge triggered for ${submissions.length} submissions.`);
   } catch (error) {
-    console.log(error);
+    console.error(`[rejudge-problem] ${error}`);
     response.status(500).send('Internal Server Error');
   }
 };

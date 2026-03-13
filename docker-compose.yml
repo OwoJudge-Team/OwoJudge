@@ -84,6 +84,7 @@ services:
       - GITEA_BASE_URL=http://gitea:3000
       - GITEA_WEBHOOK_SECRET=${GITEA_WEBHOOK_SECRET:-}
       - ADMIN_PASSWD=${ADMIN_PASSWD:-admin1234}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/problems:/app/problems

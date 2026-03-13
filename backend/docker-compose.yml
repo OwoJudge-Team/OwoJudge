@@ -79,6 +79,7 @@ services:
       - ROOT_USERNAME=${ROOT_USERNAME:-admin}
       - GITEA_BASE_URL=http://gitea:3000
       - ADMIN_PASSWD=${ADMIN_PASSWD}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
     volumes:
       - ./uploads:/app/uploads
       - ./problems:/app/problems
