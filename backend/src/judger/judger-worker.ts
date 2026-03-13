@@ -205,7 +205,7 @@ const runUserSolution = async (
       }
       fs.copyFileSync(testcaseInput, path.join(boxDir, path.basename(testcaseInput)));
     } catch (error) {
-      console.error(`[${submission.serialNumber}]Failed to copy files to box:`, error);
+      console.error(`[${submission.serialNumber}] Failed to copy files to box:`, error);
       return {
         testcase: path.basename(testcaseInput, '.in'),
         status: SubmissionStatus.SE,
