@@ -1,6 +1,6 @@
 export default {
   'gcc c17': {
-    compileCommand: 'gcc -std=c17 -O2 main.c -o main',
+    compileCommand: 'gcc -std=c17 -lm -O2 main.c -o main',
     executeCommand: './main.exe'
   },
   'gcc c23': {
