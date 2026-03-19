@@ -689,33 +689,41 @@ const createProblem = async (
                       console.warn('No gen available for this problem');
                     }
 
-                    // Verify the checker compilation
-                    if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
-                      console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
-                      await box.run('make', {
-                        processes: 20,
-                        timeLimit: 10,
-                        wallTimeLimit: 20,
-                        memoryLimit: 512000,
-                        stderr: 'checker-compile.error',
-                        fullEnv: true,
-                        dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
-                        cwd: '/box/checker'
-                      }, 25000);
-
-                      const compiledCheckerPath = path.join(genBoxDir, "checker", "checker.exe");
+                    // Verify checker compilation in a fresh isolated box containing
+                    // only the checker/ directory — the same environment the judger
+                    // uses — so stale binaries or testlib.h leaking from the problem
+                    // root cannot mask a broken checker.
+                    const checkerDir = path.join(finalProblemDir, "checker");
+                    if (!fs.existsSync(checkerDir)) {
+                      throw new Error(`Checker directory not found for problem ${newProblem.serialNumber}`);
+                    }
+                    console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
+                    await IsolateManager.withBox(async (checkerBox) => {
+                      const checkerBoxDir = checkerBox.getBoxDir();
+                      await checkerBox.copyToBox(checkerDir);
+                      try {
+                        await checkerBox.run('make', {
+                          processes: 20,
+                          timeLimit: 10,
+                          wallTimeLimit: 20,
+                          memoryLimit: 512000,
+                          stderr: 'checker-compile.error',
+                          fullEnv: true,
+                          dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                        }, 25000);
+                      } catch {
+                        // make failed; existence check below produces the real error
+                      }
+                      const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
                       if (!fs.existsSync(compiledCheckerPath)) {
-                        let errorMsg = "Checker compilation failed, checker.exe not found.";
-                        const errorFilePath = path.join(genBoxDir, "checker", "checker-compile.error");
+                        let errorMsg = `Checker compilation failed for problem ${newProblem.serialNumber}, checker.exe not found.`;
+                        const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
                         if (fs.existsSync(errorFilePath)) {
-                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, "utf8")}`;
+                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
                         }
                         throw new Error(errorMsg);
                       }
-                    } else {
-                      console.error(`Error compiling checker for problem ${newProblem.serialNumber}`)
-                      throw new Error(`Error compiling checker for problem ${newProblem.serialNumber}`)
-                    }
+                    });
 
                     // Update problem status to Ready
                     await Problem.findByIdAndUpdate(newProblem._id, {
@@ -1204,33 +1212,41 @@ const updateProblemWithFile = async (
                       console.warn('No gen available for this problem');
                     }
 
-                    // Verify the checker compilation
-                    if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
-                      console.log(`Verifying checker compilation for problem ${existingProblem.serialNumber}...`);
-                      await box.run('make', {
-                        processes: 20,
-                        timeLimit: 10,
-                        wallTimeLimit: 20,
-                        memoryLimit: 512000,
-                        stderr: 'checker-compile.error',
-                        fullEnv: true,
-                        dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
-                        cwd: '/box/checker'
-                      }, 25000);
-
-                      const compiledCheckerPath = path.join(genBoxDir, "checker", "checker.exe");
+                    // Verify checker compilation in a fresh isolated box containing
+                    // only the checker/ directory — the same environment the judger
+                    // uses — so stale binaries or testlib.h leaking from the problem
+                    // root cannot mask a broken checker.
+                    const checkerDir = path.join(finalProblemDir, "checker");
+                    if (!fs.existsSync(checkerDir)) {
+                      throw new Error(`Checker directory not found for problem ${existingProblem.serialNumber}`);
+                    }
+                    console.log(`Verifying checker compilation for problem ${existingProblem.serialNumber}...`);
+                    await IsolateManager.withBox(async (checkerBox) => {
+                      const checkerBoxDir = checkerBox.getBoxDir();
+                      await checkerBox.copyToBox(checkerDir);
+                      try {
+                        await checkerBox.run('make', {
+                          processes: 20,
+                          timeLimit: 10,
+                          wallTimeLimit: 20,
+                          memoryLimit: 512000,
+                          stderr: 'checker-compile.error',
+                          fullEnv: true,
+                          dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                        }, 25000);
+                      } catch {
+                        // make failed; existence check below produces the real error
+                      }
+                      const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
                       if (!fs.existsSync(compiledCheckerPath)) {
-                        let errorMsg = "Checker compilation failed, checker.exe not found.";
-                        const errorFilePath = path.join(genBoxDir, "checker", "checker-compile.error");
+                        let errorMsg = `Checker compilation failed for problem ${existingProblem.serialNumber}, checker.exe not found.`;
+                        const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
                         if (fs.existsSync(errorFilePath)) {
-                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, "utf8")}`;
+                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
                         }
                         throw new Error(errorMsg);
                       }
-                    } else {
-                      console.error(`Error compiling checker for problem ${existingProblem.serialNumber}`)
-                      throw new Error(`Error compiling checker for problem ${existingProblem.serialNumber}`)
-                    }
+                    });
 
                     // Update problem status to Ready
                     await Problem.findByIdAndUpdate(existingProblem._id, {

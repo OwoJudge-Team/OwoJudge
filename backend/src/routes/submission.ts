@@ -334,6 +334,7 @@ export const createSubmission = async (request: IRequest, response: Response): P
     const newSubmission: ISubmission = new Submission(data);
     const savedSubmission: ISubmission = await newSubmission.save();
     submitUserSubmission(savedSubmission);
+    console.log(`[create-submission] Submission ${savedSubmission.serialNumber} created by ${user.username} for problem ${problem.serialNumber} (${problem.title})`);
     response.status(201).send(savedSubmission);
   } catch (error: unknown) {
     console.error(`[create-submission] Error: ${error}`);
