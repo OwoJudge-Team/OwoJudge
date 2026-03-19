@@ -1,3 +1,5 @@
+import { setupDiscordLogger } from '../utils/discord-logger';
+setupDiscordLogger(); // Must be called before any other imports that log
 import { parentPort, workerData } from 'worker_threads';
 import { updateContestStanding } from '../utils/standing-utils';
 import { Submission, ISubmission, IGroupResult } from '../mongoose/schemas/submission';
