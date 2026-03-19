@@ -520,10 +520,33 @@ const runTestGeneration = async (
               `Validating on-demand generation for problem ${serialNumber}, testcase ${firstTestcase}`,
             );
             await generateSingleTestcase(serialNumber.toString(), firstTestcase);
-            console.log(
-              `On-demand generation validated for problem ${serialNumber}`,
-            );
           }
+
+          // Verify the checker compilation
+          if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
+            console.log(`Verifying checker compilation for problem ${serialNumber}...`);
+            await box.run('make', {
+              processes: 20,
+              timeLimit: 10,
+              wallTimeLimit: 20,
+              memoryLimit: 512000,
+              stderr: 'checker-compile.error',
+              fullEnv: true,
+              dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+              cwd: '/box/checker'
+            }, 25000);
+
+            const compiledCheckerPath = path.join(genBoxDir, "checker", "checker.exe");
+            if (!fs.existsSync(compiledCheckerPath)) {
+              let errorMsg = "Checker compilation failed, checker.exe not found.";
+              const errorFilePath = path.join(genBoxDir, "checker", "checker-compile.error");
+              if (fs.existsSync(errorFilePath)) {
+                errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, "utf8")}`;
+              }
+              throw new Error(errorMsg);
+            }
+          }
+
 
           await Problem.findByIdAndUpdate(problemMongoId, {
             $set: { status: ProblemStatus.Ready },
