@@ -170,6 +170,7 @@ const runChecker = async (
         return { status: SubmissionStatus.AC, message };
       }
 
+      console.error('Invalid score from checker');
       return { status: SubmissionStatus.SE, message: 'Invalid score from checker' };
     } catch (error) {
       console.error(`Checker execution error: ${error}`);
