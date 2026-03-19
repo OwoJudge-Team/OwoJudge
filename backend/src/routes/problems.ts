@@ -545,6 +545,9 @@ const runTestGeneration = async (
               }
               throw new Error(errorMsg);
             }
+          } else {
+            console.error(`Error compiling checker for problem ${serialNumber}`)
+            throw new Error(`Error compiling checker for problem ${serialNumber}`)
           }
 
 
