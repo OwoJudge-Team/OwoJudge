@@ -581,15 +581,21 @@ const createProblem = async (
 
             await IsolateManager.withBox(async (box) => {
               const genBoxDir = box.getBoxDir();
-              const workDir = path.join("judging", "tps-gen-" + newProblem.serialNumber);
+              const workDir = path.join(
+                "judging",
+                "tps-gen-" + newProblem.serialNumber,
+              );
 
+              // Ensure work directory exists
               fs.mkdirSync(workDir, { recursive: true });
 
               try {
+                // Copy entire problem directory to isolated box
                 await box.copyToBox(finalProblemDir);
 
                 const genMetaFile = path.join(workDir, "tps-gen.meta");
 
+                // Run tps gen inside isolate with generous limits
                 await box.run(
                   "/usr/local/bin/tps gen",
                   {
@@ -612,6 +618,7 @@ const createProblem = async (
                   4000000,
                 );
 
+                // Copy generated tests directory back to problem directory
                 const generatedTestsDir = path.join(genBoxDir, "tests");
                 const targetTestsDir = path.join(finalProblemDir, "tests");
                 const tempTestsDir = path.join(
@@ -619,115 +626,112 @@ const createProblem = async (
                   "tests.tmp-" + Date.now(),
                 );
 
-                if (!fs.existsSync(generatedTestsDir)) {
+                if (fs.existsSync(generatedTestsDir)) {
+                  // First copy to a temporary directory to ensure atomic replacement
+                  try {
+                    await fs.promises.cp(generatedTestsDir, tempTestsDir, {
+                      recursive: true,
+                    });
+
+                    // Ensure parent directory exists and is writable
+                    if (fs.existsSync(finalProblemDir)) {
+                      try {
+                        fs.chmodSync(finalProblemDir, 0o755);
+                      } catch (e) {
+                        console.warn(`Failed to chmod ${finalProblemDir}:`, e);
+                      }
+                    } else {
+                      fs.mkdirSync(finalProblemDir, { recursive: true });
+                    }
+
+                    // Remove old tests directory and replace with new one atomically
+                    if (fs.existsSync(targetTestsDir)) {
+                      fs.rmSync(targetTestsDir, { recursive: true, force: true });
+                    }
+                    fs.renameSync(tempTestsDir, targetTestsDir);
+
+                    console.log(
+                      `Test cases generated and copied successfully for ${newProblem.serialNumber}`,
+                    );
+
+                    // Validate that on-demand generation works by running the first
+                    // non-manual testcase through generateSingleTestcase (compiles
+                    // the generator and the model solution end-to-end).
+                    const genSummaryCandidates = [
+                      path.join(finalProblemDir, "tests", "gen_summary"),
+                      path.join(finalProblemDir, "gen", "gen_summary"),
+                    ];
+                    let firstTestcase: string | null = null;
+                    for (const genSummaryPath of genSummaryCandidates) {
+                      if (!fs.existsSync(genSummaryPath)) continue;
+                      for (const line of fs
+                        .readFileSync(genSummaryPath, "utf8")
+                        .split("\n")) {
+                        if (!line.trim() || line.trim().startsWith("#")) continue;
+                        const parts = line.trim().split(/\s+/);
+                        if (
+                          parts.length >= 3 &&
+                          !parts.slice(2).join(" ").startsWith("manual")
+                        ) {
+                          firstTestcase = parts[0];
+                          break;
+                        }
+                      }
+                      if (firstTestcase) break;
+                    }
+                    if (firstTestcase) {
+                      console.log(
+                        `Validating on-demand generation for problem ${newProblem.serialNumber}, testcase ${firstTestcase}`,
+                      );
+                      await generateSingleTestcase(newProblem.serialNumber.toString(), firstTestcase);
+                    } else {
+                      console.warn('No gen available for this problem');
+                    }
+
+                    // Verify the checker compilation
+                    if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
+                      console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
+                      await box.run('make', {
+                        processes: 20,
+                        timeLimit: 10,
+                        wallTimeLimit: 20,
+                        memoryLimit: 512000,
+                        stderr: 'checker-compile.error',
+                        fullEnv: true,
+                        dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+                        cwd: '/box/checker'
+                      }, 25000);
+
+                      const compiledCheckerPath = path.join(genBoxDir, "checker", "checker.exe");
+                      if (!fs.existsSync(compiledCheckerPath)) {
+                        let errorMsg = "Checker compilation failed, checker.exe not found.";
+                        const errorFilePath = path.join(genBoxDir, "checker", "checker-compile.error");
+                        if (fs.existsSync(errorFilePath)) {
+                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, "utf8")}`;
+                        }
+                        throw new Error(errorMsg);
+                      }
+                    } else {
+                      console.error(`Error compiling checker for problem ${newProblem.serialNumber}`)
+                      throw new Error(`Error compiling checker for problem ${newProblem.serialNumber}`)
+                    }
+
+                    // Update problem status to Ready
+                    await Problem.findByIdAndUpdate(newProblem._id, {
+                      status: ProblemStatus.Ready,
+                    });
+                  } catch (copyError) {
+                    // Clean up temporary directory if copy failed
+                    if (fs.existsSync(tempTestsDir)) {
+                      fs.rmSync(tempTestsDir, { recursive: true, force: true });
+                    }
+                    throw copyError;
+                  }
+                } else {
                   throw new Error("Tests directory not generated by tps gen");
                 }
-
-                const generatedFiles = fs.readdirSync(generatedTestsDir);
-                if (!generatedFiles.some((f) => f.endsWith(".in"))) {
-                  throw new Error(
-                    "No testcases were generated by tps gen (no .in files found)",
-                  );
-                }
-
-                try {
-                  await fs.promises.cp(generatedTestsDir, tempTestsDir, {
-                    recursive: true,
-                  });
-
-                  if (fs.existsSync(finalProblemDir)) {
-                    try {
-                      fs.chmodSync(finalProblemDir, 0o755);
-                    } catch (e) {
-                      console.warn(`Failed to chmod ${finalProblemDir}:`, e);
-                    }
-                  } else {
-                    fs.mkdirSync(finalProblemDir, { recursive: true });
-                  }
-
-                  if (fs.existsSync(targetTestsDir)) {
-                    fs.rmSync(targetTestsDir, { recursive: true, force: true });
-                  }
-                  fs.renameSync(tempTestsDir, targetTestsDir);
-
-                  console.log(
-                    `Test cases generated and copied successfully for ${newProblem.serialNumber}`,
-                  );
-
-                  // Validate that on-demand generation works by running the first
-                  // non-manual testcase through generateSingleTestcase (compiles
-                  // the generator and the model solution end-to-end).
-                  const genSummaryCandidates = [
-                    path.join(finalProblemDir, "tests", "gen_summary"),
-                    path.join(finalProblemDir, "gen", "gen_summary"),
-                  ];
-                  let firstTestcase: string | null = null;
-                  for (const genSummaryPath of genSummaryCandidates) {
-                    if (!fs.existsSync(genSummaryPath)) continue;
-                    for (const line of fs
-                      .readFileSync(genSummaryPath, "utf8")
-                      .split("\n")) {
-                      if (!line.trim() || line.trim().startsWith("#")) continue;
-                      const parts = line.trim().split(/\s+/);
-                      if (
-                        parts.length >= 3 &&
-                        !parts.slice(2).join(" ").startsWith("manual")
-                      ) {
-                        firstTestcase = parts[0];
-                        break;
-                      }
-                    }
-                    if (firstTestcase) break;
-                  }
-                  if (firstTestcase) {
-                    console.log(
-                      `Validating on-demand generation for problem ${newProblem.serialNumber}, testcase ${firstTestcase}`,
-                    );
-                    await generateSingleTestcase(newProblem.serialNumber.toString(), firstTestcase);
-                  } else {
-                    console.warn('No gen available for this problem');
-                  }
-
-                  // Verify the checker compilation
-                  if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
-                    console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
-                    await box.run('make', {
-                      processes: 20,
-                      timeLimit: 10,
-                      wallTimeLimit: 20,
-                      memoryLimit: 512000,
-                      stderr: 'checker-compile.error',
-                      fullEnv: true,
-                      dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
-                      cwd: '/box/checker'
-                    }, 25000);
-
-                    const compiledCheckerPath = path.join(genBoxDir, "checker", "checker.exe");
-                    if (!fs.existsSync(compiledCheckerPath)) {
-                      let errorMsg = "Checker compilation failed, checker.exe not found.";
-                      const errorFilePath = path.join(genBoxDir, "checker", "checker-compile.error");
-                      if (fs.existsSync(errorFilePath)) {
-                        errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, "utf8")}`;
-                      }
-                      throw new Error(errorMsg);
-                    }
-                  } else {
-                    console.error(`Error compiling checker for problem ${newProblem.serialNumber}`)
-                    throw new Error(`Error compiling checker for problem ${newProblem.serialNumber}`)
-                  }
-
-
-                  await Problem.findByIdAndUpdate(newProblem._id, {
-                    $set: { status: ProblemStatus.Ready },
-                    $unset: { statusReason: 1 },
-                  });
-                } catch (copyError) {
-                  if (fs.existsSync(tempTestsDir)) {
-                    fs.rmSync(tempTestsDir, { recursive: true, force: true });
-                  }
-                  throw copyError;
-                }
               } finally {
+                // Clean up work directory
                 if (fs.existsSync(workDir)) {
                   fs.rmSync(workDir, { recursive: true, force: true });
                 }
@@ -740,8 +744,6 @@ const createProblem = async (
             );
             await Problem.findByIdAndUpdate(newProblem._id, {
               status: ProblemStatus.Error,
-              statusReason:
-                genError instanceof Error ? genError.message : String(genError),
             });
           } finally {
             releaseLock();
@@ -1165,6 +1167,68 @@ const updateProblemWithFile = async (
                     console.log(
                       `Test cases generated and copied successfully for ${serialNumber}`,
                     );
+
+                    // Validate that on-demand generation works by running the first
+                    // non-manual testcase through generateSingleTestcase (compiles
+                    // the generator and the model solution end-to-end).
+                    const genSummaryCandidates = [
+                      path.join(finalProblemDir, "tests", "gen_summary"),
+                      path.join(finalProblemDir, "gen", "gen_summary"),
+                    ];
+                    let firstTestcase: string | null = null;
+                    for (const genSummaryPath of genSummaryCandidates) {
+                      if (!fs.existsSync(genSummaryPath)) continue;
+                      for (const line of fs
+                        .readFileSync(genSummaryPath, "utf8")
+                        .split("\n")) {
+                        if (!line.trim() || line.trim().startsWith("#")) continue;
+                        const parts = line.trim().split(/\s+/);
+                        if (
+                          parts.length >= 3 &&
+                          !parts.slice(2).join(" ").startsWith("manual")
+                        ) {
+                          firstTestcase = parts[0];
+                          break;
+                        }
+                      }
+                      if (firstTestcase) break;
+                    }
+                    if (firstTestcase) {
+                      console.log(
+                        `Validating on-demand generation for problem ${newProblem.serialNumber}, testcase ${firstTestcase}`,
+                      );
+                      await generateSingleTestcase(newProblem.serialNumber.toString(), firstTestcase);
+                    } else {
+                      console.warn('No gen available for this problem');
+                    }
+
+                    // Verify the checker compilation
+                    if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
+                      console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
+                      await box.run('make', {
+                        processes: 20,
+                        timeLimit: 10,
+                        wallTimeLimit: 20,
+                        memoryLimit: 512000,
+                        stderr: 'checker-compile.error',
+                        fullEnv: true,
+                        dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])],
+                        cwd: '/box/checker'
+                      }, 25000);
+
+                      const compiledCheckerPath = path.join(genBoxDir, "checker", "checker.exe");
+                      if (!fs.existsSync(compiledCheckerPath)) {
+                        let errorMsg = "Checker compilation failed, checker.exe not found.";
+                        const errorFilePath = path.join(genBoxDir, "checker", "checker-compile.error");
+                        if (fs.existsSync(errorFilePath)) {
+                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, "utf8")}`;
+                        }
+                        throw new Error(errorMsg);
+                      }
+                    } else {
+                      console.error(`Error compiling checker for problem ${newProblem.serialNumber}`)
+                      throw new Error(`Error compiling checker for problem ${newProblem.serialNumber}`)
+                    }
 
                     // Update problem status to Ready
                     await Problem.findByIdAndUpdate(existingProblem._id, {
