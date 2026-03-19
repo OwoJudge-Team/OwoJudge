@@ -1195,16 +1195,16 @@ const updateProblemWithFile = async (
                     }
                     if (firstTestcase) {
                       console.log(
-                        `Validating on-demand generation for problem ${newProblem.serialNumber}, testcase ${firstTestcase}`,
+                        `Validating on-demand generation for problem ${existingProblem.serialNumber}, testcase ${firstTestcase}`,
                       );
-                      await generateSingleTestcase(newProblem.serialNumber.toString(), firstTestcase);
+                      await generateSingleTestcase(existingProblem.serialNumber.toString(), firstTestcase);
                     } else {
                       console.warn('No gen available for this problem');
                     }
 
                     // Verify the checker compilation
                     if (fs.existsSync(path.join(finalProblemDir, "checker"))) {
-                      console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
+                      console.log(`Verifying checker compilation for problem ${existingProblem.serialNumber}...`);
                       await box.run('make', {
                         processes: 20,
                         timeLimit: 10,
@@ -1226,8 +1226,8 @@ const updateProblemWithFile = async (
                         throw new Error(errorMsg);
                       }
                     } else {
-                      console.error(`Error compiling checker for problem ${newProblem.serialNumber}`)
-                      throw new Error(`Error compiling checker for problem ${newProblem.serialNumber}`)
+                      console.error(`Error compiling checker for problem ${existingProblem.serialNumber}`)
+                      throw new Error(`Error compiling checker for problem ${existingProblem.serialNumber}`)
                     }
 
                     // Update problem status to Ready
