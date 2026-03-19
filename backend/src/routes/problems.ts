@@ -435,6 +435,7 @@ const createProblem = async (
   request: IRequest,
   response: Response,
 ): Promise<void> => {
+  console.log("[create-problem] Received request to create problem with file upload");
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send("No file uploaded");
@@ -938,6 +939,7 @@ const updateProblemWithFile = async (
   request: IRequest,
   response: Response,
 ): Promise<void> => {
+  console.log(`[update-problem-with-file] Updating problem with serial number: ${request.params.serialNumber}`);
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {

@@ -4,7 +4,7 @@
  * forwarded to the Discord channel configured via DISCORD_WEBHOOK_URL.
  *
  * Rate-limiting: Discord allows ~30 requests / minute per webhook.
- * We flush up to 10 pendng messages every 2 seconds via a simple queue.
+ * We flush up to 2 pendng messages every 4 seconds via a simple queue.
  */
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
