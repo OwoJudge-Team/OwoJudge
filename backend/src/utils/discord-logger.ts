@@ -54,9 +54,9 @@ async function postToDiscord(msg: QueuedMessage): Promise<boolean> {
   }
 }
 
-/** Drain up to 5 messages from the queue in sequence (stay within rate-limit). */
+/** Drain up to 2 messages from the queue in sequence (stay within rate-limit). */
 async function flush(): Promise<void> {
-  const batch = queue.splice(0, 5);
+  const batch = queue.splice(0, 2);
   for (const msg of batch) {
     await postToDiscord(msg);
   }
@@ -69,7 +69,7 @@ function startFlushTimer(): void {
     if (queue.length > 0) {
       flush().catch(() => {/* swallow */});
     }
-  }, 2000); // every 2 s
+  }, 4000); // every 4 s
   // Don't keep the process alive solely for logging
   if (flushTimer.unref) flushTimer.unref();
 }
