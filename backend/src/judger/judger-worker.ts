@@ -1,6 +1,23 @@
-import { setupDiscordLogger } from '../utils/discord-logger';
-setupDiscordLogger(); // Must be called before any other imports that log
 import { parentPort, workerData } from 'worker_threads';
+
+// Relay console output to the main thread so only one Discord poster exists.
+// Multiple workers calling setupDiscordLogger() would create competing flush timers
+// that together exceed Discord's webhook rate limit (30 req/min).
+{
+  const origLog   = console.log.bind(console);
+  const origInfo  = console.info.bind(console);
+  const origWarn  = console.warn.bind(console);
+  const origError = console.error.bind(console);
+
+  const relay = (level: string, args: unknown[]): void => {
+    try { parentPort?.postMessage({ type: 'log', level, args }); } catch { /* skip unserializable */ }
+  };
+
+  console.log   = (...args: unknown[]) => { origLog(...args);   relay('LOG',   args); };
+  console.info  = (...args: unknown[]) => { origInfo(...args);  relay('INFO',  args); };
+  console.warn  = (...args: unknown[]) => { origWarn(...args);  relay('WARN',  args); };
+  console.error = (...args: unknown[]) => { origError(...args); relay('ERROR', args); };
+}
 import { updateContestStanding } from '../utils/standing-utils';
 import { Submission, ISubmission, IGroupResult } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';

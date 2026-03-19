@@ -10,9 +10,11 @@ interface WorkerMessage {
 }
 
 interface WorkerResponse {
-  type: 'submission_complete' | 'worker_ready' | 'error';
+  type: 'submission_complete' | 'worker_ready' | 'error' | 'log';
   submissionID?: string;
   error?: string;
+  level?: string;
+  args?: unknown[];
 }
 
 class JudgerManager {
@@ -102,6 +104,16 @@ class JudgerManager {
         }
         this.processNextSubmission();
         break;
+
+      case 'log': {
+        const level = response.level?.toLowerCase();
+        const args = (response.args ?? []) as unknown[];
+        if (level === 'error') console.error(...args);
+        else if (level === 'warn') console.warn(...args);
+        else if (level === 'info') console.info(...args);
+        else console.log(...args);
+        break;
+      }
     }
   }
 
