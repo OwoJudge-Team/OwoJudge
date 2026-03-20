@@ -96,6 +96,11 @@ function enqueue(level: string, args: unknown[]): void {
   if (queue.length > QUEUE_LENGTH_LIMIT) queue.splice(0, queue.length - QUEUE_LENGTH_LIMIT);
 }
 
+/** Return the current queue length and whether the logger is installed. */
+export function getDiscordLoggerStatus(): { installed: boolean; queueLength: number; webhookConfigured: boolean } {
+  return { installed, queueLength: queue.length, webhookConfigured: !!DISCORD_WEBHOOK_URL };
+}
+
 /**
  * Call once at startup to patch the global console methods.
  * Safe to call multiple times (idempotent via guard flag).

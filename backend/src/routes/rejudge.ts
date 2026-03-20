@@ -15,6 +15,7 @@ import { IUser } from '../mongoose/schemas/users';
 import { IRequest } from '../utils/request-interface';
 import { submitUserSubmission } from '../judger/judger';
 import { isJudgeAdmin } from '../middleware/auth';
+import { getDiscordLoggerStatus } from '../utils/discord-logger';
 
 const rejudgeRouter: Router = Router();
 
@@ -227,5 +228,23 @@ rejudgeRouter.post('/api/rejudge/submissions', isJudgeAdmin, rejudgeSubmissions)
 rejudgeRouter.post('/api/rejudge/problems', isJudgeAdmin, rejudgeProblems);
 rejudgeRouter.post('/api/rejudge/submission/:serialNumber', isJudgeAdmin, rejudgeSubmission);
 rejudgeRouter.post('/api/rejudge/problem/:serialNumber', isJudgeAdmin, rejudgeProblem);
+
+/**
+ * Debug endpoint: checks whether the Discord logger is configured and fires a
+ * test log from inside the route handler. Use this to diagnose whether
+ * route-level console.log calls reach Discord.
+ *
+ * @route GET /api/debug/discord
+ */
+rejudgeRouter.get('/api/debug/discord', isJudgeAdmin, (_req: IRequest, res: Response) => {
+  const status = getDiscordLoggerStatus();
+  console.log(`[debug/discord] logger status: installed=${status.installed} webhookConfigured=${status.webhookConfigured} queueLength=${status.queueLength}`);
+  console.warn('[debug/discord] WARN test from route handler');
+  console.error('[debug/discord] ERROR test from route handler');
+  res.json({
+    ...status,
+    message: 'Three test logs sent via console.log / warn / error from inside the route handler. Check Discord in ~4 seconds.',
+  });
+});
 
 export default rejudgeRouter;

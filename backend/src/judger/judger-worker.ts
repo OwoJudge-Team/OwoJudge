@@ -9,7 +9,11 @@ import { parentPort, workerData } from 'worker_threads';
   const origWarn  = console.warn.bind(console);
   const origError = console.error.bind(console);
 
+  // Only relay WARN and ERROR to the main thread — LOG/INFO from workers can be
+  // very high-volume (one per test case) and would flood the Discord queue,
+  // burying route-level logs for minutes.
   const relay = (level: string, args: unknown[]): void => {
+    if (level !== 'WARN' && level !== 'ERROR') return;
     try { parentPort?.postMessage({ type: 'log', level, args }); } catch { /* skip unserializable */ }
   };
 
