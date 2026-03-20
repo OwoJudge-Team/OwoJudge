@@ -10,6 +10,10 @@
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const QUEUE_LENGTH_LIMIT = 500;
 
+// Capture native console methods before any patching so we can log
+// internal discord-logger errors without triggering infinite recursion.
+const _nativeWarn = console.warn.bind(console);
+
 interface QueuedMessage {
   content: string;
   color: number;
@@ -47,9 +51,15 @@ async function postToDiscord(msg: QueuedMessage): Promise<boolean> {
         ],
       }),
     });
-    return res.ok || res.status === 204;
-  } catch {
+    if (!res.ok && res.status !== 204) {
+      const body = await res.text().catch(() => '');
+      _nativeWarn(`[discord-logger] Discord returned ${res.status}: ${body}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
     // Never crash the server due to logging failures
+    _nativeWarn('[discord-logger] fetch to Discord failed:', err);
     return false;
   }
 }

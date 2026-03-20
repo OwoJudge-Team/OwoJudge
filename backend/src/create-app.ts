@@ -14,6 +14,7 @@ import webhookRouter from './routes/webhook.js';
 import rejudgeRouter from './routes/rejudge.js';
 import announcementRouter from './routes/announcement.js';
 import proxyRouter from './routes/proxy.js';
+import debugRouter from './routes/debug.js';
 
 // Custom middleware to apply express.json() only to non-multipart requests
 // Also captures raw body for webhook signature verification
@@ -83,5 +84,6 @@ export const createApp = (): Application => {
   app.use(rejudgeRouter);
   app.use(announcementRouter);
   app.use(proxyRouter);
+  app.use(debugRouter);
   return app;
 };
