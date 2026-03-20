@@ -1,14 +1,23 @@
 import { FaChartPie, FaInfinity, FaStar, FaUserGroup } from "react-icons/fa6";
 import CoolLink from "./CoolLink";
 import { Problem } from "@/types/problems";
+import { useMemo } from "react";
+import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 
 const ProblemTable = ({
   showCreateProblem,
   problems,
+  solvedProblems,
 }: {
   showCreateProblem: boolean;
   problems: Problem[];
+  solvedProblems: (number | string)[];
 }) => {
+  const isSolved = useMemo(() => {
+    const solvedSet = new Set(solvedProblems);
+    return (problemId: number | string) => solvedSet.has(problemId);
+  }, [solvedProblems]);
+
   return (
     <div className="no-scrollbar w-full overflow-x-auto">
       <table className="w-full text-left">
@@ -28,6 +37,9 @@ const ProblemTable = ({
             </th>
             <th className="text-nowrap px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
               AC / Tried
+            </th>
+            <th className="text-nowrap px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Status
             </th>
           </tr>
         </thead>
@@ -92,6 +104,13 @@ const ProblemTable = ({
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
                   <FaUserGroup />
                   {p.userDetail.solved} / {p.userDetail.attempted}
+                </div>
+              </td>
+              <td className="px-6 py-4">
+                <div
+                  className={`flex -translate-y-0.5 items-center text-xl font-semibold text-green-500/70`}
+                >
+                  {isSolved(p.serialNumber) && <IoMdCheckmarkCircleOutline />}
                 </div>
               </td>
             </tr>

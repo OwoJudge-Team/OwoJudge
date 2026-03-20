@@ -242,7 +242,11 @@ export default function ContestPage() {
       </div>
 
       <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
-        <ProblemTable showCreateProblem={false} problems={problems} />
+        <ProblemTable
+          showCreateProblem={false}
+          problems={problems}
+          solvedProblems={user?.solvedProblems ?? []}
+        />
       </div>
 
       {isAdminOrTA(user) && (
