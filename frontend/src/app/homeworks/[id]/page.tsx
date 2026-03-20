@@ -325,7 +325,7 @@ export default function ContestPage() {
         message={message}
         confirm={!isDeleting && !finished}
         loading={isDeleting}
-        style="danger"
+        buttonStyle="danger"
       />
 
       <CumulativeModal

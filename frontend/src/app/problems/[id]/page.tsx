@@ -31,6 +31,7 @@ export default function ProblemPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [ModalTextStyle, setModalTextStyle] = useState<"normal" | "log">("normal");
   const [isPieOpen, setIsPieOpen] = useState(false);
   const { user } = useAuth();
   const [data, setData] = useState<Problem | null>(null);
@@ -133,7 +134,18 @@ export default function ProblemPage() {
             <StatsButton size="sm" onClick={() => setIsPieOpen(true)} />
 
             {isAdminOrTA(user) && (
-              <div className="flex items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1">
+              <div
+                className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 hover:bg-slate-700/80"
+                onClick={() => {
+                  setMessage(
+                    data?.statusReason ??
+                      `Problem status: ${data.status.toUpperCase()}, no additional reason provided.`
+                  );
+                  setFinished(true);
+                  setIsModalOpen(true);
+                  setModalTextStyle("log");
+                }}
+              >
                 <div
                   className={`h-2 w-2 rounded-full ${PROBLEM_STATUS_COLORS[data.status] || "bg-gray-500"}`}
                 ></div>
@@ -211,6 +223,7 @@ export default function ProblemPage() {
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          setModalTextStyle("normal");
           if (success) {
             router.push("/problems");
           } else if (finished) {
@@ -224,7 +237,8 @@ export default function ProblemPage() {
         message={message}
         confirm={!isDeleting && !finished}
         loading={isDeleting}
-        style="danger"
+        buttonStyle="danger"
+        textStyle={ModalTextStyle}
       />
 
       <PieChart
