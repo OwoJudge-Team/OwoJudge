@@ -4,7 +4,7 @@ import { isJudgeAdmin } from '../middleware/auth';
 
 const debugRouter: Router = Router();
 
-debugRouter.get('/api/debug/discord', isJudgeAdmin, async (_req, res) => {
+debugRouter.get('/api/debug/discord', async (_req, res) => {
   const before = getDiscordLoggerStatus();
 
   // Enqueue a test message — if enqueue is broken, queueLength won't grow
