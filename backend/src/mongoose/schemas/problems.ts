@@ -149,7 +149,7 @@ const problemSchema = new Schema<IProblem>({
   dailyQuota: { type: Number },
   released: { type: Boolean, default: false },
   status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
-  statusReason: { type: String },
+  statusReason: { type: String, default: '' },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   hasGrader: { type: Boolean, default: false },
   testcase: [
