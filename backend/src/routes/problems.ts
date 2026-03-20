@@ -143,6 +143,7 @@ const upload = multer({
  *     "_id": "68fb738f149ff1b7927a14a6",
  *     "serialNumber": 0,
  *     "status": "ready",
+ *     "statusReason": "Checker compiled and verified successfully",
  *     "createdTime": "2025-10-24T12:39:43.750Z",
  *     "title": "Problem Title",
  *     "timeLimit": 1,
@@ -169,7 +170,7 @@ const getProblems = async (request: IRequest, response: Response) => {
 
     const problems: IProblem[] = await Problem.find(query)
       .select(
-        "id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released hasGrader",
+        "id serialNumber title status statusReason createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released hasGrader",
       )
       .sort({ serialNumber: -1 });
 
@@ -252,6 +253,7 @@ const getProblems = async (request: IRequest, response: Response) => {
  *   "_id": "68fb738f149ff1b7927a14a6",
  *   "serialNumber": 0,
  *   "status": "ready",
+ *   "statusReason": "Checker compiled and verified successfully",
  *   "createdTime": "2025-10-24T12:39:43.750Z",
  *   "title": "Problem Title",
  *   "timeLimit": 1,
