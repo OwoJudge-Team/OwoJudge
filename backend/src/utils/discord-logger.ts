@@ -64,12 +64,30 @@ async function postToDiscord(msg: QueuedMessage): Promise<boolean> {
   }
 }
 
+let flushing = false;
+
 /** Drain up to 2 messages from the queue in sequence (stay within rate-limit). */
 async function flush(): Promise<void> {
-  const batch = queue.splice(0, 2);
-  for (const msg of batch) {
-    await postToDiscord(msg);
+  if (flushing) return;
+  flushing = true;
+  try {
+    const batch = queue.splice(0, 2);
+    for (const msg of batch) {
+      await postToDiscord(msg);
+    }
+  } finally {
+    flushing = false;
   }
+}
+
+/** Force-flush up to 5 messages immediately. Returns counts for diagnostics. */
+export async function forceFlush(): Promise<{ attempted: number; succeeded: number }> {
+  const batch = queue.splice(0, 5);
+  let succeeded = 0;
+  for (const msg of batch) {
+    if (await postToDiscord(msg)) succeeded++;
+  }
+  return { attempted: batch.length, succeeded };
 }
 
 /** Start the background flush interval once a DISCORD_WEBHOOK_URL is available. */
@@ -79,7 +97,7 @@ function startFlushTimer(): void {
     if (queue.length > 0) {
       flush().catch(() => {/* swallow */});
     }
-  }, 4000); // every 4 s
+  }, 2000); // every 2 s — 1 msg/s max = well under Discord's 30 req/min
   // Don't keep the process alive solely for logging
   if (flushTimer.unref) flushTimer.unref();
 }
@@ -104,6 +122,10 @@ function enqueue(level: string, args: unknown[]): void {
 
   // Safety valve: don't let queue grow unbounded if Discord is unreachable
   if (queue.length > QUEUE_LENGTH_LIMIT) queue.splice(0, queue.length - QUEUE_LENGTH_LIMIT);
+
+  // Trigger an immediate flush after this event-loop tick, so messages
+  // don't have to wait up to 2 s for the background timer.
+  setImmediate(() => { flush().catch(() => {}); });
 }
 
 /** Return the current queue length and whether the logger is installed. */
