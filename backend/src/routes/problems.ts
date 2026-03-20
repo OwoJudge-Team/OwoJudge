@@ -730,6 +730,42 @@ const createProblem = async (
                         }
                         throw new Error(errorMsg);
                       }
+
+                      // Verify checker runtime by running it against the first available test case.
+                      // We use the judge's answer as the user's output, so a correct checker should return score 1.
+                      const testFiles = fs.readdirSync(targetTestsDir).filter(f => f.endsWith('.in')).sort();
+                      if (testFiles.length > 0) {
+                        const testBase = testFiles[0].slice(0, -3);
+                        console.log(`Verifying checker runtime for problem ${newProblem.serialNumber} with testcase ${testBase}...`);
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.in`), path.join(checkerBoxDir, 'input.in'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'answer.out'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'user.out'));
+
+                        try {
+                          await checkerBox.run('./checker.exe input.in answer.out user.out', {
+                            processes: 1,
+                            timeLimit: 10,
+                            wallTimeLimit: 20,
+                            memoryLimit: 512000,
+                            stdout: 'checker-runtime.out',
+                            stderr: 'checker-runtime.err',
+                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                          }, 25000);
+                        } catch {
+                          let errorMsg = `Checker runtime failed for problem ${newProblem.serialNumber}.`;
+                          const stderrPath = path.join(checkerBoxDir, 'checker-runtime.err');
+                          if (fs.existsSync(stderrPath)) {
+                            errorMsg += `\nError:\n${fs.readFileSync(stderrPath, 'utf-8')}`;
+                          }
+                          throw new Error(errorMsg);
+                        }
+
+                        const scoreStr = fs.readFileSync(path.join(checkerBoxDir, 'checker-runtime.out'), 'utf-8').trim();
+                        if (isNaN(parseFloat(scoreStr))) {
+                          throw new Error(`Checker produced non-numeric output for problem ${newProblem.serialNumber}: "${scoreStr}"`);
+                        }
+                        console.log(`Checker runtime verified successfully for problem ${newProblem.serialNumber} (score: ${scoreStr})`);
+                      }
                     });
 
                     // Update problem status to Ready
@@ -1264,11 +1300,49 @@ const updateProblemWithFile = async (
                         }
                         throw new Error(errorMsg);
                       }
+
+                      // Verify checker runtime by running it against the first available test case.
+                      // We use the judge's answer as the user's output, so a correct checker should return score 1.
+                      const testFiles = fs.readdirSync(targetTestsDir).filter(f => f.endsWith('.in')).sort();
+                      if (testFiles.length > 0) {
+                        const testBase = testFiles[0].slice(0, -3);
+                        console.log(`Verifying checker runtime for problem ${existingProblem.serialNumber} with testcase ${testBase}...`);
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.in`), path.join(checkerBoxDir, 'input.in'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'answer.out'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'user.out'));
+
+                        try {
+                          await checkerBox.run('./checker.exe input.in answer.out user.out', {
+                            processes: 1,
+                            timeLimit: 10,
+                            wallTimeLimit: 20,
+                            memoryLimit: 512000,
+                            stdout: 'checker-runtime.out',
+                            stderr: 'checker-runtime.err',
+                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                          }, 25000);
+                        } catch {
+                          let errorMsg = `Checker runtime failed for problem ${existingProblem.serialNumber}.`;
+                          const stderrPath = path.join(checkerBoxDir, 'checker-runtime.err');
+                          if (fs.existsSync(stderrPath)) {
+                            errorMsg += `\nError:\n${fs.readFileSync(stderrPath, 'utf-8')}`;
+                          }
+                          throw new Error(errorMsg);
+                        }
+
+                        const scoreStr = fs.readFileSync(path.join(checkerBoxDir, 'checker-runtime.out'), 'utf-8').trim();
+                        if (isNaN(parseFloat(scoreStr))) {
+                          throw new Error(`Checker produced non-numeric output for problem ${existingProblem.serialNumber}: "${scoreStr}"`);
+                        }
+                        console.log(`Checker runtime verified successfully for problem ${existingProblem.serialNumber} (score: ${scoreStr})`);
+                      }
                     });
 
                     // Update problem status to Ready
+                    console.log(`Problem ${existingProblem.serialNumber} checker verified, setting status to Ready`);
                     await Problem.findByIdAndUpdate(existingProblem._id, {
                       status: ProblemStatus.Ready,
+                      statusReason: 'Checker compiled and verified successfully',
                     });
                   } catch (copyError) {
                     // Clean up temporary directory if copy failed
@@ -1288,12 +1362,14 @@ const updateProblemWithFile = async (
               }
             });
           } catch (genError) {
+            const reason = genError instanceof Error ? genError.message : String(genError);
             console.error(
               `Failed to generate test cases for ${serialNumber}:`,
               genError,
             );
             await Problem.findByIdAndUpdate(existingProblem._id, {
               status: ProblemStatus.Error,
+              statusReason: reason,
             });
           } finally {
             releaseLock();
