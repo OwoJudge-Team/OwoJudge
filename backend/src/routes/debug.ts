@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { getDiscordLoggerStatus, forceFlush } from '../utils/discord-logger';
-import { isJudgeAdmin } from '../middleware/auth';
 
 const debugRouter: Router = Router();
 
