@@ -138,8 +138,9 @@ export default function ProblemPage() {
                 className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 hover:bg-slate-700/80"
                 onClick={() => {
                   setMessage(
-                    data?.statusReason ??
-                      `Problem status: ${data.status.toUpperCase()}, no additional reason provided.`
+                    data.statusReason === undefined || data.statusReason === ""
+                      ? `Problem status: ${data.status.toUpperCase()}, no additional reason provided.`
+                      : data.statusReason
                   );
                   setFinished(true);
                   setIsModalOpen(true);
