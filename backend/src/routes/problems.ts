@@ -701,6 +701,13 @@ const createProblem = async (
                     await IsolateManager.withBox(async (checkerBox) => {
                       const checkerBoxDir = checkerBox.getBoxDir();
                       await checkerBox.copyToBox(checkerDir);
+                      // Remove any pre-compiled binary that may have been bundled with the
+                      // problem package — otherwise a stale checker.exe would mask a broken
+                      // Makefile and the existence check below would incorrectly pass.
+                      const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
+                      if (fs.existsSync(prebuiltChecker)) {
+                        fs.rmSync(prebuiltChecker);
+                      }
                       try {
                         await checkerBox.run('make', {
                           processes: 20,
@@ -972,9 +979,12 @@ const updateProblemWithFile = async (
   }
 
   const fileName = (filePath as string).split("/").reverse()[0];
-  const newProblemDirName = fileName.replace(".tar.gz", "");
   const targetPath = "problems/" + fileName;
-  const newProblemDir = "problems/" + newProblemDirName;
+  // Use a temp dir name that can never collide with the problem's serial-number
+  // directory (e.g. if the user uploads "1001.tar.gz" for problem 1001, the
+  // old extraction scheme would create problems/1001, which is the same as
+  // the existing problem dir — causing it to be wiped before the rename).
+  const newProblemDir = "problems/update-" + serialNumber + "-" + Date.now();
 
   try {
     const existingProblem: IProblem | null = await Problem.findOne({
@@ -988,8 +998,7 @@ const updateProblemWithFile = async (
 
     spawnSync("mv", [filePath, targetPath]);
 
-    // Create a directory for this specific upload to avoid conflicts
-    const extractDir = "problems/" + fileName.replace(".tar.gz", "");
+    const extractDir = newProblemDir;
     fs.mkdirSync(extractDir, { recursive: true });
 
     await tar.x({
@@ -998,8 +1007,6 @@ const updateProblemWithFile = async (
       strip: 1,
       noMtime: true,
     });
-
-    const newProblemDir = extractDir;
 
     // Cleanup macOS metadata files that might cause issues with cp
     spawnSync("find", [newProblemDir, "-name", "._*", "-delete"]);
@@ -1228,6 +1235,13 @@ const updateProblemWithFile = async (
                     await IsolateManager.withBox(async (checkerBox) => {
                       const checkerBoxDir = checkerBox.getBoxDir();
                       await checkerBox.copyToBox(checkerDir);
+                      // Remove any pre-compiled binary that may have been bundled with the
+                      // problem package — otherwise a stale checker.exe would mask a broken
+                      // Makefile and the existence check below would incorrectly pass.
+                      const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
+                      if (fs.existsSync(prebuiltChecker)) {
+                        fs.rmSync(prebuiltChecker);
+                      }
                       try {
                         await checkerBox.run('make', {
                           processes: 20,
@@ -1286,6 +1300,17 @@ const updateProblemWithFile = async (
           }
         })();
       } catch (error) {
+        // The old problem directory was already deleted before this block ran.
+        // Mark the problem as Error so it is not left in a stale Ready state
+        // with no files on disk.
+        try {
+          await Problem.findByIdAndUpdate(existingProblem._id, {
+            status: ProblemStatus.Error,
+            statusReason: `Update failed after deleting old problem files: ${error instanceof Error ? error.message : String(error)}`,
+          });
+        } catch (dbErr) {
+          console.error('Failed to mark problem as Error after update failure:', dbErr);
+        }
         releaseLock();
         throw error;
       }
