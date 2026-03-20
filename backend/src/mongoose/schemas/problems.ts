@@ -67,6 +67,7 @@ interface ITestcase {
  * @property dailyQuota - Optional daily submission limit per user.
  * @property released - Whether the problem is publicly visible.
  * @property status - One of {@link ProblemStatus}.
+ * @property statusReason - Human-readable reason for the current status (e.g. error message).
  * @property scorePolicy - One of {@link ScorePolicy}.
  * @property hasGrader - Whether the problem uses a custom grader.
  * @property testcase - Array of {@link ITestcase} entries.
@@ -87,6 +88,7 @@ interface IProblem extends Document {
   dailyQuota?: number;
   released: boolean;
   status: ProblemStatus;
+  statusReason?: string;
   scorePolicy: ScorePolicy;
   hasGrader?: boolean;
   testcase: ITestcase[];
@@ -126,6 +128,7 @@ interface IProblem extends Document {
  * | `dailyQuota`       | `Number`   | No       | —            | No     | Daily submission limit             |
  * | `released`         | `Boolean`  | No       | `false`      | No     | Public visibility                  |
  * | `status`           | `String`   | No       | `"waiting"`  | No     | {@link ProblemStatus}              |
+ * | `statusReason`     | `String`   | No       | —            | No     | Human-readable reason for status   |
  * | `scorePolicy`      | `String`   | Yes      | —            | No     | {@link ScorePolicy}                |
  * | `hasGrader`        | `Boolean`  | No       | `false`      | No     | Custom grader flag                 |
  * | `testcase`         | `Array`    | No       | `[]`         | No     | {@link ITestcase} entries          |
@@ -146,6 +149,7 @@ const problemSchema = new Schema<IProblem>({
   dailyQuota: { type: Number },
   released: { type: Boolean, default: false },
   status: { type: String, enum: Object.values(ProblemStatus), default: ProblemStatus.Waiting },
+  statusReason: { type: String, default: '' },
   scorePolicy: { type: String, required: true, enum: Object.values(ScorePolicy) },
   hasGrader: { type: Boolean, default: false },
   testcase: [

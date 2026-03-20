@@ -36,7 +36,7 @@ class ProblemLock {
 
   static async acquire(id: string): Promise<() => void> {
     const previousLock = this.locks.get(id) || Promise.resolve();
-    let release: () => void = () => {};
+    let release: () => void = () => { };
     const newLock = new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -44,13 +44,13 @@ class ProblemLock {
     // Chain the new lock to the previous one
     // We want the next acquirer to wait for this newLock to resolve
     // Use .catch() to ensure the chain continues even if previousLock rejected
-    const nextPromise = previousLock.catch(() => {}).then(() => newLock);
+    const nextPromise = previousLock.catch(() => { }).then(() => newLock);
 
     // Update the map with the promise that resolves when WE are done
     this.locks.set(id, nextPromise);
 
     // Wait for our turn
-    await previousLock.catch(() => {}); // Ignore errors from previous
+    await previousLock.catch(() => { }); // Ignore errors from previous
 
     return () => {
       release();
@@ -143,6 +143,7 @@ const upload = multer({
  *     "_id": "68fb738f149ff1b7927a14a6",
  *     "serialNumber": 0,
  *     "status": "ready",
+ *     "statusReason": "Checker compiled and verified successfully",
  *     "createdTime": "2025-10-24T12:39:43.750Z",
  *     "title": "Problem Title",
  *     "timeLimit": 1,
@@ -169,7 +170,7 @@ const getProblems = async (request: IRequest, response: Response) => {
 
     const problems: IProblem[] = await Problem.find(query)
       .select(
-        "id serialNumber title status createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released hasGrader",
+        "id serialNumber title status statusReason createdTime timeLimit memoryLimit tags problemRelatedTags submissionDetail userDetail fullScore dailyQuota released hasGrader",
       )
       .sort({ serialNumber: -1 });
 
@@ -252,6 +253,7 @@ const getProblems = async (request: IRequest, response: Response) => {
  *   "_id": "68fb738f149ff1b7927a14a6",
  *   "serialNumber": 0,
  *   "status": "ready",
+ *   "statusReason": "Checker compiled and verified successfully",
  *   "createdTime": "2025-10-24T12:39:43.750Z",
  *   "title": "Problem Title",
  *   "timeLimit": 1,
@@ -435,6 +437,7 @@ const createProblem = async (
   request: IRequest,
   response: Response,
 ): Promise<void> => {
+  console.log("[create-problem] Received request to create problem with file upload");
   const filePath = request.file?.path;
   if (!filePath) {
     response.status(400).send("No file uploaded");
@@ -654,9 +657,124 @@ const createProblem = async (
                       `Test cases generated and copied successfully for ${newProblem.serialNumber}`,
                     );
 
+                    // Validate that on-demand generation works by running the first
+                    // non-manual testcase through generateSingleTestcase (compiles
+                    // the generator and the model solution end-to-end).
+                    const genSummaryCandidates = [
+                      path.join(finalProblemDir, "tests", "gen_summary"),
+                      path.join(finalProblemDir, "gen", "gen_summary"),
+                    ];
+                    let firstTestcase: string | null = null;
+                    for (const genSummaryPath of genSummaryCandidates) {
+                      if (!fs.existsSync(genSummaryPath)) continue;
+                      for (const line of fs
+                        .readFileSync(genSummaryPath, "utf8")
+                        .split("\n")) {
+                        if (!line.trim() || line.trim().startsWith("#")) continue;
+                        const parts = line.trim().split(/\s+/);
+                        if (
+                          parts.length >= 3 &&
+                          !parts.slice(2).join(" ").startsWith("manual")
+                        ) {
+                          firstTestcase = parts[0];
+                          break;
+                        }
+                      }
+                      if (firstTestcase) break;
+                    }
+                    if (firstTestcase) {
+                      console.log(
+                        `Validating on-demand generation for problem ${newProblem.serialNumber}, testcase ${firstTestcase}`,
+                      );
+                      await generateSingleTestcase(newProblem.serialNumber.toString(), firstTestcase);
+                    } else {
+                      console.warn('No gen available for this problem');
+                    }
+
+                    // Verify checker compilation in a fresh isolated box containing
+                    // only the checker/ directory — the same environment the judger
+                    // uses — so stale binaries or testlib.h leaking from the problem
+                    // root cannot mask a broken checker.
+                    const checkerDir = path.join(finalProblemDir, "checker");
+                    if (!fs.existsSync(checkerDir)) {
+                      throw new Error(`Checker directory not found for problem ${newProblem.serialNumber}`);
+                    }
+                    console.log(`Verifying checker compilation for problem ${newProblem.serialNumber}...`);
+                    await IsolateManager.withBox(async (checkerBox) => {
+                      const checkerBoxDir = checkerBox.getBoxDir();
+                      await checkerBox.copyToBox(checkerDir);
+                      // Remove any pre-compiled binary that may have been bundled with the
+                      // problem package — otherwise a stale checker.exe would mask a broken
+                      // Makefile and the existence check below would incorrectly pass.
+                      const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
+                      if (fs.existsSync(prebuiltChecker)) {
+                        fs.rmSync(prebuiltChecker);
+                      }
+                      try {
+                        await checkerBox.run('make', {
+                          processes: 20,
+                          timeLimit: 10,
+                          wallTimeLimit: 20,
+                          memoryLimit: 512000,
+                          stderr: 'checker-compile.error',
+                          fullEnv: true,
+                          dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                        }, 25000);
+                      } catch {
+                        // make failed; existence check below produces the real error
+                      }
+                      const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
+                      if (!fs.existsSync(compiledCheckerPath)) {
+                        let errorMsg = `Checker compilation failed for problem ${newProblem.serialNumber}`;
+                        const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
+                        if (fs.existsSync(errorFilePath)) {
+                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
+                        }
+                        throw new Error(errorMsg);
+                      }
+
+                      // Verify checker runtime by running it against the first available test case.
+                      // We use the judge's answer as the user's output, so a correct checker should return score 1.
+                      const testFiles = fs.readdirSync(targetTestsDir).filter(f => f.endsWith('.in')).sort();
+                      if (testFiles.length > 0) {
+                        const testBase = testFiles[0].slice(0, -3);
+                        console.log(`Verifying checker runtime for problem ${newProblem.serialNumber} with testcase ${testBase}...`);
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.in`), path.join(checkerBoxDir, 'input.in'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'answer.out'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'user.out'));
+
+                        try {
+                          await checkerBox.run('./checker.exe input.in answer.out user.out', {
+                            processes: 1,
+                            timeLimit: 10,
+                            wallTimeLimit: 20,
+                            memoryLimit: 512000,
+                            stdout: 'checker-runtime.out',
+                            stderr: 'checker-runtime.err',
+                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                          }, 25000);
+                        } catch {
+                          let errorMsg = `Checker runtime failed for problem ${newProblem.serialNumber}.`;
+                          const stderrPath = path.join(checkerBoxDir, 'checker-runtime.err');
+                          if (fs.existsSync(stderrPath)) {
+                            errorMsg += `\nError:\n${fs.readFileSync(stderrPath, 'utf-8')}`;
+                          }
+                          throw new Error(errorMsg);
+                        }
+
+                        const scoreStr = fs.readFileSync(path.join(checkerBoxDir, 'checker-runtime.out'), 'utf-8').trim();
+                        if (isNaN(parseFloat(scoreStr))) {
+                          throw new Error(`Checker produced non-numeric output for problem ${newProblem.serialNumber}: "${scoreStr}"`);
+                        }
+                        console.log(`Checker runtime verified successfully for problem ${newProblem.serialNumber} (score: ${scoreStr})`);
+                      }
+                    });
+
                     // Update problem status to Ready
+                    console.log(`Problem ${newProblem.serialNumber} checker verified, setting status to Ready`);
                     await Problem.findByIdAndUpdate(newProblem._id, {
                       status: ProblemStatus.Ready,
+                      statusReason: 'Checker compiled and verified successfully',
                     });
                   } catch (copyError) {
                     // Clean up temporary directory if copy failed
@@ -676,12 +794,14 @@ const createProblem = async (
               }
             });
           } catch (genError) {
+            const reason = genError instanceof Error ? genError.message : String(genError);
             console.error(
-              `Failed to generate test cases for ${newProblem.serialNumber}:`,
-              genError,
+              `Problem ${newProblem.serialNumber} failed in tps validateion process:`,
+              reason,
             );
             await Problem.findByIdAndUpdate(newProblem._id, {
               status: ProblemStatus.Error,
+              statusReason: reason,
             });
           } finally {
             releaseLock();
@@ -876,6 +996,7 @@ const updateProblemWithFile = async (
   request: IRequest,
   response: Response,
 ): Promise<void> => {
+  console.log(`[update-problem-with-file] Updating problem with serial number: ${request.params.serialNumber}`);
   const serialNumber = parseInt(request.params.serialNumber);
 
   if (isNaN(serialNumber)) {
@@ -896,9 +1017,12 @@ const updateProblemWithFile = async (
   }
 
   const fileName = (filePath as string).split("/").reverse()[0];
-  const newProblemDirName = fileName.replace(".tar.gz", "");
   const targetPath = "problems/" + fileName;
-  const newProblemDir = "problems/" + newProblemDirName;
+  // Use a temp dir name that can never collide with the problem's serial-number
+  // directory (e.g. if the user uploads "1001.tar.gz" for problem 1001, the
+  // old extraction scheme would create problems/1001, which is the same as
+  // the existing problem dir — causing it to be wiped before the rename).
+  const newProblemDir = "problems/update-" + serialNumber + "-" + Date.now();
 
   try {
     const existingProblem: IProblem | null = await Problem.findOne({
@@ -912,8 +1036,7 @@ const updateProblemWithFile = async (
 
     spawnSync("mv", [filePath, targetPath]);
 
-    // Create a directory for this specific upload to avoid conflicts
-    const extractDir = "problems/" + fileName.replace(".tar.gz", "");
+    const extractDir = newProblemDir;
     fs.mkdirSync(extractDir, { recursive: true });
 
     await tar.x({
@@ -922,8 +1045,6 @@ const updateProblemWithFile = async (
       strip: 1,
       noMtime: true,
     });
-
-    const newProblemDir = extractDir;
 
     // Cleanup macOS metadata files that might cause issues with cp
     spawnSync("find", [newProblemDir, "-name", "._*", "-delete"]);
@@ -1106,9 +1227,124 @@ const updateProblemWithFile = async (
                       `Test cases generated and copied successfully for ${serialNumber}`,
                     );
 
+                    // Validate that on-demand generation works by running the first
+                    // non-manual testcase through generateSingleTestcase (compiles
+                    // the generator and the model solution end-to-end).
+                    const genSummaryCandidates = [
+                      path.join(finalProblemDir, "tests", "gen_summary"),
+                      path.join(finalProblemDir, "gen", "gen_summary"),
+                    ];
+                    let firstTestcase: string | null = null;
+                    for (const genSummaryPath of genSummaryCandidates) {
+                      if (!fs.existsSync(genSummaryPath)) continue;
+                      for (const line of fs
+                        .readFileSync(genSummaryPath, "utf8")
+                        .split("\n")) {
+                        if (!line.trim() || line.trim().startsWith("#")) continue;
+                        const parts = line.trim().split(/\s+/);
+                        if (
+                          parts.length >= 3 &&
+                          !parts.slice(2).join(" ").startsWith("manual")
+                        ) {
+                          firstTestcase = parts[0];
+                          break;
+                        }
+                      }
+                      if (firstTestcase) break;
+                    }
+                    if (firstTestcase) {
+                      console.log(
+                        `Validating on-demand generation for problem ${existingProblem.serialNumber}, testcase ${firstTestcase}`,
+                      );
+                      await generateSingleTestcase(existingProblem.serialNumber.toString(), firstTestcase);
+                    } else {
+                      console.warn('No gen available for this problem');
+                    }
+
+                    // Verify checker compilation in a fresh isolated box containing
+                    // only the checker/ directory — the same environment the judger
+                    // uses — so stale binaries or testlib.h leaking from the problem
+                    // root cannot mask a broken checker.
+                    const checkerDir = path.join(finalProblemDir, "checker");
+                    if (!fs.existsSync(checkerDir)) {
+                      throw new Error(`Checker directory not found for problem ${existingProblem.serialNumber}`);
+                    }
+                    console.log(`Verifying checker compilation for problem ${existingProblem.serialNumber}...`);
+                    await IsolateManager.withBox(async (checkerBox) => {
+                      const checkerBoxDir = checkerBox.getBoxDir();
+                      await checkerBox.copyToBox(checkerDir);
+                      // Remove any pre-compiled binary that may have been bundled with the
+                      // problem package — otherwise a stale checker.exe would mask a broken
+                      // Makefile and the existence check below would incorrectly pass.
+                      const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
+                      if (fs.existsSync(prebuiltChecker)) {
+                        fs.rmSync(prebuiltChecker);
+                      }
+                      try {
+                        await checkerBox.run('make', {
+                          processes: 20,
+                          timeLimit: 10,
+                          wallTimeLimit: 20,
+                          memoryLimit: 512000,
+                          stderr: 'checker-compile.error',
+                          fullEnv: true,
+                          dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                        }, 25000);
+                      } catch {
+                        // make failed; existence check below produces the real error
+                      }
+                      const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
+                      if (!fs.existsSync(compiledCheckerPath)) {
+                        let errorMsg = `Checker compilation failed for problem ${existingProblem.serialNumber}, checker.exe not found.`;
+                        const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
+                        if (fs.existsSync(errorFilePath)) {
+                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
+                        }
+                        throw new Error(errorMsg);
+                      }
+
+                      // Verify checker runtime by running it against the first available test case.
+                      // We use the judge's answer as the user's output, so a correct checker should return score 1.
+                      const testFiles = fs.readdirSync(targetTestsDir).filter(f => f.endsWith('.in')).sort();
+                      if (testFiles.length > 0) {
+                        const testBase = testFiles[0].slice(0, -3);
+                        console.log(`Verifying checker runtime for problem ${existingProblem.serialNumber} with testcase ${testBase}...`);
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.in`), path.join(checkerBoxDir, 'input.in'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'answer.out'));
+                        fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'user.out'));
+
+                        try {
+                          await checkerBox.run('./checker.exe input.in answer.out user.out', {
+                            processes: 1,
+                            timeLimit: 10,
+                            wallTimeLimit: 20,
+                            memoryLimit: 512000,
+                            stdout: 'checker-runtime.out',
+                            stderr: 'checker-runtime.err',
+                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                          }, 25000);
+                        } catch {
+                          let errorMsg = `Checker runtime failed for problem ${existingProblem.serialNumber}.`;
+                          const stderrPath = path.join(checkerBoxDir, 'checker-runtime.err');
+                          if (fs.existsSync(stderrPath)) {
+                            errorMsg += `\nError:\n${fs.readFileSync(stderrPath, 'utf-8')}`;
+                          }
+                          throw new Error(errorMsg);
+                        }
+
+                        const scoreStr = fs.readFileSync(path.join(checkerBoxDir, 'checker-runtime.out'), 'utf-8').trim();
+                        if (isNaN(parseFloat(scoreStr))) {
+                          throw new Error(`Checker produced non-numeric output for problem ${existingProblem.serialNumber}: "${scoreStr}"`);
+                        }
+                        console.log(`Checker runtime verified successfully for problem ${existingProblem.serialNumber} (score: ${scoreStr})`);
+                      }
+                    });
+
                     // Update problem status to Ready
+                    console.log(`Problem ${existingProblem.serialNumber} checker verified, setting status to Ready`);
                     await Problem.findByIdAndUpdate(existingProblem._id, {
                       status: ProblemStatus.Ready,
+                      statusReason: 'Checker compiled and verified successfully',
                     });
                   } catch (copyError) {
                     // Clean up temporary directory if copy failed
@@ -1128,18 +1364,31 @@ const updateProblemWithFile = async (
               }
             });
           } catch (genError) {
+            const reason = genError instanceof Error ? genError.message : String(genError);
             console.error(
               `Failed to generate test cases for ${serialNumber}:`,
               genError,
             );
             await Problem.findByIdAndUpdate(existingProblem._id, {
               status: ProblemStatus.Error,
+              statusReason: reason,
             });
           } finally {
             releaseLock();
           }
         })();
       } catch (error) {
+        // The old problem directory was already deleted before this block ran.
+        // Mark the problem as Error so it is not left in a stale Ready state
+        // with no files on disk.
+        try {
+          await Problem.findByIdAndUpdate(existingProblem._id, {
+            status: ProblemStatus.Error,
+            statusReason: `Update failed after deleting old problem files: ${error instanceof Error ? error.message : String(error)}`,
+          });
+        } catch (dbErr) {
+          console.error('Failed to mark problem as Error after update failure:', dbErr);
+        }
         releaseLock();
         throw error;
       }
