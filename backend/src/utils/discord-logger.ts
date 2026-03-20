@@ -78,9 +78,14 @@ function startFlushTimer(): void {
 function enqueue(level: string, args: unknown[]): void {
   if (!DISCORD_WEBHOOK_URL) return;
 
-  const text = args
-    .map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2)))
-    .join(' ');
+  let text: string;
+  try {
+    text = args
+      .map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2)))
+      .join(' ');
+  } catch {
+    text = args.map(a => String(a)).join(' ');
+  }
 
   queue.push({
     content: truncate(`[${level}] ${text}`),

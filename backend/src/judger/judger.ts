@@ -35,10 +35,17 @@ class JudgerManager {
       mongoUri: process.env.MONGO_URI || 'mongodb://mongodb:27017/judge'
     };
 
+    // Detect tsx (dev) vs compiled (prod) mode
+    const isTsx = __filename.endsWith('.ts');
+    const workerScript = isTsx
+      ? path.join(__dirname, 'judger-worker.ts')
+      : path.join(__dirname, 'judger-worker.js');
+    const workerExecArgv = isTsx ? ['--import', 'tsx'] : [];
+
     for (let i = 0; i < this.workerCount; i++) {
-      // Use compiled JavaScript files for Workers
-      const worker = new Worker(path.join(__dirname, 'judger-worker.js'), {
-        workerData: { ...workerData, workerId: i + 1 } // Start from 1, 0 is for main process
+      const worker = new Worker(workerScript, {
+        workerData: { ...workerData, workerId: i + 1 }, // Start from 1, 0 is for main process
+        execArgv: workerExecArgv
       });
       worker.on('message', (response: WorkerResponse) => {
         this.handleWorkerMessage(worker, response);
@@ -60,13 +67,17 @@ class JudgerManager {
   }
 
   private async createWorker(): Promise<Worker> {
-    // Use compiled JavaScript files for Workers
     const workerData = {
       mongoUri: process.env.MONGO_URI || 'mongodb://mongodb:27017/judge'
     };
 
-    const worker = new Worker(path.join(__dirname, 'judger-worker.js'), {
-      workerData
+    const isTsx = __filename.endsWith('.ts');
+    const workerScript = isTsx
+      ? path.join(__dirname, 'judger-worker.ts')
+      : path.join(__dirname, 'judger-worker.js');
+    const worker = new Worker(workerScript, {
+      workerData,
+      execArgv: isTsx ? ['--import', 'tsx'] : []
     });
 
     worker.on('message', (response: WorkerResponse) => {

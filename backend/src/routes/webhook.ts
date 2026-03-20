@@ -308,7 +308,7 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
 
                 const newSubmission = new Submission(submissionData);
                 const savedSubmission = await newSubmission.save();
-                submitUserSubmission(savedSubmission);
+                await submitUserSubmission(savedSubmission);
                 console.log(`[Webhook] Submission created: ${savedSubmission.serialNumber}`);
 
                 console.log(`[Webhook] Submission ${savedSubmission.serialNumber} sent to judger`);

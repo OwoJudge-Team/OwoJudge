@@ -726,8 +726,10 @@ const createProblem = async (
                     });
 
                     // Update problem status to Ready
+                    console.log(`Problem ${newProblem.serialNumber} checker verified, setting status to Ready`);
                     await Problem.findByIdAndUpdate(newProblem._id, {
                       status: ProblemStatus.Ready,
+                      statusReason: 'Checker compiled and verified successfully',
                     });
                   } catch (copyError) {
                     // Clean up temporary directory if copy failed
@@ -747,12 +749,14 @@ const createProblem = async (
               }
             });
           } catch (genError) {
+            const reason = genError instanceof Error ? genError.message : String(genError);
             console.error(
               `Failed to generate test cases for ${newProblem.serialNumber}:`,
               genError,
             );
             await Problem.findByIdAndUpdate(newProblem._id, {
               status: ProblemStatus.Error,
+              statusReason: reason,
             });
           } finally {
             releaseLock();
