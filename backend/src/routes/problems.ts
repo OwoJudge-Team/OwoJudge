@@ -723,7 +723,7 @@ const createProblem = async (
                       }
                       const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
                       if (!fs.existsSync(compiledCheckerPath)) {
-                        let errorMsg = `Checker compilation failed for problem ${newProblem.serialNumber}, checker.exe not found.`;
+                        let errorMsg = `Checker compilation failed for problem ${newProblem.serialNumber}`;
                         const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
                         if (fs.existsSync(errorFilePath)) {
                           errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
@@ -794,8 +794,8 @@ const createProblem = async (
           } catch (genError) {
             const reason = genError instanceof Error ? genError.message : String(genError);
             console.error(
-              `Failed to generate test cases for ${newProblem.serialNumber}:`,
-              genError,
+              `Problem ${newProblem.serialNumber} failed in tps validateion process:`,
+              reason,
             );
             await Problem.findByIdAndUpdate(newProblem._id, {
               status: ProblemStatus.Error,
