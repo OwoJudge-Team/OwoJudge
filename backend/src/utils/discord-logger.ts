@@ -105,6 +105,8 @@ function startFlushTimer(): void {
 /** Enqueue a message for delivery to Discord. */
 function enqueue(level: string, args: unknown[]): void {
   if (!DISCORD_WEBHOOK_URL) return;
+  // Forward only error-level logs to Discord.
+  if (level !== 'ERROR') return;
 
   let text: string;
   try {

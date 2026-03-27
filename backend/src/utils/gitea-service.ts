@@ -162,7 +162,7 @@ class GiteaService {
     }
 
     const result = JSON.parse(text) as T;
-    console.log(`[Gitea] Response:`, JSON.stringify(result, null, 2));
+    // console.log(`[Gitea] Response:`, JSON.stringify(result, null, 2));
     return result;
   }
 
