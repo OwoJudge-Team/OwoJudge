@@ -29,7 +29,11 @@ const ProblemPage: React.FC = () => {
     <div className="min-h-screen bg-background px-8 py-12">
       <div className="mx-auto max-w-6xl">
         <div className="rounded-lg border border-slate-700 bg-slate-800 shadow-xl lg:rounded-2xl">
-          <ProblemTable showCreateProblem={isAdminOrTA(user)} problems={problems} />
+          <ProblemTable
+            showCreateProblem={isAdminOrTA(user)}
+            problems={problems}
+            solvedProblems={user?.solvedProblems ?? []}
+          />
         </div>
       </div>
     </div>

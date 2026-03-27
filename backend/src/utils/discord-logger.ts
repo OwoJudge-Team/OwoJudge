@@ -4,11 +4,15 @@
  * forwarded to the Discord channel configured via DISCORD_WEBHOOK_URL.
  *
  * Rate-limiting: Discord allows ~30 requests / minute per webhook.
- * We flush up to 10 pendng messages every 2 seconds via a simple queue.
+ * We flush up to 2 pendng messages every 4 seconds via a simple queue.
  */
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const QUEUE_LENGTH_LIMIT = 500;
+
+// Capture native console methods before any patching so we can log
+// internal discord-logger errors without triggering infinite recursion.
+const _nativeWarn = console.warn.bind(console);
 
 interface QueuedMessage {
   content: string;
@@ -47,19 +51,43 @@ async function postToDiscord(msg: QueuedMessage): Promise<boolean> {
         ],
       }),
     });
-    return res.ok || res.status === 204;
-  } catch {
+    if (!res.ok && res.status !== 204) {
+      const body = await res.text().catch(() => '');
+      _nativeWarn(`[discord-logger] Discord returned ${res.status}: ${body}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
     // Never crash the server due to logging failures
+    _nativeWarn('[discord-logger] fetch to Discord failed:', err);
     return false;
   }
 }
 
-/** Drain up to 5 messages from the queue in sequence (stay within rate-limit). */
+let flushing = false;
+
+/** Drain up to 2 messages from the queue in sequence (stay within rate-limit). */
 async function flush(): Promise<void> {
-  const batch = queue.splice(0, 5);
-  for (const msg of batch) {
-    await postToDiscord(msg);
+  if (flushing) return;
+  flushing = true;
+  try {
+    const batch = queue.splice(0, 2);
+    for (const msg of batch) {
+      await postToDiscord(msg);
+    }
+  } finally {
+    flushing = false;
   }
+}
+
+/** Force-flush up to 5 messages immediately. Returns counts for diagnostics. */
+export async function forceFlush(): Promise<{ attempted: number; succeeded: number }> {
+  const batch = queue.splice(0, 5);
+  let succeeded = 0;
+  for (const msg of batch) {
+    if (await postToDiscord(msg)) succeeded++;
+  }
+  return { attempted: batch.length, succeeded };
 }
 
 /** Start the background flush interval once a DISCORD_WEBHOOK_URL is available. */
@@ -69,7 +97,7 @@ function startFlushTimer(): void {
     if (queue.length > 0) {
       flush().catch(() => {/* swallow */});
     }
-  }, 2000); // every 2 s
+  }, 2000); // every 2 s — 1 msg/s max = well under Discord's 30 req/min
   // Don't keep the process alive solely for logging
   if (flushTimer.unref) flushTimer.unref();
 }
@@ -78,9 +106,14 @@ function startFlushTimer(): void {
 function enqueue(level: string, args: unknown[]): void {
   if (!DISCORD_WEBHOOK_URL) return;
 
-  const text = args
-    .map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2)))
-    .join(' ');
+  let text: string;
+  try {
+    text = args
+      .map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2)))
+      .join(' ');
+  } catch {
+    text = args.map(a => String(a)).join(' ');
+  }
 
   queue.push({
     content: truncate(`[${level}] ${text}`),
@@ -89,6 +122,15 @@ function enqueue(level: string, args: unknown[]): void {
 
   // Safety valve: don't let queue grow unbounded if Discord is unreachable
   if (queue.length > QUEUE_LENGTH_LIMIT) queue.splice(0, queue.length - QUEUE_LENGTH_LIMIT);
+
+  // Trigger an immediate flush after this event-loop tick, so messages
+  // don't have to wait up to 2 s for the background timer.
+  setImmediate(() => { flush().catch(() => {}); });
+}
+
+/** Return the current queue length and whether the logger is installed. */
+export function getDiscordLoggerStatus(): { installed: boolean; queueLength: number; webhookConfigured: boolean } {
+  return { installed, queueLength: queue.length, webhookConfigured: !!DISCORD_WEBHOOK_URL };
 }
 
 /**

@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { Problem } from "@/types/problems";
 import { FaClock, FaMemory } from "react-icons/fa6";
-import { BiBarChartAlt2 } from "react-icons/bi";
 import Modal from "@/components/Modal";
 import ProblemClient from "./problem-client";
 import MarkdownRenderer from "@/components/markdown/MarkdownRenderer";
@@ -13,6 +12,7 @@ import Loading from "@/components/Loading";
 import { isAdmin, isAdminOrTA } from "@/utils/users";
 import Toggle from "@/components/Toggle";
 import PieChart from "@/app/problems/components/Pie";
+import StatsButton from "@/components/StatsButton";
 
 const SHOW_SUBMIT = false;
 
@@ -31,6 +31,7 @@ export default function ProblemPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [ModalTextStyle, setModalTextStyle] = useState<"normal" | "log">("normal");
   const [isPieOpen, setIsPieOpen] = useState(false);
   const { user } = useAuth();
   const [data, setData] = useState<Problem | null>(null);
@@ -130,16 +131,22 @@ export default function ProblemPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <div
-              className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 transition-colors hover:bg-slate-700/80"
-              onClick={() => setIsPieOpen(true)}
-            >
-              <BiBarChartAlt2 className="text-sm text-green-400/70" />
-              <p className="text-sm text-slate-300">Stats</p>
-            </div>
+            <StatsButton size="sm" onClick={() => setIsPieOpen(true)} />
 
             {isAdminOrTA(user) && (
-              <div className="flex items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1">
+              <div
+                className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 hover:bg-slate-700/80"
+                onClick={() => {
+                  setMessage(
+                    data.statusReason === undefined || data.statusReason === ""
+                      ? `Problem status: ${data.status.toUpperCase()}, no additional reason provided.`
+                      : data.statusReason
+                  );
+                  setFinished(true);
+                  setIsModalOpen(true);
+                  setModalTextStyle("log");
+                }}
+              >
                 <div
                   className={`h-2 w-2 rounded-full ${PROBLEM_STATUS_COLORS[data.status] || "bg-gray-500"}`}
                 ></div>
@@ -217,6 +224,7 @@ export default function ProblemPage() {
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          setModalTextStyle("normal");
           if (success) {
             router.push("/problems");
           } else if (finished) {
@@ -230,7 +238,8 @@ export default function ProblemPage() {
         message={message}
         confirm={!isDeleting && !finished}
         loading={isDeleting}
-        style="danger"
+        buttonStyle="danger"
+        textStyle={ModalTextStyle}
       />
 
       <PieChart

@@ -200,7 +200,7 @@ trap shutdown SIGTERM SIGINT
 
 # Start the application in the background
 echo "Starting application as root..."
-npm run start:prod &
+node ./dist/index.js &
 APP_PID=$!
 
 # Wait for the application to exit

@@ -1,4 +1,27 @@
 import { parentPort, workerData } from 'worker_threads';
+
+// Relay console output to the main thread so only one Discord poster exists.
+// Multiple workers calling setupDiscordLogger() would create competing flush timers
+// that together exceed Discord's webhook rate limit (30 req/min).
+{
+  const origLog   = console.log.bind(console);
+  const origInfo  = console.info.bind(console);
+  const origWarn  = console.warn.bind(console);
+  const origError = console.error.bind(console);
+
+  // Only relay WARN and ERROR to the main thread — LOG/INFO from workers can be
+  // very high-volume (one per test case) and would flood the Discord queue,
+  // burying route-level logs for minutes.
+  const relay = (level: string, args: unknown[]): void => {
+    if (level !== 'WARN' && level !== 'ERROR') return;
+    try { parentPort?.postMessage({ type: 'log', level, args }); } catch { /* skip unserializable */ }
+  };
+
+  console.log   = (...args: unknown[]) => { origLog(...args);   relay('LOG',   args); };
+  console.info  = (...args: unknown[]) => { origInfo(...args);  relay('INFO',  args); };
+  console.warn  = (...args: unknown[]) => { origWarn(...args);  relay('WARN',  args); };
+  console.error = (...args: unknown[]) => { origError(...args); relay('ERROR', args); };
+}
 import { updateContestStanding } from '../utils/standing-utils';
 import { Submission, ISubmission, IGroupResult } from '../mongoose/schemas/submission';
 import { Problem, IProblem } from '../mongoose/schemas/problems';
@@ -168,6 +191,7 @@ const runChecker = async (
         return { status: SubmissionStatus.AC, message };
       }
 
+      console.error('Invalid score from checker');
       return { status: SubmissionStatus.SE, message: 'Invalid score from checker' };
     } catch (error) {
       console.error(`Checker execution error: ${error}`);

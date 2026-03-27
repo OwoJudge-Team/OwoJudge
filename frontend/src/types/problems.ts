@@ -31,4 +31,5 @@ export interface Problem {
   description?: string;
   released: boolean;
   status: ProblemStatus;
+  statusReason?: string;
 }

@@ -12,8 +12,8 @@ import { isAdmin, isAdminOrTA } from "@/utils/users";
 import Toggle from "@/components/Toggle";
 import Modal from "@/components/Modal";
 import CumulativeModal from "@/app/homeworks/components/CulmulativeModal";
-import { BiBarChartAlt2 } from "react-icons/bi";
 import LiveTimeline from "@/app/homeworks/components/Timeline";
+import StatsButton from "@/components/StatsButton";
 
 export default function ContestPage() {
   const id = useParams().id;
@@ -203,13 +203,7 @@ export default function ContestPage() {
       <div className="mb-6 flex items-center justify-between">
         <div className="text-3xl font-bold text-slate-100">{contest.title}</div>
 
-        <div
-          className="flex cursor-pointer items-center gap-2 rounded-md bg-slate-700/50 px-3 py-1 transition-colors hover:bg-slate-700/80"
-          onClick={() => setIsCumulativeModalOpen(true)}
-        >
-          <BiBarChartAlt2 className="text-lg text-green-400/70" />
-          <p className="text-lg text-slate-300">Stats</p>
-        </div>
+        <StatsButton size="lg" onClick={() => setIsCumulativeModalOpen(true)} />
       </div>
 
       <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800 shadow-sm">
@@ -242,7 +236,11 @@ export default function ContestPage() {
       </div>
 
       <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-800 shadow-xl">
-        <ProblemTable showCreateProblem={false} problems={problems} />
+        <ProblemTable
+          showCreateProblem={false}
+          problems={problems}
+          solvedProblems={user?.solvedProblems ?? []}
+        />
       </div>
 
       {isAdminOrTA(user) && (
@@ -327,7 +325,7 @@ export default function ContestPage() {
         message={message}
         confirm={!isDeleting && !finished}
         loading={isDeleting}
-        style="danger"
+        buttonStyle="danger"
       />
 
       <CumulativeModal

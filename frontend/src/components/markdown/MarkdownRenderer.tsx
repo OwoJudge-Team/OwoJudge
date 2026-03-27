@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { memo } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -127,7 +127,7 @@ const replaceIframeSyntax = (text: string): string => {
   });
 };
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = memo(({ content }) => {
   const processedContent = (content || "")
     .replace(/\\\[([\s\S]*?)\\\]/g, (match, p1) => `$$${p1.trim()}$$`)
     .replace(/\\\(([\s\S]*?)\\\)/g, (match, p1) => `$${p1.trim()}$`);
@@ -216,6 +216,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
       </ReactMarkdown>
     </div>
   );
-};
+});
+
+MarkdownRenderer.displayName = "MarkdownRenderer";
 
 export default MarkdownRenderer;
