@@ -703,34 +703,43 @@ const createProblem = async (
                     await IsolateManager.withBox(async (checkerBox) => {
                       const checkerBoxDir = checkerBox.getBoxDir();
                       await checkerBox.copyToBox(checkerDir);
-                      // Remove any pre-compiled binary that may have been bundled with the
-                      // problem package — otherwise a stale checker.exe would mask a broken
-                      // Makefile and the existence check below would incorrectly pass.
-                      const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
-                      if (fs.existsSync(prebuiltChecker)) {
-                        fs.rmSync(prebuiltChecker);
-                      }
-                      try {
-                        await checkerBox.run('make', {
-                          processes: 20,
-                          timeLimit: 10,
-                          wallTimeLimit: 20,
-                          memoryLimit: 512000,
-                          stderr: 'checker-compile.error',
-                          fullEnv: true,
-                          dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
-                        }, 25000);
-                      } catch {
-                        // make failed; existence check below produces the real error
-                      }
-                      const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
-                      if (!fs.existsSync(compiledCheckerPath)) {
-                        let errorMsg = `Checker compilation failed for problem ${newProblem.serialNumber}`;
-                        const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
-                        if (fs.existsSync(errorFilePath)) {
-                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
+
+                      const isPythonChecker = fs.existsSync(path.join(checkerBoxDir, 'checker.py'));
+
+                      let checkerRunCmd: string;
+                      if (isPythonChecker) {
+                        checkerRunCmd = 'python3 checker.py input.in answer.out user.out';
+                      } else {
+                        // Remove any pre-compiled binary that may have been bundled with the
+                        // problem package — otherwise a stale checker.exe would mask a broken
+                        // Makefile and the existence check below would incorrectly pass.
+                        const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
+                        if (fs.existsSync(prebuiltChecker)) {
+                          fs.rmSync(prebuiltChecker);
                         }
-                        throw new Error(errorMsg);
+                        try {
+                          await checkerBox.run('make', {
+                            processes: 20,
+                            timeLimit: 10,
+                            wallTimeLimit: 20,
+                            memoryLimit: 512000,
+                            stderr: 'checker-compile.error',
+                            fullEnv: true,
+                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                          }, 25000);
+                        } catch {
+                          // make failed; existence check below produces the real error
+                        }
+                        const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
+                        if (!fs.existsSync(compiledCheckerPath)) {
+                          let errorMsg = `Checker compilation failed for problem ${newProblem.serialNumber}`;
+                          const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
+                          if (fs.existsSync(errorFilePath)) {
+                            errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
+                          }
+                          throw new Error(errorMsg);
+                        }
+                        checkerRunCmd = './checker.exe input.in answer.out user.out';
                       }
 
                       // Verify checker runtime by running it against the first available test case.
@@ -744,14 +753,16 @@ const createProblem = async (
                         fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'user.out'));
 
                         try {
-                          await checkerBox.run('./checker.exe input.in answer.out user.out', {
-                            processes: 1,
+                          await checkerBox.run(checkerRunCmd, {
+                            processes: isPythonChecker ? 10 : 1,
                             timeLimit: 10,
                             wallTimeLimit: 20,
                             memoryLimit: 512000,
                             stdout: 'checker-runtime.out',
                             stderr: 'checker-runtime.err',
-                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                            ...(isPythonChecker
+                              ? { fullEnv: true, dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])] }
+                              : { dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])] })
                           }, 25000);
                         } catch {
                           let errorMsg = `Checker runtime failed for problem ${newProblem.serialNumber}.`;
@@ -1273,34 +1284,43 @@ const updateProblemWithFile = async (
                     await IsolateManager.withBox(async (checkerBox) => {
                       const checkerBoxDir = checkerBox.getBoxDir();
                       await checkerBox.copyToBox(checkerDir);
-                      // Remove any pre-compiled binary that may have been bundled with the
-                      // problem package — otherwise a stale checker.exe would mask a broken
-                      // Makefile and the existence check below would incorrectly pass.
-                      const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
-                      if (fs.existsSync(prebuiltChecker)) {
-                        fs.rmSync(prebuiltChecker);
-                      }
-                      try {
-                        await checkerBox.run('make', {
-                          processes: 20,
-                          timeLimit: 10,
-                          wallTimeLimit: 20,
-                          memoryLimit: 512000,
-                          stderr: 'checker-compile.error',
-                          fullEnv: true,
-                          dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
-                        }, 25000);
-                      } catch {
-                        // make failed; existence check below produces the real error
-                      }
-                      const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
-                      if (!fs.existsSync(compiledCheckerPath)) {
-                        let errorMsg = `Checker compilation failed for problem ${existingProblem.serialNumber}, checker.exe not found.`;
-                        const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
-                        if (fs.existsSync(errorFilePath)) {
-                          errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
+
+                      const isPythonChecker = fs.existsSync(path.join(checkerBoxDir, 'checker.py'));
+
+                      let checkerRunCmd: string;
+                      if (isPythonChecker) {
+                        checkerRunCmd = 'python3 checker.py input.in answer.out user.out';
+                      } else {
+                        // Remove any pre-compiled binary that may have been bundled with the
+                        // problem package — otherwise a stale checker.exe would mask a broken
+                        // Makefile and the existence check below would incorrectly pass.
+                        const prebuiltChecker = path.join(checkerBoxDir, 'checker.exe');
+                        if (fs.existsSync(prebuiltChecker)) {
+                          fs.rmSync(prebuiltChecker);
                         }
-                        throw new Error(errorMsg);
+                        try {
+                          await checkerBox.run('make', {
+                            processes: 20,
+                            timeLimit: 10,
+                            wallTimeLimit: 20,
+                            memoryLimit: 512000,
+                            stderr: 'checker-compile.error',
+                            fullEnv: true,
+                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                          }, 25000);
+                        } catch {
+                          // make failed; existence check below produces the real error
+                        }
+                        const compiledCheckerPath = path.join(checkerBoxDir, 'checker.exe');
+                        if (!fs.existsSync(compiledCheckerPath)) {
+                          let errorMsg = `Checker compilation failed for problem ${existingProblem.serialNumber}, checker.exe not found.`;
+                          const errorFilePath = path.join(checkerBoxDir, 'checker-compile.error');
+                          if (fs.existsSync(errorFilePath)) {
+                            errorMsg += `\nError:\n${fs.readFileSync(errorFilePath, 'utf-8')}`;
+                          }
+                          throw new Error(errorMsg);
+                        }
+                        checkerRunCmd = './checker.exe input.in answer.out user.out';
                       }
 
                       // Verify checker runtime by running it against the first available test case.
@@ -1314,14 +1334,16 @@ const updateProblemWithFile = async (
                         fs.copyFileSync(path.join(targetTestsDir, `${testBase}.out`), path.join(checkerBoxDir, 'user.out'));
 
                         try {
-                          await checkerBox.run('./checker.exe input.in answer.out user.out', {
-                            processes: 1,
+                          await checkerBox.run(checkerRunCmd, {
+                            processes: isPythonChecker ? 10 : 1,
                             timeLimit: 10,
                             wallTimeLimit: 20,
                             memoryLimit: 512000,
                             stdout: 'checker-runtime.out',
                             stderr: 'checker-runtime.err',
-                            dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])]
+                            ...(isPythonChecker
+                              ? { fullEnv: true, dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])] }
+                              : { dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])] })
                           }, 25000);
                         } catch {
                           let errorMsg = `Checker runtime failed for problem ${existingProblem.serialNumber}.`;
