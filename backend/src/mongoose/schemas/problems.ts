@@ -68,6 +68,7 @@ interface ITestcase {
  * @property released - Whether the problem is publicly visible.
  * @property status - One of {@link ProblemStatus}.
  * @property statusReason - Human-readable reason for the current status (e.g. error message).
+ * @property statusReason - Human-readable reason for the current status (e.g. error message).
  * @property scorePolicy - One of {@link ScorePolicy}.
  * @property hasGrader - Whether the problem uses a custom grader.
  * @property testcase - Array of {@link ITestcase} entries.
@@ -128,6 +129,7 @@ interface IProblem extends Document {
  * | `dailyQuota`       | `Number`   | No       | —            | No     | Daily submission limit             |
  * | `released`         | `Boolean`  | No       | `false`      | No     | Public visibility                  |
  * | `status`           | `String`   | No       | `"waiting"`  | No     | {@link ProblemStatus}              |
+ * | `statusReason`     | `String`   | No       | —            | No     | Human-readable reason for status   |
  * | `statusReason`     | `String`   | No       | —            | No     | Human-readable reason for status   |
  * | `scorePolicy`      | `String`   | Yes      | —            | No     | {@link ScorePolicy}                |
  * | `hasGrader`        | `Boolean`  | No       | `false`      | No     | Custom grader flag                 |

@@ -7,8 +7,8 @@ const debugRouter: Router = Router();
 debugRouter.get('/api/debug/discord', isJudgeAdmin, async (_req, res) => {
   const before = getDiscordLoggerStatus();
 
-  // Enqueue a test message — if enqueue is broken, queueLength won't grow
-  console.log('[debug] Test message from /api/debug/discord');
+  // Enqueue a test message at ERROR level.
+  console.error('[debug] Test message from /api/debug/discord');
 
   const afterEnqueue = getDiscordLoggerStatus();
 

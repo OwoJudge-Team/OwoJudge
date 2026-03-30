@@ -119,13 +119,13 @@ const verifyWebhookSecret = (req: Request, res: Response, next: NextFunction): v
  */
 export const handleGiteaWebhook = async (request: Request, response: Response): Promise<void> => {
     // Log incoming webhook request FIRST to confirm it's reaching the handler
-    console.log('='.repeat(80));
+    // console.log('='.repeat(80));
     console.log('[Webhook] Incoming request to /api/webhook/gitea');
-    console.log(`[Webhook] Method: ${request.method}`);
-    console.log(`[Webhook] Content-Type: ${request.headers['content-type']}`);
-    console.log(`[Webhook] Headers:`, JSON.stringify(request.headers, null, 2));
+    // console.log(`[Webhook] Method: ${request.method}`);
+    // console.log(`[Webhook] Content-Type: ${request.headers['content-type']}`);
+    // console.log(`[Webhook] Headers:`, JSON.stringify(request.headers, null, 2));
     console.log(`[Webhook] Body preview:`, JSON.stringify(request.body, null, 2).substring(0, 500));
-    console.log('='.repeat(80));
+    // console.log('='.repeat(80));
 
     try {
         // Validate request payload
@@ -161,7 +161,7 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
 
         // Process each commit
         for (const commit of payload.commits) {
-            console.log(`[Webhook] Processing commit: ${commit.id.substring(0, 7)}`);
+            // console.log(`[Webhook] Processing commit: ${commit.id.substring(0, 7)}`);
 
             // Get all modified and added files
             const changedFiles = [...commit.added, ...commit.modified];
@@ -204,7 +204,7 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
 
                 for (const filepath of filepaths) {
                     try {
-                        console.log(`[Webhook] Fetching file: ${filepath}`);
+                        // console.log(`[Webhook] Fetching file: ${filepath}`);
                         const fileContent = await giteaService.getFileContent(
                             payload.repository.owner.username,
                             payload.repository.name,
@@ -220,7 +220,7 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                             content: content
                         });
 
-                        console.log(`[Webhook] Successfully fetched file: ${filepath} (${fileContent.size} bytes)`);
+                        // console.log(`[Webhook] Successfully fetched file: ${filepath} (${fileContent.size} bytes)`);
                     } catch (error) {
                         console.error(`[Webhook] Error fetching file ${filepath}:`, error);
                         // Continue with other files even if one fails
@@ -275,17 +275,17 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                     await owoUser.save();
                 }
 
-                console.log(`[Webhook] owoUser found:`, JSON.stringify({
-                    _id: owoUser._id,
-                    username: owoUser.username,
-                    displayName: owoUser.displayName,
-                    giteaId: owoUser.giteaId
-                }, null, 2));
+                // console.log(`[Webhook] owoUser found:`, JSON.stringify({
+                //     _id: owoUser._id,
+                //     username: owoUser.username,
+                //     displayName: owoUser.displayName,
+                //     giteaId: owoUser.giteaId
+                // }, null, 2));
 
-                console.log(`[Webhook] problem found:`, JSON.stringify({
-                    serialNumber: problem.serialNumber,
-                    title: problem.title
-                }, null, 2));
+                // console.log(`[Webhook] problem found:`, JSON.stringify({
+                //     serialNumber: problem.serialNumber,
+                //     title: problem.title
+                // }, null, 2));
 
                 const submissionData: Partial<ISubmission> = {
                     problemSerialNumber: problemSerialNumber,
@@ -296,19 +296,19 @@ export const handleGiteaWebhook = async (request: Request, response: Response): 
                     userSolution: userSolution
                 };
 
-                console.log(`[Webhook] Submission data to be saved:`, JSON.stringify({
-                    problemSerialNumber: submissionData.problemSerialNumber,
-                    problemTitle: submissionData.problemTitle,
-                    username: submissionData.username,
-                    userID: submissionData.userID,
-                    language: submissionData.language
-                }, null, 2));
+                // console.log(`[Webhook] Submission data to be saved:`, JSON.stringify({
+                //     problemSerialNumber: submissionData.problemSerialNumber,
+                //     problemTitle: submissionData.problemTitle,
+                //     username: submissionData.username,
+                //     userID: submissionData.userID,
+                //     language: submissionData.language
+                // }, null, 2));
 
                 console.log(`[Webhook] Creating submission for problem ${problemSerialNumber} (${problem.title}) by ${submissionUsername}`);
 
                 const newSubmission = new Submission(submissionData);
                 const savedSubmission = await newSubmission.save();
-                await submitUserSubmission(savedSubmission);
+                submitUserSubmission(savedSubmission);
                 console.log(`[Webhook] Submission created: ${savedSubmission.serialNumber}`);
 
                 console.log(`[Webhook] Submission ${savedSubmission.serialNumber} sent to judger`);
