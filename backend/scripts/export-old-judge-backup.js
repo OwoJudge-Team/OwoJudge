@@ -1,6 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const mongoose = require('mongoose');
+
+function writeCompressed(filePath, content) {
+  const result = spawnSync('xz', ['-z', '-9', '-c'], {
+    input: Buffer.from(content, 'utf8'),
+    maxBuffer: 512 * 1024 * 1024
+  });
+  if (result.status !== 0) {
+    throw new Error(`xz compression failed: ${result.stderr?.toString()}`);
+  }
+  fs.writeFileSync(filePath, result.stdout);
+}
 
 const DEFAULT_MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
 const DEFAULT_OUTPUT_DIR = process.env.EXPORT_DIR || path.join(__dirname, '../exports');
@@ -304,9 +316,9 @@ async function main() {
     const stamp = now.toISOString().replace(/[:.]/g, '-');
 
     if (options.includeRawDump) {
-      const rawPath = path.join(options.outputDir, `owojudge-raw-${stamp}.json`);
+      const rawPath = path.join(options.outputDir, `owojudge-raw-${stamp}.json.xz`);
       try {
-        fs.writeFileSync(
+        writeCompressed(
           rawPath,
           JSON.stringify({
             generatedAt: now.toISOString(),
@@ -325,10 +337,10 @@ async function main() {
     }
 
     const converted = convertData({ users, problems, submissions, contests });
-    const convertedPath = path.join(options.outputDir, `old-judge-converted-${stamp}.json`);
+    const convertedPath = path.join(options.outputDir, `old-judge-converted-${stamp}.json.xz`);
 
     try {
-      fs.writeFileSync(
+      writeCompressed(
         convertedPath,
         JSON.stringify({
           generatedAt: now.toISOString(),
