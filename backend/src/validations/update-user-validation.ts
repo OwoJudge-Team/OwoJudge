@@ -45,11 +45,5 @@ export const updateUserValidation = {
       errorMessage: 'studentId should be a string'
     },
     optional: true
-  },
-  email: {
-    isEmail: {
-      errorMessage: 'email must be a valid email address'
-    },
-    optional: true
   }
 };

@@ -42,44 +42,7 @@ Or follow the [link](https://myaccount.google.com/apppasswords)
 
 When `USER_EMAIL_DOMAIN` is set, every user's email is stored as `{username}@{USER_EMAIL_DOMAIN}` at creation time. The password reset flow reads this stored value directly.
 
-If `USER_EMAIL_DOMAIN` is not set, or the generated address is not valid for a particular user, the system uses the `email` field stored on the user document instead. If neither is available, the request returns `500` with `{"message":"No email configured for this user"}`.
-
-### Setting a user's email manually
-
-When `USER_EMAIL_DOMAIN` does not produce a valid address for a user, the email can be set explicitly.
-
-**Via API (admin or the user themselves):**
-
-```
-{ "email": "custom@example.com" }
-```
-
-Self-updates require `oldPassword` in the body, as with any other profile change.
-
-**Via batch script (machine-level admin):**
-
-Create a CSV file with `username` and `email` columns:
-
-```csv
-username,email
-b12902033,b12902033@csie.ntu.edu.tw
-r13922001,r13922001@ntu.edu.tw
-```
-
-Then run:
-
-```bash
-# Preview without writing
-node scripts/set-emails.js --csv emails.csv --dry-run
-
-# Apply
-node scripts/set-emails.js --csv emails.csv --yes
-
-# Custom MongoDB URI
-node scripts/set-emails.js --csv emails.csv --mongo-uri mongodb://localhost:27017/judge --yes
-```
-
-The script connects directly to MongoDB and updates only users that exist. Any username not found in the database is skipped with a warning.
+If `USER_EMAIL_DOMAIN` is not set, the system falls back to the `email` field stored on the user document. Users without either will silently receive no email (the request still returns `200`).
 
 ### Backward compatibility with old databases
 
