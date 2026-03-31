@@ -80,6 +80,15 @@ services:
       - GITEA_BASE_URL=http://gitea:3000
       - ADMIN_PASSWD=${ADMIN_PASSWD}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      # Password reset
+      - USER_EMAIL_DOMAIN=${USER_EMAIL_DOMAIN:-}
+      - FRONTEND_URL=${FRONTEND_URL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     volumes:
       - ./uploads:/app/uploads
       - ./problems:/app/problems

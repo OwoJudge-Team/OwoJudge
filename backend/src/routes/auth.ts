@@ -6,10 +6,14 @@
  * @module API/Auth
  */
 
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import passport from 'passport';
+import crypto from 'crypto';
 import '../strategies/local-strategies.js';
 import { IRequest } from '../utils/request-interface.js';
+import { User } from '../mongoose/schemas/users.js';
+import { hashString } from '../utils/hash-password.js';
+import { sendPasswordResetEmail } from '../utils/mailer.js';
 
 const authRouter: Router = Router();
 
@@ -114,13 +118,134 @@ const logoutUser = (request: IRequest, response: Response) => {
   }
 };
 
+/**
+ * Sends a password reset link to the email address associated with a username.
+ *
+ * @route `POST /api/auth/forgot-password`
+ *
+ * @param request - Express request. Body must contain:
+ *   - `username` (string)
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` always (to avoid username enumeration).
+ * - `500 Internal Server Error` if the email fails to send.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * { "username": "alice" }
+ * ```
+ */
+const forgotPassword = async (request: Request, response: Response): Promise<void> => {
+  const { username } = request.body;
+
+  if (!username || typeof username !== 'string') {
+    response.status(400).json({ message: 'username is required' });
+    return;
+  }
+
+  try {
+    const user = await User.findOne({ username });
+
+    // Always respond 200 to avoid username enumeration
+    if (!user) {
+      response.sendStatus(200);
+      return;
+    }
+
+    // Derive email from username + domain, falling back to the stored email field
+    const emailDomain = process.env.USER_EMAIL_DOMAIN;
+    const email = emailDomain ? `${username}@${emailDomain}` : user.email;
+
+    if (!email) {
+      response.status(500).json({ message: 'No email configured for this user' });
+      return;
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await User.findByIdAndUpdate(user._id, {
+      resetPasswordToken: token,
+      resetPasswordExpires: expires,
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || `http://localhost:${process.env.BACKEND_PORT || 8787}`;
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+
+    await sendPasswordResetEmail(email, resetUrl);
+
+    response.sendStatus(200);
+  } catch (error) {
+    console.error('[forgot-password] Error:', error);
+    response.status(500).json({ message: 'Failed to send reset email' });
+  }
+};
+
+/**
+ * Resets a user's password using a valid reset token.
+ *
+ * @route `POST /api/auth/reset-password/:token`
+ *
+ * @param request - Express request. URL param `token`, body must contain:
+ *   - `newPassword` (string, min 8 characters)
+ * @param response - Express response.
+ *
+ * @returns
+ * - `200 OK` on success.
+ * - `400 Bad Request` if the token is invalid, expired, or password too short.
+ *
+ * @example
+ * ##### Request Body
+ * ```json
+ * { "newPassword": "newSecurePassword123" }
+ * ```
+ */
+const resetPassword = async (request: Request, response: Response): Promise<void> => {
+  const { token } = request.params;
+  const { newPassword } = request.body;
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    response.status(400).json({ message: 'newPassword must be at least 8 characters' });
+    return;
+  }
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      response.status(400).json({ message: 'Invalid or expired reset token' });
+      return;
+    }
+
+    await User.findByIdAndUpdate(user._id, {
+      password: hashString(newPassword),
+      resetPasswordToken: undefined,
+      resetPasswordExpires: undefined,
+    });
+
+    response.sendStatus(200);
+  } catch (error) {
+    console.error('[reset-password] Error:', error);
+    response.sendStatus(500);
+  }
+};
+
 authRouter.post('/api/auth', loginUser);
 authRouter.get('/api/auth/status', getStatus);
 authRouter.post('/api/auth/logout', logoutUser);
+authRouter.post('/api/auth/forgot-password', forgotPassword);
+authRouter.post('/api/auth/reset-password/:token', resetPassword);
 
 export default authRouter;
 export {
   loginUser,
   getStatus,
   logoutUser,
+  forgotPassword,
+  resetPassword,
 }

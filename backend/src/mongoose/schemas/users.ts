@@ -40,6 +40,9 @@ export enum UserRole {
  * @property gitSshUrl - Git SSH clone URL for the user's solution repository.
  * @property id - MongoDB ObjectId.
  * @property quotaUsage - Per-problem daily submission quota tracking map.
+ * @property email - User's email address, derived from `{username}@{USER_EMAIL_DOMAIN}` at creation time.
+ * @property resetPasswordToken - One-time token for password reset (expires after 1 hour).
+ * @property resetPasswordExpires - Expiry timestamp for {@link resetPasswordToken}.
  */
 interface IUser extends mongoose.Document {
   username: string;
@@ -55,6 +58,9 @@ interface IUser extends mongoose.Document {
   gitSshUrl?: string;
   id: ObjectId;
   quotaUsage: Map<string, { count: number; date: Date }>;
+  email?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
 }
 
 /**
@@ -62,20 +68,23 @@ interface IUser extends mongoose.Document {
  *
  * Collection: `users`
  *
- * | Field            | Type     | Required | Default     | Unique  | Notes                              |
- * |------------------|----------|----------|-------------|---------|------------------------------------|
- * | `username`       | `String` | Yes      | —           | Yes     | Login name                         |
- * | `displayName`    | `String` | Yes      | —           | No      | Display name                       |
- * | `password`       | `String` | Yes      | —           | No      | Hashed password                    |
- * | `role`           | `String` | Yes      | `"student"` | No      | {@link UserRole} enum value        |
- * | `solvedProblem`  | `Number` | Yes      | `0`         | No      | Solved problem count               |
- * | `solvedProblems` | `Array`  | Yes      | `[]`        | No      | Solved problem serial numbers      |
- * | `rating`         | `Number` | Yes      | `0`         | No      | User rating                        |
- * | `gitPublicKey`   | `String` | No       | —           | No      | SSH public key                     |
- * | `studentId`      | `String` | No       | —           | Sparse  | Student ID                         |
- * | `giteaId`        | `Number` | No       | —           | Sparse  | Gitea user ID                      |
- * | `gitSshUrl`      | `String` | No       | —           | No      | Git SSH URL                        |
- * | `quotaUsage`     | `Map`    | No       | `{}`        | No      | Daily submission quota per problem  |
+ * | Field                  | Type     | Required | Default     | Unique  | Notes                              |
+ * |------------------------|----------|----------|-------------|---------|------------------------------------|
+ * | `username`             | `String` | Yes      | —           | Yes     | Login name                         |
+ * | `displayName`          | `String` | Yes      | —           | No      | Display name                       |
+ * | `password`             | `String` | Yes      | —           | No      | Hashed password                    |
+ * | `role`                 | `String` | Yes      | `"student"` | No      | {@link UserRole} enum value        |
+ * | `solvedProblem`        | `Number` | Yes      | `0`         | No      | Solved problem count               |
+ * | `solvedProblems`       | `Array`  | Yes      | `[]`        | No      | Solved problem serial numbers      |
+ * | `rating`               | `Number` | Yes      | `0`         | No      | User rating                        |
+ * | `gitPublicKey`         | `String` | No       | —           | No      | SSH public key                     |
+ * | `studentId`            | `String` | No       | —           | Sparse  | Student ID                         |
+ * | `giteaId`              | `Number` | No       | —           | Sparse  | Gitea user ID                      |
+ * | `gitSshUrl`            | `String` | No       | —           | No      | Git SSH URL                        |
+ * | `quotaUsage`           | `Map`    | No       | `{}`        | No      | Daily submission quota per problem |
+ * | `email`                | `String` | No       | —           | No      | Derived from `{username}@{USER_EMAIL_DOMAIN}` |
+ * | `resetPasswordToken`   | `String` | No       | —           | No      | One-time password reset token       |
+ * | `resetPasswordExpires` | `Date`   | No       | —           | No      | Expiry for reset token (1 hour)     |
  */
 const userSchema = new mongoose.Schema<IUser>({
   username: {
@@ -139,6 +148,18 @@ const userSchema = new mongoose.Schema<IUser>({
       date: { type: Date, required: true }
     }),
     default: {}
+  },
+  email: {
+    type: mongoose.Schema.Types.String,
+    required: false
+  },
+  resetPasswordToken: {
+    type: mongoose.Schema.Types.String,
+    required: false
+  },
+  resetPasswordExpires: {
+    type: mongoose.Schema.Types.Date,
+    required: false
   }
 });
 
