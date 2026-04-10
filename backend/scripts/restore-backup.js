@@ -101,6 +101,7 @@ function convertHomeworksToContests(homeworks, generatedAt) {
       description: homework.desc || '',
       startTime: start,
       submissionEndTime: end,
+      submissionEndTime: end,
       released: Boolean(homework.visible),
       problems: (homework.problems || [])
         .filter((item) => Number.isFinite(Number(item?.problem)))
@@ -118,13 +119,7 @@ function normalizeBackupPayload(payload) {
     throw new Error('Backup file does not contain a valid JSON object');
   }
 
-  const emailDomain = process.env.USER_EMAIL_DOMAIN;
-  const users = (Array.isArray(payload.users) ? payload.users : []).map((user) => {
-    if (emailDomain && user.username && !user.email) {
-      return { ...user, email: `${user.username}@${emailDomain}` };
-    }
-    return user;
-  });
+  const users = Array.isArray(payload.users) ? payload.users : [];
   const problems = Array.isArray(payload.problems) ? payload.problems : [];
   const submissions = Array.isArray(payload.submissions) ? payload.submissions : [];
 

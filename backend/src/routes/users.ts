@@ -202,15 +202,12 @@ const createUser = async (request: IRequest, response: Response) => {
 
   try {
     // Step 1: Create OwoJudge user first (without Gitea data)
-    const emailDomain = process.env.USER_EMAIL_DOMAIN;
-    const userEmail = emailDomain ? `${username}@${emailDomain}` : `${username}@owojudge.local`;
     const newUser = new User({
       username,
       displayName,
       role: role || UserRole.Student,
       studentId,
-      password: hashString(password),
-      email: userEmail,
+      password: hashString(password)
       // giteaId and gitSshUrl will be filled in later
     });
 
@@ -224,7 +221,7 @@ const createUser = async (request: IRequest, response: Response) => {
       const giteaUser = await giteaService.createUser({
         username,
         password,
-        email: userEmail,
+        email: `${username}@owojudge.local`
       });
       giteaId = giteaUser.id;
 
