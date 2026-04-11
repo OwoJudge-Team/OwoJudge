@@ -76,16 +76,23 @@ const writeUserSolution = (submission: ISubmission, dir: string) => {
 
 const compileChecker = async (problemDir: string, workDir: string): Promise<boolean> => {
   const checkerDir = path.join(problemDir, 'checker');
-  const checkerExecutablePath = path.join(workDir, 'checker.exe');
 
   if (!fs.existsSync(checkerDir)) {
     console.error(`Checker directory not found for problem in ${problemDir}`);
     return false;
   }
 
+  // Python checker: no compilation needed, just copy the script
+  const pythonCheckerSrc = path.join(checkerDir, 'checker.py');
+  if (fs.existsSync(pythonCheckerSrc)) {
+    fs.copyFileSync(pythonCheckerSrc, path.join(workDir, 'checker.py'));
+    return true;
+  }
+
+  const checkerExecutablePath = path.join(workDir, 'checker.exe');
+
   return await IsolateManager.withBox(async (box) => {
     const boxDir = box.getBoxDir();
-    const boxID = box.getBoxID();
 
     try {
       // Copy checker directory to isolated box
@@ -137,10 +144,16 @@ const runChecker = async (
   return await IsolateManager.withBox(async (box) => {
     const boxDir = box.getBoxDir();
 
+    const isPython = checkerPath.endsWith('.py');
+
     try {
       // Copy files to box
-      fs.copyFileSync(checkerPath, path.join(boxDir, 'checker'));
-      fs.chmodSync(path.join(boxDir, 'checker'), 0o755);
+      if (isPython) {
+        fs.copyFileSync(checkerPath, path.join(boxDir, 'checker.py'));
+      } else {
+        fs.copyFileSync(checkerPath, path.join(boxDir, 'checker'));
+        fs.chmodSync(path.join(boxDir, 'checker'), 0o755);
+      }
       fs.copyFileSync(inputFile, path.join(boxDir, 'input.in'));
       fs.copyFileSync(userOutputFile, path.join(boxDir, 'user.out'));
       fs.copyFileSync(answerFile, path.join(boxDir, 'answer.out'));
@@ -154,15 +167,20 @@ const runChecker = async (
     const checkerOutputFile = `checker-${baseName}.out`;
     const checkerErrorFile = `checker-${baseName}.err`;
 
+    const checkerCmd = isPython
+      ? 'python3 checker.py input.in answer.out user.out'
+      : './checker input.in answer.out user.out';
+
     try {
-      await box.run('./checker input.in answer.out user.out', {
-        processes: 1,
+      await box.run(checkerCmd, {
+        processes: isPython ? 10 : 1,
         timeLimit: 10,
         wallTimeLimit: 20,
         memoryLimit: 512000,
         metaFile,
         stdout: checkerOutputFile,
-        stderr: checkerErrorFile
+        stderr: checkerErrorFile,
+        ...(isPython && { fullEnv: true, dirs: ['/usr', '/bin', '/lib', '/etc', ...(fs.existsSync('/lib64') ? ['/lib64'] : [])] })
       }, 25000);
 
       // Read checker message from stderr (inside the box)
@@ -290,7 +308,9 @@ const runUserSolution = async (
     fs.copyFileSync(path.join(boxDir, path.basename(userOutputFile)), userOutputFile);
     fs.copyFileSync(path.join(boxDir, path.basename(userErrorFile)), userErrorFile);
 
-    const checkerPath = path.join(workDir, 'checker.exe');
+    const checkerPath = fs.existsSync(path.join(workDir, 'checker.py'))
+      ? path.join(workDir, 'checker.py')
+      : path.join(workDir, 'checker.exe');
     if (!fs.existsSync(checkerPath)) {
       console.error(`Checker not found for problem ${submission.problemSerialNumber}`);
       return { ...baseResult, status: SubmissionStatus.SE };

@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     rclone \
     sudo \
+    xz-utils \
     systemd \
     netcat-openbsd \
     systemd-sysv \

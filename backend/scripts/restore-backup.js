@@ -1,6 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const mongoose = require('mongoose');
+
+function readPossiblyCompressed(filePath) {
+  if (filePath.endsWith('.xz')) {
+    const result = spawnSync('xz', ['-d', '-c', filePath], { maxBuffer: 512 * 1024 * 1024 });
+    if (result.status !== 0) {
+      throw new Error(`xz decompression failed: ${result.stderr?.toString()}`);
+    }
+    return result.stdout.toString('utf8');
+  }
+  return fs.readFileSync(filePath, 'utf-8');
+}
 
 const DEFAULT_MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/judge';
 
@@ -242,7 +254,7 @@ async function main() {
     throw new Error(`Backup file not found: ${options.filePath}`);
   }
 
-  const rawText = fs.readFileSync(options.filePath, 'utf-8');
+  const rawText = readPossiblyCompressed(options.filePath);
   const parsed = JSON.parse(rawText);
   const backup = normalizeBackupPayload(parsed);
 
